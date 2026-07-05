@@ -30,3 +30,19 @@ create policy "Public can read news posts"
   on public.news_posts
   for select
   using (true);
+
+create table if not exists public.policy_pages (
+  key text primary key,
+  policy jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint policy_pages_known_key check (key in ('rules', 'terms'))
+);
+
+alter table public.policy_pages enable row level security;
+
+drop policy if exists "Public can read policy pages" on public.policy_pages;
+create policy "Public can read policy pages"
+  on public.policy_pages
+  for select
+  using (true);

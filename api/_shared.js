@@ -205,6 +205,51 @@ export async function readAdminNews() {
   return Array.isArray(rows) ? rows.map(fromDatabaseRow) : []
 }
 
+export async function readPolicies() {
+  const rows = await supabaseRequest('policy_pages?select=key,policy')
+  if (!Array.isArray(rows)) {
+    return {}
+  }
+
+  return rows.reduce((policies, row) => {
+    if (row.key === 'rules' || row.key === 'terms') {
+      policies[row.key] = row.policy
+    }
+    return policies
+  }, {})
+}
+
+export async function savePolicy(key, policy) {
+  if (key !== 'rules' && key !== 'terms') {
+    throw new Error('Unknown policy key.')
+  }
+
+  await supabaseRequest('policy_pages?on_conflict=key', {
+    method: 'POST',
+    body: JSON.stringify({
+      key,
+      policy,
+      updated_at: new Date().toISOString(),
+    }),
+    headers: {
+      Prefer: 'resolution=merge-duplicates,return=representation',
+    },
+  })
+}
+
+export async function deletePolicy(key) {
+  if (key !== 'rules' && key !== 'terms') {
+    throw new Error('Unknown policy key.')
+  }
+
+  await supabaseRequest(`policy_pages?key=eq.${encodeURIComponent(key)}`, {
+    method: 'DELETE',
+    headers: {
+      Prefer: 'return=minimal',
+    },
+  })
+}
+
 export async function saveAdminNews(item) {
   const rows = await supabaseRequest('news_posts?on_conflict=slug', {
     method: 'POST',

@@ -19,8 +19,25 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
       sections.map((section, index) => ({
         ...section,
         _id: slugifySection(section.title, index),
+        subsections: Array.isArray(section.subsections)
+          ? section.subsections.map((subsection, subsectionIndex) => ({
+              ...subsection,
+              _id: `${slugifySection(section.title, index)}-${slugifySection(
+                subsection.title,
+                subsectionIndex,
+              )}`,
+            }))
+          : [],
       })),
     [sections],
+  )
+  const contentTargets = useMemo(
+    () =>
+      withIds.flatMap((section) => [
+        section._id,
+        ...section.subsections.map((subsection) => subsection._id),
+      ]),
+    [withIds],
   )
   const [activeSectionId, setActiveSectionId] = useState(withIds[0]?._id ?? '')
 
@@ -29,7 +46,7 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
   const otherHref = `/${otherKey}`
 
   useEffect(() => {
-    if (withIds.length === 0) {
+    if (contentTargets.length === 0) {
       setActiveSectionId('')
       return undefined
     }
@@ -51,8 +68,8 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
       },
     )
 
-    const observedElements = withIds
-      .map((section) => document.getElementById(section._id))
+    const observedElements = contentTargets
+      .map((targetId) => document.getElementById(targetId))
       .filter(Boolean)
 
     observedElements.forEach((element) => observer.observe(element))
@@ -64,7 +81,7 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
     return () => {
       observer.disconnect()
     }
-  }, [withIds])
+  }, [contentTargets])
 
   function handleSectionClick(event, sectionId) {
     event.preventDefault()
@@ -143,28 +160,51 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
             <nav className="rounded-[18px] border border-white/10 bg-surface p-5">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-2">On this page</p>
               <ul className="mt-4 grid gap-1 p-0">
-                {withIds.map((section, index) => (
-                  <li key={section._id}>
-                    <a
-                      href={`#${section._id}`}
-                      onClick={(event) => handleSectionClick(event, section._id)}
-                      className={`flex items-start gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                        activeSectionId === section._id
-                          ? 'bg-brand/12 text-white shadow-[inset_0_0_0_1px_rgba(255,90,48,0.28)]'
-                          : 'text-muted hover:bg-white/[0.05] hover:text-white'
-                      }`}
-                    >
-                      <span
-                        className={`text-xs font-bold ${
-                          activeSectionId === section._id ? 'text-brand-2' : 'text-brand-2/80'
+                {withIds.map((section, index) => {
+                  const isParentActive =
+                    activeSectionId === section._id ||
+                    section.subsections.some((subsection) => activeSectionId === subsection._id)
+
+                  return (
+                    <li key={section._id}>
+                      <a
+                        href={`#${section._id}`}
+                        onClick={(event) => handleSectionClick(event, section._id)}
+                        className={`flex items-start gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                          isParentActive
+                            ? 'bg-brand/12 text-white shadow-[inset_0_0_0_1px_rgba(255,90,48,0.28)]'
+                            : 'text-muted hover:bg-white/[0.05] hover:text-white'
                         }`}
                       >
-                        {String(index + 1).padStart(2, '0')}
-                      </span>
-                      <span className="leading-5">{section.title}</span>
-                    </a>
-                  </li>
-                ))}
+                        <span
+                          className={`text-xs font-bold ${isParentActive ? 'text-brand-2' : 'text-brand-2/80'}`}
+                        >
+                          {String(index + 1).padStart(2, '0')}
+                        </span>
+                        <span className="leading-5">{section.title}</span>
+                      </a>
+                      {section.subsections.length > 0 && (
+                        <ul className="ml-8 mt-1 grid gap-1 p-0">
+                          {section.subsections.map((subsection) => (
+                            <li key={subsection._id}>
+                              <a
+                                href={`#${subsection._id}`}
+                                onClick={(event) => handleSectionClick(event, subsection._id)}
+                                className={`block rounded-lg px-3 py-1.5 text-xs font-medium leading-5 transition ${
+                                  activeSectionId === subsection._id
+                                    ? 'bg-brand/10 text-white'
+                                    : 'text-muted hover:bg-white/[0.05] hover:text-white'
+                                }`}
+                              >
+                                {subsection.title}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  )
+                })}
               </ul>
             </nav>
           </aside>
@@ -194,6 +234,32 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
                           </li>
                         ))}
                       </ul>
+                    )}
+                    {section.subsections.length > 0 && (
+                      <div className="mt-6 grid gap-4">
+                        {section.subsections.map((subsection) => (
+                          <section
+                            id={subsection._id}
+                            className="scroll-mt-28 rounded-xl border border-white/10 bg-bg-2/45 p-5"
+                            key={subsection._id}
+                          >
+                            <h3 className="text-base font-bold leading-tight text-white">{subsection.title}</h3>
+                            {subsection.description && (
+                              <p className="mt-2 text-sm leading-7 text-muted">{subsection.description}</p>
+                            )}
+                            {subsection.items && subsection.items.length > 0 && (
+                              <ul className="mt-4 grid gap-3 p-0">
+                                {subsection.items.map((item) => (
+                                  <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
+                                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-2" />
+                                    <span>{item}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </section>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>

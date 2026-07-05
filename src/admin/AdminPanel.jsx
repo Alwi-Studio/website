@@ -122,22 +122,39 @@ function sectionsToText(sections = []) {
       if (Array.isArray(section.items)) {
         section.items.forEach((item) => lines.push(`- ${item}`))
       }
+      if (Array.isArray(section.subsections)) {
+        section.subsections.forEach((subsection) => {
+          lines.push(`## ${subsection.title}`)
+          if (subsection.description) {
+            lines.push(subsection.description)
+          }
+          if (Array.isArray(subsection.items)) {
+            subsection.items.forEach((item) => lines.push(`- ${item}`))
+          }
+        })
+      }
       return lines.join('\n')
     })
     .join('\n\n')
 }
 
 // Parse the editable mini-syntax back into structured policy sections.
-// "# Title" starts a section, "- item" adds a bullet, other text is the description.
+// "# Title" starts a section, "## Title" starts a subsection, "- item" adds a bullet.
 function parseSections(text) {
   const sections = []
   let current = null
+  let currentSubsection = null
 
   function ensureSection() {
     if (!current) {
-      current = { title: 'Section', description: '', items: [] }
+      current = { title: 'Section', description: '', items: [], subsections: [] }
       sections.push(current)
     }
+  }
+
+  function currentTarget() {
+    ensureSection()
+    return currentSubsection ?? current
   }
 
   for (const rawLine of text.split('\n')) {
@@ -147,14 +164,18 @@ function parseSections(text) {
     }
 
     if (trimmed.startsWith('# ')) {
-      current = { title: trimmed.slice(2).trim() || 'Section', description: '', items: [] }
+      current = { title: trimmed.slice(2).trim() || 'Section', description: '', items: [], subsections: [] }
       sections.push(current)
+      currentSubsection = null
+    } else if (trimmed.startsWith('## ')) {
+      ensureSection()
+      currentSubsection = { title: trimmed.slice(3).trim() || 'Subsection', description: '', items: [] }
+      current.subsections.push(currentSubsection)
     } else if (trimmed.startsWith('- ')) {
-      ensureSection()
-      current.items.push(trimmed.slice(2).trim())
+      currentTarget().items.push(trimmed.slice(2).trim())
     } else {
-      ensureSection()
-      current.description = current.description ? `${current.description} ${trimmed}` : trimmed
+      const target = currentTarget()
+      target.description = target.description ? `${target.description} ${trimmed}` : trimmed
     }
   }
 
@@ -163,8 +184,24 @@ function parseSections(text) {
       title: section.title,
       ...(section.description ? { description: section.description } : {}),
       ...(section.items.length ? { items: section.items } : {}),
+      ...(section.subsections.length
+        ? {
+            subsections: section.subsections
+              .map((subsection) => ({
+                title: subsection.title,
+                ...(subsection.description ? { description: subsection.description } : {}),
+                ...(subsection.items.length ? { items: subsection.items } : {}),
+              }))
+              .filter((subsection) => subsection.description || (subsection.items && subsection.items.length)),
+          }
+        : {}),
     }))
-    .filter((section) => section.description || (section.items && section.items.length))
+    .filter(
+      (section) =>
+        section.description ||
+        (section.items && section.items.length) ||
+        (section.subsections && section.subsections.length),
+    )
 }
 
 function policyToForm(policy) {
@@ -669,6 +706,10 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange }) {
                 <li className="flex items-start gap-3 text-sm text-muted">
                   <code className="rounded-md bg-surface-2 px-2 py-0.5 text-brand-2"># Title</code>
                   <span>starts a new section</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-muted">
+                  <code className="rounded-md bg-surface-2 px-2 py-0.5 text-brand-2">## Title</code>
+                  <span>starts a subsection</span>
                 </li>
                 <li className="flex items-start gap-3 text-sm text-muted">
                   <code className="rounded-md bg-surface-2 px-2 py-0.5 text-brand-2">- item</code>
