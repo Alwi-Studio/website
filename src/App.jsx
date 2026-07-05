@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import backgroundImg from './assets/background.webp'
 import AdminPanel from './admin/AdminPanel.jsx'
 import ErrorPage from './common/ErrorPage.jsx'
@@ -101,6 +101,41 @@ const contactItems = [
 
 const newsToShow = 3
 const pageSectionIds = ['home', 'news', 'about', 'work', 'contact']
+
+function StableImage({ src, alt = '', className = '', eager = false }) {
+  const imageRef = useRef(null)
+  const [isLoaded, setIsLoaded] = useState(false)
+
+  useLayoutEffect(() => {
+    const image = imageRef.current
+
+    if (image?.complete && image.naturalWidth > 0) {
+      setIsLoaded(true)
+      return
+    }
+
+    setIsLoaded(false)
+  }, [src])
+
+  return (
+    <>
+      {!isLoaded && <div className="absolute inset-0 bg-surface-2" />}
+      <img
+        ref={imageRef}
+        src={src}
+        alt={alt}
+        width="1920"
+        height="1080"
+        loading={eager ? 'eager' : 'lazy'}
+        fetchPriority={eager ? 'high' : 'auto'}
+        decoding="async"
+        className={`${className} transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+        onLoad={() => setIsLoaded(true)}
+        onError={() => setIsLoaded(false)}
+      />
+    </>
+  )
+}
 
 function useServerStatus() {
   const [serverStatus, setServerStatus] = useState({
@@ -220,10 +255,11 @@ function Hero({ serverStatus }) {
   return (
     <section id="home" className="relative flex min-h-[92svh] scroll-mt-24 items-center overflow-hidden pb-24 pt-36">
       <div className="absolute inset-0 z-0">
-        <img
+        <StableImage
           src={backgroundImg}
           alt=""
           className="h-full w-full object-cover object-[center_42%]"
+          eager
         />
         <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_20%_30%,rgba(11,11,14,0.55),rgba(11,11,14,0.86)_60%,var(--color-bg)_100%)]" />
       </div>
@@ -539,7 +575,7 @@ function App() {
         <section id="about" className="scroll-mt-24 border-t border-white/10 bg-bg-2 py-24">
           <div className="mx-auto grid max-w-[1180px] items-center gap-14 px-6 lg:grid-cols-[0.9fr_1.1fr]">
             <div className="relative aspect-[4/3] overflow-hidden rounded-[20px] border border-white/10">
-              <img src={backgroundImg} alt="" className="h-full w-full object-cover" />
+              <StableImage src={backgroundImg} alt="" className="h-full w-full object-cover" />
               <div className="absolute inset-x-[18px] bottom-[18px] flex gap-[18px] rounded-2xl border border-white/15 bg-bg/60 px-[18px] py-4 backdrop-blur-md">
                 <div>
                   <b className="text-lg text-white">12k+</b>
