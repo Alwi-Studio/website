@@ -4,7 +4,7 @@ import logoMark from '../assets/MAIN--FOR-BG-HITAM.webp'
 
 const links = [
   { label: 'Home', href: '/#home' },
-  { label: 'News', href: '/news' },
+  { label: 'News', href: '/#news' },
   { label: 'About', href: '/#about' },
   { label: 'Work', href: '/#work' },
   { label: 'Contact', href: '/#contact' },
@@ -38,7 +38,6 @@ function Navbar({ activeSection = 'home' }) {
   function isActive(link) {
     return (
       (link.href === `/#${activeSection}`) ||
-      (activeSection === 'news' && link.href === '/news') ||
       (activeSection === 'rules' && link.href === '/rules') ||
       (activeSection === 'terms' && link.href === '/terms')
     )
