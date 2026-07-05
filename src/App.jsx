@@ -102,6 +102,12 @@ const contactItems = [
 const newsToShow = 3
 const pageSectionIds = ['home', 'news', 'about', 'work', 'contact']
 
+function getInitialActiveSection() {
+  const requestedSection = window.location.hash.slice(1)
+
+  return pageSectionIds.includes(requestedSection) ? requestedSection : 'home'
+}
+
 function StableImage({ src, alt = '', className = '', eager = false }) {
   const imageRef = useRef(null)
   const [isLoaded, setIsLoaded] = useState(false)
@@ -349,7 +355,7 @@ function NewsPageLoading() {
 }
 
 function App() {
-  const [activeSection, setActiveSection] = useState('home')
+  const [activeSection, setActiveSection] = useState(getInitialActiveSection)
   const [newsItems, setNewsItems] = useState([])
   const [isLoadingNews, setIsLoadingNews] = useState(true)
   const [policies, setPolicies] = useState(getPolicies)
@@ -399,7 +405,7 @@ function App() {
     }
   }, [isRulesPage, isTermsPage, isAdminPage])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (newsSlug || isNewsListPage || isAdminPage || isRulesPage || isTermsPage || !isKnownPath) {
       setActiveSection('news')
       return undefined
@@ -447,10 +453,8 @@ function App() {
 
     if (requestedElement) {
       setActiveSection(requestedSection)
-      window.requestAnimationFrame(() => {
-        requestedElement.scrollIntoView({ block: 'start' })
-        window.requestAnimationFrame(updateActiveSection)
-      })
+      requestedElement.scrollIntoView({ block: 'start' })
+      updateActiveSection()
     } else {
       updateActiveSection()
     }
