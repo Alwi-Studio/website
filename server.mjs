@@ -156,6 +156,15 @@ async function supabaseRequest(path, options = {}) {
   const parsedData = data ? JSON.parse(data) : null
 
   if (!response.ok) {
+    if (
+      parsedData?.code === 'PGRST205' ||
+      parsedData?.message?.includes("Could not find the table 'public.news_posts'")
+    ) {
+      throw new Error(
+        'Supabase is configured, but public.news_posts does not exist yet. Run database/supabase-news.sql in the Supabase SQL editor, then retry.',
+      )
+    }
+
     throw new Error(parsedData?.message ?? 'Supabase request failed.')
   }
 

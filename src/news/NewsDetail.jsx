@@ -1,5 +1,40 @@
+import { useEffect, useState } from 'react'
 import News from './News.jsx'
 import { RichInline } from '../common/RichText.jsx'
+
+function HeroImage({ src }) {
+  const [status, setStatus] = useState('loading')
+
+  useEffect(() => {
+    setStatus(src ? 'loading' : 'error')
+  }, [src])
+
+  return (
+    <>
+      {status === 'loading' && (
+        <div className="absolute inset-0 grid place-items-center bg-[#202020]">
+          <div className="h-14 w-14 animate-spin rounded-full border-2 border-white/15 border-t-[#ff7a59]" />
+        </div>
+      )}
+      {status === 'error' && (
+        <div className="absolute inset-0 grid place-items-center bg-[#202020] px-5 text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-500">Image unavailable</p>
+        </div>
+      )}
+      {src && (
+        <img
+          className={`pointer-events-none absolute inset-0 h-full w-full object-cover object-center blur-[4px] transition duration-500 ${
+            status === 'loaded' ? 'opacity-100' : 'opacity-0'
+          }`}
+          src={src}
+          alt=""
+          onLoad={() => setStatus('loaded')}
+          onError={() => setStatus('error')}
+        />
+      )}
+    </>
+  )
+}
 
 function ArticleBlock({ block }) {
   if (typeof block === 'string') {
@@ -85,11 +120,7 @@ function NewsDetail({ item, newsItems = [] }) {
     <main className="bg-[#171717] text-white">
       <article>
         <section className="relative min-h-[620px] overflow-hidden px-5 pb-16 pt-32 sm:px-8 lg:px-12">
-          <img
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center blur-[4px]"
-            src={item.img}
-            alt=""
-          />
+          <HeroImage src={item.img} />
           <div className="absolute inset-0 bg-black/65 shadow-[inset_0_0_140px_80px_rgba(0,0,0,0.88)]" />
           <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-b from-transparent to-[#171717]" />
 

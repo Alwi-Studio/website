@@ -105,6 +105,44 @@ function formatDisplayDate(value) {
   })
 }
 
+function getImageUrlError(value) {
+  const imageUrl = value.trim()
+
+  if (!imageUrl) {
+    return ''
+  }
+
+  let url
+
+  try {
+    url = new URL(imageUrl)
+  } catch {
+    return 'Image URL must be a valid URL.'
+  }
+
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return 'Image URL must start with http:// or https://.'
+  }
+
+  const host = url.hostname.toLowerCase()
+  const path = url.pathname.toLowerCase()
+
+  if (host === 'imgur.com' || host.endsWith('.imgur.com')) {
+    const isDirectImgurImage =
+      host === 'i.imgur.com' && /\.(avif|gif|jpe?g|png|webp)$/i.test(url.pathname)
+
+    if (!isDirectImgurImage) {
+      return 'Imgur album/page links cannot be used as images. Use the direct i.imgur.com image URL that ends in .jpg, .png, .gif, or .webp.'
+    }
+  }
+
+  if (path.includes('/a/') || path.includes('/gallery/')) {
+    return 'Album/gallery links cannot be used as images. Use a direct image file URL instead.'
+  }
+
+  return ''
+}
+
 // Convert stored policy sections into the editable mini-syntax used in the textarea.
 function sectionsToText(sections = []) {
   return sections
@@ -310,6 +348,13 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange }) {
 
     if (!form.title.trim() || !slug || !form.description.trim() || body.length === 0) {
       setSaveMessage('Title, slug, description, and body are required.')
+      return
+    }
+
+    const imageUrlError = getImageUrlError(form.imageUrl)
+
+    if (imageUrlError) {
+      setSaveMessage(imageUrlError)
       return
     }
 
@@ -596,7 +641,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange }) {
 
                 <label className={labelClass}>
                   Image URL
-                  <input className={inputClass} placeholder="https://example.com/image.png" value={form.imageUrl} onChange={(event) => updateField('imageUrl', event.target.value)} />
+                  <input className={inputClass} placeholder="https://i.imgur.com/example.jpg" value={form.imageUrl} onChange={(event) => updateField('imageUrl', event.target.value)} />
                 </label>
 
                 <label className={labelClass}>
