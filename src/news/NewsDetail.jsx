@@ -1,9 +1,13 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import News from './News.jsx'
 import { RichInline } from '../common/RichText.jsx'
+import { getOptimizedImageUrl } from './imageOptimizer.js'
 
 function HeroImage({ src, avifSrc = '' }) {
   const imageRef = useRef(null)
+  const optimizedSrc = useMemo(() => avifSrc || getOptimizedImageUrl(src, 1920), [avifSrc, src])
+  const primarySrc = optimizedSrc || src
+  const [currentSrc, setCurrentSrc] = useState(primarySrc)
   const [status, setStatus] = useState('loading')
 
   useLayoutEffect(() => {
@@ -14,8 +18,23 @@ function HeroImage({ src, avifSrc = '' }) {
       return
     }
 
-    setStatus(src ? 'loading' : 'error')
-  }, [src])
+    setStatus(currentSrc ? 'loading' : 'error')
+  }, [currentSrc])
+
+  useEffect(() => {
+    setCurrentSrc(primarySrc)
+    setStatus(primarySrc ? 'loading' : 'error')
+  }, [primarySrc])
+
+  function handleError() {
+    if (currentSrc && currentSrc !== src) {
+      setCurrentSrc(src)
+      setStatus('loading')
+      return
+    }
+
+    setStatus('error')
+  }
 
   return (
     <>
@@ -29,26 +48,23 @@ function HeroImage({ src, avifSrc = '' }) {
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-500">Image unavailable</p>
         </div>
       )}
-      {src && (
-        <picture className="contents">
-          {avifSrc && <source srcSet={avifSrc} type="image/avif" />}
-          <img
-            ref={imageRef}
-            className={`pointer-events-none absolute inset-0 h-full w-full object-cover object-center blur-[4px] transition duration-500 ${
-              status === 'loaded' ? 'opacity-100' : 'opacity-0'
-            }`}
-            key={src}
-            src={src}
-            alt=""
-            width="1920"
-            height="1080"
-            loading="eager"
-            fetchPriority="high"
-            decoding="async"
-            onLoad={() => setStatus('loaded')}
-            onError={() => setStatus('error')}
-          />
-        </picture>
+      {currentSrc && (
+        <img
+          ref={imageRef}
+          className={`pointer-events-none absolute inset-0 h-full w-full object-cover object-center blur-[4px] transition duration-500 ${
+            status === 'loaded' ? 'opacity-100' : 'opacity-0'
+          }`}
+          key={currentSrc}
+          src={currentSrc}
+          alt=""
+          width="1920"
+          height="1080"
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
+          onLoad={() => setStatus('loaded')}
+          onError={handleError}
+        />
       )}
     </>
   )
