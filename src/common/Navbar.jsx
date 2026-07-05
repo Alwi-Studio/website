@@ -14,6 +14,24 @@ const links = [
 
 const storeHref = 'https://store.alwination.id'
 
+function quickScrollTo(targetY) {
+  const startY = window.scrollY
+  const distance = targetY - startY
+  const duration = 220
+  const startTime = performance.now()
+
+  function step(currentTime) {
+    const progress = Math.min((currentTime - startTime) / duration, 1)
+    window.scrollTo(0, startY + distance * progress)
+
+    if (progress < 1) {
+      window.requestAnimationFrame(step)
+    }
+  }
+
+  window.requestAnimationFrame(step)
+}
+
 function Navbar({ activeSection = 'home' }) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -28,6 +46,21 @@ function Navbar({ activeSection = 'home' }) {
 
   function handleNavClick(event, link) {
     setIsOpen(false)
+
+    if (!link.href.startsWith('/#') || window.location.pathname !== '/') {
+      return
+    }
+
+    const sectionId = link.href.slice(2)
+    const section = document.getElementById(sectionId)
+    if (!section) {
+      return
+    }
+
+    event.preventDefault()
+    const navOffset = sectionId === 'home' ? 0 : 88
+    window.history.pushState(null, '', `/#${sectionId}`)
+    quickScrollTo(section.getBoundingClientRect().top + window.scrollY - navOffset)
   }
 
   return (

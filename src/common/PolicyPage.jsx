@@ -1,6 +1,24 @@
 import { useEffect, useMemo, useState } from 'react'
 import { RichInline } from './RichText.jsx'
 
+function quickScrollTo(targetY) {
+  const startY = window.scrollY
+  const distance = targetY - startY
+  const duration = 220
+  const startTime = performance.now()
+
+  function step(currentTime) {
+    const progress = Math.min((currentTime - startTime) / duration, 1)
+    window.scrollTo(0, startY + distance * progress)
+
+    if (progress < 1) {
+      window.requestAnimationFrame(step)
+    }
+  }
+
+  window.requestAnimationFrame(step)
+}
+
 function slugifySection(value, index) {
   const base = String(value || '')
     .toLowerCase()
@@ -41,6 +59,17 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
   const otherKey = activeKey === 'rules' ? 'terms' : 'rules'
   const otherLabel = otherKey === 'rules' ? 'Server Rules' : 'Terms of Service'
   const otherHref = `/${otherKey}`
+
+  function handleTocClick(event, targetId) {
+    const target = document.getElementById(targetId)
+    if (!target) {
+      return
+    }
+
+    event.preventDefault()
+    window.history.pushState(null, '', `#${targetId}`)
+    quickScrollTo(target.getBoundingClientRect().top + window.scrollY - 112)
+  }
 
   useEffect(() => {
     if (contentTargets.length === 0) {
@@ -133,6 +162,7 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
                     <li key={section._id}>
                       <a
                         href={`#${section._id}`}
+                        onClick={(event) => handleTocClick(event, section._id)}
                         className={`flex items-start gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
                           isParentActive
                             ? 'bg-brand/12 text-white shadow-[inset_0_0_0_1px_rgba(255,90,48,0.28)]'
@@ -152,6 +182,7 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
                             <li key={subsection._id}>
                               <a
                                 href={`#${subsection._id}`}
+                                onClick={(event) => handleTocClick(event, subsection._id)}
                                 className={`block rounded-lg px-3 py-1.5 text-xs font-medium leading-5 transition ${
                                   activeSectionId === subsection._id
                                     ? 'bg-brand/10 text-white'
