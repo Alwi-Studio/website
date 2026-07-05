@@ -9,7 +9,7 @@ import NewsList from './news/NewsList.jsx'
 import News from './news/News.jsx'
 import PolicyPage from './common/PolicyPage.jsx'
 import { getPolicies, loadPolicies } from './content/policyStore.js'
-import { getAllNewsItems, getNewsItemBySlug, loadNewsItems } from './news/adminNewsStore.js'
+import { getNewsItemBySlug, loadNewsItems } from './news/adminNewsStore.js'
 
 const SERVER_ADDRESS = 'play.alwination.id'
 
@@ -281,9 +281,41 @@ function SectionHeading({ eyebrow, title, subtitle, className = '' }) {
   )
 }
 
+function NewsLoadingCards({ count = 3 }) {
+  return Array.from({ length: count }, (_, index) => (
+    <article
+      className="min-h-[390px] overflow-hidden rounded-2xl border border-white/10 bg-surface"
+      key={`news-loading-${index}`}
+    >
+      <div className="grid aspect-[16/10] place-items-center bg-surface-2">
+        <div className="h-11 w-11 animate-spin rounded-full border-2 border-white/15 border-t-brand-2" />
+      </div>
+      <div className="space-y-4 p-[22px]">
+        <div className="h-3 w-28 animate-pulse rounded-full bg-white/10" />
+        <div className="h-6 w-4/5 animate-pulse rounded-full bg-white/10" />
+        <div className="h-4 w-full animate-pulse rounded-full bg-white/10" />
+        <div className="h-4 w-2/3 animate-pulse rounded-full bg-white/10" />
+      </div>
+    </article>
+  ))
+}
+
+function NewsPageLoading() {
+  return (
+    <main className="min-h-svh bg-bg px-6 pb-24 pt-36">
+      <section className="mx-auto max-w-[1180px]">
+        <div className="grid min-h-[360px] place-items-center rounded-2xl border border-white/10 bg-surface">
+          <div className="h-12 w-12 animate-spin rounded-full border-2 border-white/15 border-t-brand-2" />
+        </div>
+      </section>
+    </main>
+  )
+}
+
 function App() {
   const [activeSection, setActiveSection] = useState('home')
-  const [newsItems, setNewsItems] = useState(getAllNewsItems)
+  const [newsItems, setNewsItems] = useState([])
+  const [isLoadingNews, setIsLoadingNews] = useState(true)
   const [policies, setPolicies] = useState(getPolicies)
   const serverStatus = useServerStatus()
   const visibleNewsItems = newsItems.slice(0, newsToShow)
@@ -301,9 +333,11 @@ function App() {
     let isCurrent = true
 
     async function loadNews() {
+      setIsLoadingNews(true)
       const loadedNewsItems = await loadNewsItems({ includeDeleted: isAdminPage })
       if (isCurrent) {
         setNewsItems(loadedNewsItems)
+        setIsLoadingNews(false)
       }
     }
 
@@ -420,7 +454,9 @@ function App() {
     return (
       <div className="min-h-svh overflow-x-hidden bg-bg">
         <Navbar activeSection="news" />
-        {selectedNewsItem ? (
+        {isLoadingNews ? (
+          <NewsPageLoading />
+        ) : selectedNewsItem ? (
           <NewsDetail item={selectedNewsItem} newsItems={newsItems} />
         ) : (
           <ErrorPage
@@ -443,7 +479,7 @@ function App() {
     return (
       <div className="min-h-svh overflow-x-hidden bg-bg">
         <Navbar activeSection="news" />
-        <NewsList newsItems={newsItems} />
+        <NewsList newsItems={newsItems} isLoading={isLoadingNews} />
         <Footer />
       </div>
     )
@@ -488,9 +524,13 @@ function App() {
             </div>
 
             <div className="mt-11 grid gap-[22px] md:grid-cols-2 xl:grid-cols-3">
-              {visibleNewsItems.map((item) => (
-                <News key={item.id} {...item} />
-              ))}
+              {isLoadingNews ? (
+                <NewsLoadingCards count={newsToShow} />
+              ) : (
+                visibleNewsItems.map((item) => (
+                  <News key={item.id} {...item} />
+                ))
+              )}
             </div>
           </div>
         </section>
