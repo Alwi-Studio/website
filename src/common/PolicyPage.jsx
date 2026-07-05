@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { RichInline } from './RichText.jsx'
 
 function slugifySection(value, index) {
   const base = String(value || '')
@@ -134,7 +135,9 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
             <h1 className="mt-4 text-[clamp(34px,5vw,56px)] font-bold leading-[1.04] tracking-[-0.03em] text-white">
               {title}
             </h1>
-            <p className="mt-5 max-w-[70ch] text-[16.5px] leading-8 text-muted">{intro}</p>
+            <p className="mt-5 max-w-[70ch] text-[16.5px] leading-8 text-muted">
+              <RichInline text={intro} />
+            </p>
 
             <div className="mt-7 flex flex-wrap items-center gap-2.5">
               <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-bg-2 px-3.5 py-2 text-sm font-semibold text-muted">
@@ -221,16 +224,16 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
                     {index + 1}
                   </span>
                   <div className="min-w-0">
-                    <h2 className="text-xl font-bold leading-tight text-white">{section.title}</h2>
+                    <h2 className="text-xl font-bold leading-tight text-white"><RichInline text={section.title} /></h2>
                     {section.description && (
-                      <p className="mt-3 text-sm leading-7 text-muted">{section.description}</p>
+                      <p className="mt-3 text-sm leading-7 text-muted"><RichInline text={section.description} /></p>
                     )}
                     {section.items && section.items.length > 0 && (
                       <ul className="mt-4 grid gap-3 p-0">
                         {section.items.map((item) => (
                           <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
                             <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-2" />
-                            <span>{item}</span>
+                            <span><RichInline text={item} /></span>
                           </li>
                         ))}
                       </ul>
@@ -243,16 +246,16 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
                             className="scroll-mt-28 rounded-xl border border-white/10 bg-bg-2/45 p-5"
                             key={subsection._id}
                           >
-                            <h3 className="text-base font-bold leading-tight text-white">{subsection.title}</h3>
+                            <h3 className="text-base font-bold leading-tight text-white"><RichInline text={subsection.title} /></h3>
                             {subsection.description && (
-                              <p className="mt-2 text-sm leading-7 text-muted">{subsection.description}</p>
+                              <p className="mt-2 text-sm leading-7 text-muted"><RichInline text={subsection.description} /></p>
                             )}
                             {subsection.items && subsection.items.length > 0 && (
                               <ul className="mt-4 grid gap-3 p-0">
                                 {subsection.items.map((item) => (
                                   <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
                                     <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-2" />
-                                    <span>{item}</span>
+                                    <span><RichInline text={item} /></span>
                                   </li>
                                 ))}
                               </ul>

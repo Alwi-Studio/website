@@ -6,6 +6,7 @@ import {
   logoutAdmin,
   saveAdminNewsItem,
 } from '../news/adminNewsStore.js'
+import { parseMarkdownBlocks } from '../common/RichText.jsx'
 import { isPolicyCustomized, resetAdminPolicy, saveAdminPolicy } from '../content/policyStore.js'
 
 const defaultForm = {
@@ -37,14 +38,7 @@ function slugify(value) {
 }
 
 function createBodyBlocks(bodyText) {
-  return bodyText
-    .split(/\n{2,}/)
-    .map((paragraph) => paragraph.trim())
-    .filter(Boolean)
-    .map((text, index) => ({
-      type: index === 0 ? 'lead' : 'paragraph',
-      text,
-    }))
+  return parseMarkdownBlocks(bodyText)
 }
 
 function getBlockText(block) {
@@ -607,7 +601,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange }) {
 
                 <label className={labelClass}>
                   Body
-                  <textarea className={`${textareaClass} min-h-48`} placeholder="Separate paragraphs with a blank line." value={form.bodyText} onChange={(event) => updateField('bodyText', event.target.value)} />
+                  <textarea className={`${textareaClass} min-h-48`} placeholder="Use Discord-style formatting: # title, **bold**, *italic*, `code`, ```code block```, > quote, - list." value={form.bodyText} onChange={(event) => updateField('bodyText', event.target.value)} />
                 </label>
 
                 <label className={labelClass}>
@@ -760,6 +754,10 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange }) {
                 <li className="flex items-start gap-3 text-sm text-muted">
                   <span className="rounded-md bg-surface-2 px-2 py-0.5 text-zinc-300">plain text</span>
                   <span>becomes a section description</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-muted">
+                  <code className="rounded-md bg-surface-2 px-2 py-0.5 text-brand-2">**bold**</code>
+                  <span>also supports *italic*, __underline__, ~~strike~~, `code`, [links](https://...), and ||spoiler||</span>
                 </li>
               </ul>
               <div className="mt-6 rounded-xl border border-white/10 bg-surface-2 p-4">

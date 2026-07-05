@@ -1,0 +1,162 @@
+function isSafeUrl(value) {
+  return /^(https?:\/\/|mailto:|\/)/i.test(value)
+}
+
+function parseInline(text) {
+  const pattern =
+    /(\|\|(.+?)\|\||\*\*(.+?)\*\*|__(.+?)__|~~(.+?)~~|`([^`]+?)`|\[([^\]]+?)\]\(([^)]+?)\)|\*(.+?)\*)/g
+  const parts = []
+  let lastIndex = 0
+  let match
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push({ type: 'text', text: text.slice(lastIndex, match.index) })
+    }
+
+    if (match[2]) {
+      parts.push({ type: 'spoiler', text: match[2] })
+    } else if (match[3]) {
+      parts.push({ type: 'bold', text: match[3] })
+    } else if (match[4]) {
+      parts.push({ type: 'underline', text: match[4] })
+    } else if (match[5]) {
+      parts.push({ type: 'strike', text: match[5] })
+    } else if (match[6]) {
+      parts.push({ type: 'code', text: match[6] })
+    } else if (match[7] && match[8]) {
+      parts.push({ type: 'link', text: match[7], href: match[8] })
+    } else if (match[9]) {
+      parts.push({ type: 'italic', text: match[9] })
+    }
+
+    lastIndex = pattern.lastIndex
+  }
+
+  if (lastIndex < text.length) {
+    parts.push({ type: 'text', text: text.slice(lastIndex) })
+  }
+
+  return parts
+}
+
+export function RichInline({ text }) {
+  return parseInline(String(text ?? '')).map((part, index) => {
+    const key = `${part.type}-${index}`
+
+    if (part.type === 'bold') {
+      return <strong key={key} className="font-bold text-white">{part.text}</strong>
+    }
+
+    if (part.type === 'italic') {
+      return <em key={key}>{part.text}</em>
+    }
+
+    if (part.type === 'underline') {
+      return <span key={key} className="underline decoration-brand-2/70 underline-offset-4">{part.text}</span>
+    }
+
+    if (part.type === 'strike') {
+      return <span key={key} className="line-through decoration-white/50">{part.text}</span>
+    }
+
+    if (part.type === 'code') {
+      return (
+        <code key={key} className="rounded-md border border-white/10 bg-black/30 px-1.5 py-0.5 font-mono text-[0.92em] text-brand-2">
+          {part.text}
+        </code>
+      )
+    }
+
+    if (part.type === 'link' && isSafeUrl(part.href)) {
+      return (
+        <a key={key} className="font-semibold text-brand-2 underline underline-offset-4 hover:text-brand" href={part.href} target={part.href.startsWith('http') ? '_blank' : undefined} rel={part.href.startsWith('http') ? 'noreferrer' : undefined}>
+          {part.text}
+        </a>
+      )
+    }
+
+    if (part.type === 'spoiler') {
+      return (
+        <span key={key} className="rounded bg-white/12 px-1 text-transparent transition hover:text-white focus:text-white" tabIndex={0}>
+          {part.text}
+        </span>
+      )
+    }
+
+    return <span key={key}>{part.text}</span>
+  })
+}
+
+export function parseMarkdownBlocks(text) {
+  const lines = String(text ?? '').replace(/\r\n/g, '\n').split('\n')
+  const blocks = []
+  let index = 0
+
+  while (index < lines.length) {
+    const line = lines[index]
+    const trimmed = line.trim()
+
+    if (!trimmed) {
+      index += 1
+      continue
+    }
+
+    if (trimmed.startsWith('```')) {
+      const language = trimmed.slice(3).trim()
+      const codeLines = []
+      index += 1
+      while (index < lines.length && !lines[index].trim().startsWith('```')) {
+        codeLines.push(lines[index])
+        index += 1
+      }
+      blocks.push({ type: 'code', language, text: codeLines.join('\n') })
+      index += 1
+      continue
+    }
+
+    const heading = trimmed.match(/^(#{1,3})\s+(.+)$/)
+    if (heading) {
+      blocks.push({ type: 'heading', level: heading[1].length, text: heading[2].trim() })
+      index += 1
+      continue
+    }
+
+    if (trimmed.startsWith('> ')) {
+      const quoteLines = []
+      while (index < lines.length && lines[index].trim().startsWith('> ')) {
+        quoteLines.push(lines[index].trim().slice(2).trim())
+        index += 1
+      }
+      blocks.push({ type: 'quote', text: quoteLines.join('\n') })
+      continue
+    }
+
+    if (/^[-*]\s+/.test(trimmed)) {
+      const items = []
+      while (index < lines.length && /^[-*]\s+/.test(lines[index].trim())) {
+        items.push(lines[index].trim().slice(2).trim())
+        index += 1
+      }
+      blocks.push({ type: 'list', items })
+      continue
+    }
+
+    const paragraphLines = []
+    while (
+      index < lines.length &&
+      lines[index].trim() &&
+      !lines[index].trim().startsWith('```') &&
+      !/^(#{1,3})\s+/.test(lines[index].trim()) &&
+      !lines[index].trim().startsWith('> ') &&
+      !/^[-*]\s+/.test(lines[index].trim())
+    ) {
+      paragraphLines.push(lines[index].trim())
+      index += 1
+    }
+    blocks.push({ type: blocks.length === 0 ? 'lead' : 'paragraph', text: paragraphLines.join(' ') })
+  }
+
+  return blocks
+}
+

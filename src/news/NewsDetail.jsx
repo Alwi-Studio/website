@@ -1,16 +1,24 @@
 import News from './News.jsx'
+import { RichInline } from '../common/RichText.jsx'
 
 function ArticleBlock({ block }) {
   if (typeof block === 'string') {
-    return <p>{block}</p>
+    return <p><RichInline text={block} /></p>
   }
 
   if (block.type === 'lead') {
-    return <p className="text-xl font-semibold leading-9 text-zinc-100">{block.text}</p>
+    return <p className="text-xl font-semibold leading-9 text-zinc-100"><RichInline text={block.text} /></p>
   }
 
   if (block.type === 'heading') {
-    return <h2 className="pt-4 text-2xl font-bold leading-tight text-white">{block.text}</h2>
+    const HeadingTag = block.level === 3 ? 'h3' : block.level === 1 ? 'h1' : 'h2'
+    const className =
+      block.level === 1
+        ? 'pt-4 text-3xl font-bold leading-tight text-white'
+        : block.level === 3
+          ? 'pt-3 text-xl font-bold leading-tight text-white'
+          : 'pt-4 text-2xl font-bold leading-tight text-white'
+    return <HeadingTag className={className}><RichInline text={block.text} /></HeadingTag>
   }
 
   if (block.type === 'list') {
@@ -19,7 +27,7 @@ function ArticleBlock({ block }) {
         {block.items.map((item) => (
           <li className="flex items-start gap-3" key={item}>
             <span className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-[#ff5732]" />
-            <span>{item}</span>
+            <span><RichInline text={item} /></span>
           </li>
         ))}
       </ul>
@@ -29,9 +37,19 @@ function ArticleBlock({ block }) {
   if (block.type === 'quote') {
     return (
       <figure className="border-l-4 border-[#ff5732] bg-[#202020] px-5 py-4">
-        <blockquote className="text-lg font-semibold leading-8 text-white">{block.text}</blockquote>
+        <blockquote className="whitespace-pre-line text-lg font-semibold leading-8 text-white">
+          <RichInline text={block.text} />
+        </blockquote>
         {block.cite && <figcaption className="mt-3 text-sm text-zinc-400">{block.cite}</figcaption>}
       </figure>
+    )
+  }
+
+  if (block.type === 'code') {
+    return (
+      <pre className="overflow-x-auto rounded-lg border border-white/10 bg-black/35 p-4 text-sm leading-6 text-zinc-200">
+        <code>{block.text}</code>
+      </pre>
     )
   }
 
@@ -51,13 +69,13 @@ function ArticleBlock({ block }) {
   if (block.type === 'callout') {
     return (
       <div className="rounded-lg border border-[#ff5732]/60 bg-[#2a1d19] p-5">
-        <h3 className="text-lg font-bold text-white">{block.title}</h3>
-        <p className="mt-3 text-sm leading-7 text-zinc-200">{block.text}</p>
+        <h3 className="text-lg font-bold text-white"><RichInline text={block.title} /></h3>
+        <p className="mt-3 text-sm leading-7 text-zinc-200"><RichInline text={block.text} /></p>
       </div>
     )
   }
 
-  return <p>{block.text}</p>
+  return <p><RichInline text={block.text} /></p>
 }
 
 function NewsDetail({ item, newsItems = [] }) {
@@ -92,7 +110,7 @@ function NewsDetail({ item, newsItems = [] }) {
             <h1 className="mt-5 max-w-4xl text-4xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
               {item.title}
             </h1>
-            <p className="mt-5 max-w-3xl text-lg leading-8 text-zinc-200">{item.description}</p>
+            <p className="mt-5 max-w-3xl text-lg leading-8 text-zinc-200"><RichInline text={item.description} /></p>
             <p className="mt-5 text-sm font-semibold text-zinc-300">By {item.author}</p>
           </div>
         </section>
@@ -130,7 +148,7 @@ function NewsDetail({ item, newsItems = [] }) {
                   {item.highlights.map((highlight) => (
                     <li className="flex items-start gap-3 text-sm text-zinc-300" key={highlight}>
                       <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#ff5732]" />
-                      <span>{highlight}</span>
+                      <span><RichInline text={highlight} /></span>
                     </li>
                   ))}
                 </ul>

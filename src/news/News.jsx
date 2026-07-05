@@ -1,3 +1,5 @@
+import { RichInline } from '../common/RichText.jsx'
+
 function News({ img, title, description, category, date, readingTime, slug }) {
   return (
     <article className="group flex min-h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-surface transition duration-200 hover:-translate-y-1.5 hover:border-brand/40 hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
@@ -21,7 +23,7 @@ function News({ img, title, description, category, date, readingTime, slug }) {
           {readingTime ? ` · ${readingTime}` : ''}
         </div>
         <h3 className="text-xl font-bold leading-tight text-white">{title}</h3>
-        <p className="flex-1 text-[14.5px] leading-6 text-muted">{description}</p>
+        <p className="flex-1 text-[14.5px] leading-6 text-muted"><RichInline text={description} /></p>
         <a
           className="mt-1 inline-flex w-fit items-center gap-2 text-sm font-semibold text-brand-2 transition"
           href={`/news/${slug}`}
