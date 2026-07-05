@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { RichInline } from '../common/RichText.jsx'
 
-function NewsImage({ src }) {
+function NewsImage({ src, avifSrc = '' }) {
   const imageRef = useRef(null)
   const [status, setStatus] = useState('loading')
 
@@ -29,27 +29,30 @@ function NewsImage({ src }) {
         </div>
       )}
       {src && (
-        <img
-          ref={imageRef}
-          className={`h-full w-full object-cover transition duration-500 group-hover:scale-[1.06] ${
-            status === 'loaded' ? 'opacity-100' : 'opacity-0'
-          }`}
-          key={src}
-          src={src}
-          alt=""
-          onLoad={() => setStatus('loaded')}
-          onError={() => setStatus('error')}
-        />
+        <picture className="contents">
+          {avifSrc && <source srcSet={avifSrc} type="image/avif" />}
+          <img
+            ref={imageRef}
+            className={`h-full w-full object-cover transition duration-500 group-hover:scale-[1.06] ${
+              status === 'loaded' ? 'opacity-100' : 'opacity-0'
+            }`}
+            key={src}
+            src={src}
+            alt=""
+            onLoad={() => setStatus('loaded')}
+            onError={() => setStatus('error')}
+          />
+        </picture>
       )}
     </>
   )
 }
 
-function News({ img, title, description, category, date, readingTime, slug }) {
+function News({ img, imgAvif, title, description, category, date, readingTime, slug }) {
   return (
     <article className="group flex min-h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-surface transition duration-200 hover:-translate-y-1.5 hover:border-brand/40 hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
       <div className="relative aspect-[16/10] overflow-hidden">
-        <NewsImage src={img} />
+        <NewsImage src={img} avifSrc={imgAvif} />
         <div className="absolute inset-0 bg-gradient-to-t from-bg/55 to-transparent" />
         {category ? (
           <span className="absolute left-3.5 top-3.5 z-[2] rounded-full border border-white/15 bg-bg/60 px-3 py-1.5 text-[11.5px] font-bold uppercase tracking-[0.08em] text-brand-2 backdrop-blur">

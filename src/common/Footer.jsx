@@ -1,3 +1,4 @@
+import logoLongAvif from '../assets/LONG--FOR-BG-HITAM.avif'
 import logoLong from '../assets/LONG--FOR-BG-HITAM.webp'
 
 const exploreLinks = [
@@ -46,7 +47,10 @@ function Footer() {
       <div className="mx-auto max-w-[1180px] px-6">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr]">
           <div>
-            <img className="mb-4 h-[30px] w-auto object-contain" src={logoLong} alt="AlwiNation" />
+            <picture className="contents">
+              <source srcSet={logoLongAvif} type="image/avif" />
+              <img className="mb-4 h-[30px] w-auto object-contain" src={logoLong} alt="AlwiNation" width="556" height="110" />
+            </picture>
             <p className="max-w-[36ch] text-[14.5px] text-muted">
               A community server hub for updates, events, and announcements.
             </p>

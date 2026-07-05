@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import backgroundAvif from './assets/background.avif'
 import backgroundImg from './assets/background.webp'
 import AdminPanel from './admin/AdminPanel.jsx'
 import ErrorPage from './common/ErrorPage.jsx'
@@ -93,7 +94,7 @@ const contactItems = [
   {
     label: 'Support',
     value: 'Contact staff in-game',
-    icon: ( 
+    icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" /></svg>
     ),
   },
@@ -108,7 +109,7 @@ function getInitialActiveSection() {
   return pageSectionIds.includes(requestedSection) ? requestedSection : 'home'
 }
 
-function StableImage({ src, alt = '', className = '', eager = false }) {
+function StableImage({ src, avifSrc = '', alt = '', className = '', eager = false }) {
   const imageRef = useRef(null)
   const [isLoaded, setIsLoaded] = useState(false)
 
@@ -126,19 +127,22 @@ function StableImage({ src, alt = '', className = '', eager = false }) {
   return (
     <>
       {!isLoaded && <div className="absolute inset-0 bg-surface-2" />}
-      <img
-        ref={imageRef}
-        src={src}
-        alt={alt}
-        width="1920"
-        height="1080"
-        loading={eager ? 'eager' : 'lazy'}
-        fetchPriority={eager ? 'high' : 'auto'}
-        decoding="async"
-        className={`${className} transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
-        onLoad={() => setIsLoaded(true)}
-        onError={() => setIsLoaded(false)}
-      />
+      <picture className="contents">
+        {avifSrc && <source srcSet={avifSrc} type="image/avif" />}
+        <img
+          ref={imageRef}
+          src={src}
+          alt={alt}
+          width="1920"
+          height="1080"
+          loading={eager ? 'eager' : 'lazy'}
+          fetchPriority={eager ? 'high' : 'auto'}
+          decoding="async"
+          className={`${className} transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+          onLoad={() => setIsLoaded(true)}
+          onError={() => setIsLoaded(false)}
+        />
+      </picture>
     </>
   )
 }
@@ -263,6 +267,7 @@ function Hero({ serverStatus }) {
       <div className="absolute inset-0 z-0">
         <StableImage
           src={backgroundImg}
+          avifSrc={backgroundAvif}
           alt=""
           className="h-full w-full object-cover object-[center_42%]"
           eager
@@ -354,11 +359,93 @@ function NewsPageLoading() {
   )
 }
 
+function PolicyPageLoading() {
+  return (
+    <main className="min-h-svh bg-bg pb-24 pt-32 text-white">
+      <section className="mx-auto max-w-[1080px] px-6">
+        <div className="rounded-[24px] border border-white/10 bg-surface p-7 sm:p-10">
+          <div className="h-4 w-36 animate-pulse rounded-full bg-white/10" />
+          <div className="mt-5 h-12 max-w-[620px] animate-pulse rounded-full bg-white/10" />
+          <div className="mt-6 space-y-3">
+            <div className="h-4 max-w-[720px] animate-pulse rounded-full bg-white/10" />
+            <div className="h-4 max-w-[560px] animate-pulse rounded-full bg-white/10" />
+          </div>
+          <div className="mt-7 h-10 w-48 animate-pulse rounded-xl bg-white/10" />
+        </div>
+      </section>
+
+      <section className="mx-auto mt-8 max-w-[1080px] px-6">
+        <div className="grid gap-6 lg:grid-cols-[260px_1fr] lg:items-start">
+          <aside className="hidden lg:block">
+            <div className="rounded-[18px] border border-white/10 bg-surface p-5">
+              <div className="h-3 w-24 animate-pulse rounded-full bg-white/10" />
+              <div className="mt-5 grid gap-3">
+                {Array.from({ length: 6 }, (_, index) => (
+                  <div className="h-8 animate-pulse rounded-lg bg-white/10" key={`policy-toc-${index}`} />
+                ))}
+              </div>
+            </div>
+          </aside>
+          <div className="grid gap-5">
+            {Array.from({ length: 4 }, (_, index) => (
+              <article
+                className="rounded-[18px] border border-white/10 bg-surface p-6 sm:p-7"
+                key={`policy-loading-${index}`}
+              >
+                <div className="flex gap-4">
+                  <div className="h-9 w-9 shrink-0 animate-pulse rounded-xl bg-white/10" />
+                  <div className="min-w-0 flex-1 space-y-3">
+                    <div className="h-5 w-1/2 animate-pulse rounded-full bg-white/10" />
+                    <div className="h-4 w-full animate-pulse rounded-full bg-white/10" />
+                    <div className="h-4 w-4/5 animate-pulse rounded-full bg-white/10" />
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+    </main>
+  )
+}
+
+function AdminPageLoading() {
+  return (
+    <main className="min-h-svh bg-bg px-5 pb-16 pt-36 text-white sm:px-8 lg:px-12">
+      <section className="mx-auto max-w-6xl">
+        <div className="rounded-2xl border border-white/10 bg-surface p-6">
+          <div className="h-4 w-24 animate-pulse rounded-full bg-white/10" />
+          <div className="mt-4 h-9 w-56 animate-pulse rounded-full bg-white/10" />
+          <div className="mt-6 h-12 max-w-md animate-pulse rounded-xl bg-white/10" />
+        </div>
+        <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
+          <div className="rounded-2xl border border-white/10 bg-surface p-6">
+            <div className="grid gap-5">
+              {Array.from({ length: 7 }, (_, index) => (
+                <div className="h-12 animate-pulse rounded-xl bg-white/10" key={`admin-form-${index}`} />
+              ))}
+            </div>
+          </div>
+          <aside className="rounded-2xl border border-white/10 bg-surface p-6">
+            <div className="h-6 w-36 animate-pulse rounded-full bg-white/10" />
+            <div className="mt-6 grid gap-4">
+              {Array.from({ length: 3 }, (_, index) => (
+                <div className="h-28 animate-pulse rounded-xl bg-white/10" key={`admin-list-${index}`} />
+              ))}
+            </div>
+          </aside>
+        </div>
+      </section>
+    </main>
+  )
+}
+
 function App() {
   const [activeSection, setActiveSection] = useState(getInitialActiveSection)
   const [newsItems, setNewsItems] = useState([])
   const [isLoadingNews, setIsLoadingNews] = useState(true)
   const [policies, setPolicies] = useState(getPolicies)
+  const [isLoadingPolicies, setIsLoadingPolicies] = useState(true)
   const serverStatus = useServerStatus()
   const visibleNewsItems = newsItems.slice(0, newsToShow)
   const isAdminPage = window.location.pathname === '/admin'
@@ -393,9 +480,11 @@ function App() {
     let isCurrent = true
 
     async function loadPolicyContent() {
+      setIsLoadingPolicies(true)
       const loaded = await loadPolicies()
       if (isCurrent) {
         setPolicies(loaded)
+        setIsLoadingPolicies(false)
       }
     }
 
@@ -479,12 +568,16 @@ function App() {
     return (
       <div className="min-h-svh overflow-x-hidden bg-bg">
         <Navbar activeSection="admin" />
-        <AdminPanel
-          newsItems={newsItems}
-          onNewsChange={setNewsItems}
-          policies={policies}
-          onPoliciesChange={setPolicies}
-        />
+        {isLoadingNews || isLoadingPolicies ? (
+          <AdminPageLoading />
+        ) : (
+          <AdminPanel
+            newsItems={newsItems}
+            onNewsChange={setNewsItems}
+            policies={policies}
+            onPoliciesChange={setPolicies}
+          />
+        )}
         <Footer />
       </div>
     )
@@ -529,10 +622,14 @@ function App() {
     return (
       <div className="min-h-svh bg-bg">
         <Navbar activeSection={isRulesPage ? 'rules' : 'terms'} />
-        <PolicyPage
-          {...(isRulesPage ? policies.rules : policies.terms)}
-          activeKey={isRulesPage ? 'rules' : 'terms'}
-        />
+        {isLoadingPolicies ? (
+          <PolicyPageLoading />
+        ) : (
+          <PolicyPage
+            {...(isRulesPage ? policies.rules : policies.terms)}
+            activeKey={isRulesPage ? 'rules' : 'terms'}
+          />
+        )}
         <Footer />
       </div>
     )
@@ -579,7 +676,7 @@ function App() {
         <section id="about" className="scroll-mt-24 border-t border-white/10 bg-bg-2 py-24">
           <div className="mx-auto grid max-w-[1180px] items-center gap-14 px-6 lg:grid-cols-[0.9fr_1.1fr]">
             <div className="relative aspect-[4/3] overflow-hidden rounded-[20px] border border-white/10">
-              <StableImage src={backgroundImg} alt="" className="h-full w-full object-cover" />
+              <StableImage src={backgroundImg} avifSrc={backgroundAvif} alt="" className="h-full w-full object-cover" />
               <div className="absolute inset-x-[18px] bottom-[18px] flex gap-[18px] rounded-2xl border border-white/15 bg-bg/60 px-[18px] py-4 backdrop-blur-md">
                 <div>
                   <b className="text-lg text-white">12k+</b>

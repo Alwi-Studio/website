@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import News from './News.jsx'
 import { RichInline } from '../common/RichText.jsx'
 
-function HeroImage({ src }) {
+function HeroImage({ src, avifSrc = '' }) {
   const imageRef = useRef(null)
   const [status, setStatus] = useState('loading')
 
@@ -30,17 +30,20 @@ function HeroImage({ src }) {
         </div>
       )}
       {src && (
-        <img
-          ref={imageRef}
-          className={`pointer-events-none absolute inset-0 h-full w-full object-cover object-center blur-[4px] transition duration-500 ${
-            status === 'loaded' ? 'opacity-100' : 'opacity-0'
-          }`}
-          key={src}
-          src={src}
-          alt=""
-          onLoad={() => setStatus('loaded')}
-          onError={() => setStatus('error')}
-        />
+        <picture className="contents">
+          {avifSrc && <source srcSet={avifSrc} type="image/avif" />}
+          <img
+            ref={imageRef}
+            className={`pointer-events-none absolute inset-0 h-full w-full object-cover object-center blur-[4px] transition duration-500 ${
+              status === 'loaded' ? 'opacity-100' : 'opacity-0'
+            }`}
+            key={src}
+            src={src}
+            alt=""
+            onLoad={() => setStatus('loaded')}
+            onError={() => setStatus('error')}
+          />
+        </picture>
       )}
     </>
   )
@@ -130,7 +133,7 @@ function NewsDetail({ item, newsItems = [] }) {
     <main className="bg-[#171717] text-white">
       <article>
         <section className="relative min-h-[620px] overflow-hidden px-5 pb-16 pt-32 sm:px-8 lg:px-12">
-          <HeroImage src={item.img} />
+          <HeroImage src={item.img} avifSrc={item.imgAvif} />
           <div className="absolute inset-0 bg-black/65 shadow-[inset_0_0_140px_80px_rgba(0,0,0,0.88)]" />
           <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-b from-transparent to-[#171717]" />
 

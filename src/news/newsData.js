@@ -1,9 +1,11 @@
+import backgroundAvif from '../assets/background.avif'
 import backgroundImg from '../assets/background.webp'
 
 export const newsItems = [
   {
     id: 'launch-update-2026',
     slug: 'server-launch-update',
+    imgAvif: backgroundAvif,
     img: backgroundImg,
     title: 'Server Launch Update',
     description:
@@ -63,6 +65,7 @@ export const newsItems = [
   {
     id: 'community-hub-preview-2026',
     slug: 'community-hub-preview',
+    imgAvif: backgroundAvif,
     img: backgroundImg,
     title: 'Community Hub Preview',
     description:
@@ -82,6 +85,7 @@ export const newsItems = [
   {
     id: 'community-event-notes-2026',
     slug: 'community-event-notes',
+    imgAvif: backgroundAvif,
     img: backgroundImg,
     title: 'Community Event Notes',
     description:

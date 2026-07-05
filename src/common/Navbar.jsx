@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import logoLongAvif from '../assets/LONG--FOR-BG-HITAM.avif'
 import logoLong from '../assets/LONG--FOR-BG-HITAM.webp'
+import logoMarkAvif from '../assets/MAIN--FOR-BG-HITAM.avif'
 import logoMark from '../assets/MAIN--FOR-BG-HITAM.webp'
 
 const links = [
@@ -66,8 +68,14 @@ function Navbar({ activeSection = 'home' }) {
     <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-bg/60 backdrop-blur-xl">
       <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-4 px-6 py-3.5">
         <a href="/#home" className="flex h-[38px] items-center">
-          <img className="hidden h-[30px] w-auto object-contain sm:block" src={logoLong} alt="AlwiNation" />
-          <img className="h-9 w-auto object-contain sm:hidden" src={logoMark} alt="AlwiNation" />
+          <picture className="hidden sm:contents">
+            <source srcSet={logoLongAvif} type="image/avif" />
+            <img className="hidden h-[30px] w-auto object-contain sm:block" src={logoLong} alt="AlwiNation" width="556" height="110" />
+          </picture>
+          <picture className="contents sm:hidden">
+            <source srcSet={logoMarkAvif} type="image/avif" />
+            <img className="h-9 w-auto object-contain sm:hidden" src={logoMark} alt="AlwiNation" width="110" height="110" />
+          </picture>
         </a>
 
         <nav className="hidden items-center gap-1 md:flex">
