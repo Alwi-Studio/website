@@ -1,10 +1,9 @@
-import backgroundImg from '../assets/background.webp'
 import { newsItems as seedNewsItems } from './newsData.js'
 
 function normalizeAdminItem(item) {
   return {
     ...item,
-    img: item.img || item.imageUrl || backgroundImg,
+    img: item.img || item.imageUrl || '',
     source: 'admin',
     deleted: Boolean(item.deleted),
   }

@@ -1,10 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { RichInline } from '../common/RichText.jsx'
 
 function NewsImage({ src }) {
+  const imageRef = useRef(null)
   const [status, setStatus] = useState('loading')
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const image = imageRef.current
+
+    if (image?.complete) {
+      setStatus(image.naturalWidth > 0 ? 'loaded' : 'error')
+      return
+    }
+
     setStatus(src ? 'loading' : 'error')
   }, [src])
 
@@ -22,9 +30,11 @@ function NewsImage({ src }) {
       )}
       {src && (
         <img
+          ref={imageRef}
           className={`h-full w-full object-cover transition duration-500 group-hover:scale-[1.06] ${
             status === 'loaded' ? 'opacity-100' : 'opacity-0'
           }`}
+          key={src}
           src={src}
           alt=""
           onLoad={() => setStatus('loaded')}

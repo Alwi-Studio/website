@@ -1,11 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import News from './News.jsx'
 import { RichInline } from '../common/RichText.jsx'
 
 function HeroImage({ src }) {
+  const imageRef = useRef(null)
   const [status, setStatus] = useState('loading')
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const image = imageRef.current
+
+    if (image?.complete) {
+      setStatus(image.naturalWidth > 0 ? 'loaded' : 'error')
+      return
+    }
+
     setStatus(src ? 'loading' : 'error')
   }, [src])
 
@@ -23,9 +31,11 @@ function HeroImage({ src }) {
       )}
       {src && (
         <img
+          ref={imageRef}
           className={`pointer-events-none absolute inset-0 h-full w-full object-cover object-center blur-[4px] transition duration-500 ${
             status === 'loaded' ? 'opacity-100' : 'opacity-0'
           }`}
+          key={src}
           src={src}
           alt=""
           onLoad={() => setStatus('loaded')}
