@@ -235,9 +235,13 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange }) {
   const [activeTab, setActiveTab] = useState('news')
   const [form, setForm] = useState(defaultForm)
   const [saveMessage, setSaveMessage] = useState('')
+  const [isSavingNews, setIsSavingNews] = useState(false)
+  const [newsSaveState, setNewsSaveState] = useState('idle')
   const [editingSlug, setEditingSlug] = useState('')
   const [policyForm, setPolicyForm] = useState(emptyPolicyForm)
   const [policyMessage, setPolicyMessage] = useState('')
+  const [isSavingPolicy, setIsSavingPolicy] = useState(false)
+  const [policySaveState, setPolicySaveState] = useState('idle')
 
   const editablePosts = useMemo(() => newsItems, [newsItems])
   const isPolicyTab = activeTab === 'rules' || activeTab === 'terms'
@@ -336,13 +340,20 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange }) {
     }
 
     try {
+      setIsSavingNews(true)
+      setNewsSaveState('saving')
       const nextNewsItems = await saveAdminNewsItem(item)
       onNewsChange(nextNewsItems)
       setForm(defaultForm)
       setEditingSlug('')
       setSaveMessage(`Saved "${item.title}".`)
+      setNewsSaveState('saved')
+      window.setTimeout(() => setNewsSaveState('idle'), 1800)
     } catch (error) {
       setSaveMessage(error.message)
+      setNewsSaveState('idle')
+    } finally {
+      setIsSavingNews(false)
     }
   }
 
@@ -407,12 +418,19 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange }) {
     }
 
     try {
+      setIsSavingPolicy(true)
+      setPolicySaveState('saving')
       const nextPolicies = await saveAdminPolicy(activeTab, policy)
       onPoliciesChange(nextPolicies)
       setPolicyForm(policyToForm(nextPolicies[activeTab]))
       setPolicyMessage(`Saved the ${meta.label} page.`)
+      setPolicySaveState('saved')
+      window.setTimeout(() => setPolicySaveState('idle'), 1800)
     } catch (error) {
       setPolicyMessage(error.message)
+      setPolicySaveState('idle')
+    } finally {
+      setIsSavingPolicy(false)
     }
   }
 
@@ -488,6 +506,18 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange }) {
 
   const activeMeta = isPolicyTab ? policyMeta[activeTab] : null
   const heading = activeTab === 'news' ? (editingSlug ? 'Edit News' : 'Create News') : `Edit ${activeMeta.heading}`
+  const newsSaveButtonLabel = newsSaveState === 'saving'
+    ? 'Saving...'
+    : newsSaveState === 'saved'
+      ? 'Saved'
+      : editingSlug
+        ? 'Save changes'
+        : 'Save news post'
+  const policySaveButtonLabel = policySaveState === 'saving'
+    ? 'Saving...'
+    : policySaveState === 'saved'
+      ? 'Saved'
+      : `Save ${activeMeta?.label ?? 'Policy'} page`
 
   return (
     <main className="min-h-svh bg-bg px-5 pb-16 pt-36 text-white sm:px-8 lg:px-12">
@@ -588,8 +618,14 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange }) {
                 {saveMessage && <p className="text-sm font-semibold text-brand-2">{saveMessage}</p>}
 
                 <div className="flex flex-wrap gap-3">
-                  <button className={`${primaryButtonClass} min-h-12`} type="submit">
-                    {editingSlug ? 'Save changes' : 'Save news post'}
+                  <button
+                    className={`${primaryButtonClass} min-h-12 min-w-[150px] ${
+                      newsSaveState === 'saved' ? 'from-positive to-positive text-[#062412]' : ''
+                    } active:translate-y-0.5 active:scale-[0.98] disabled:cursor-wait disabled:opacity-80`}
+                    type="submit"
+                    disabled={isSavingNews}
+                  >
+                    {newsSaveButtonLabel}
                   </button>
                   {editingSlug && (
                     <button className={`${secondaryButtonClass} min-h-12`} type="button" onClick={handleCancelEdit}>
@@ -684,8 +720,14 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange }) {
                 {policyMessage && <p className="text-sm font-semibold text-brand-2">{policyMessage}</p>}
 
                 <div className="flex flex-wrap items-center gap-3">
-                  <button className={`${primaryButtonClass} min-h-12`} type="submit">
-                    Save {activeMeta.label} page
+                  <button
+                    className={`${primaryButtonClass} min-h-12 min-w-[150px] ${
+                      policySaveState === 'saved' ? 'from-positive to-positive text-[#062412]' : ''
+                    } active:translate-y-0.5 active:scale-[0.98] disabled:cursor-wait disabled:opacity-80`}
+                    type="submit"
+                    disabled={isSavingPolicy}
+                  >
+                    {policySaveButtonLabel}
                   </button>
                   <a className={`${secondaryButtonClass} min-h-12`} href={activeMeta.path} target="_blank" rel="noreferrer">
                     Preview page

@@ -223,7 +223,7 @@ function Hero({ serverStatus }) {
         <img
           src={backgroundImg}
           alt=""
-          className="h-full w-full scale-105 object-cover object-[center_42%]"
+          className="h-full w-full object-cover object-[center_42%]"
         />
         <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_20%_30%,rgba(11,11,14,0.55),rgba(11,11,14,0.86)_60%,var(--color-bg)_100%)]" />
       </div>
