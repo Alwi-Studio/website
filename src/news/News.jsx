@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { RichInline } from '../common/RichText.jsx'
 
-function NewsImage({ src, avifSrc = '' }) {
+function NewsImage({ src, avifSrc = '', eager = false }) {
   const imageRef = useRef(null)
   const [status, setStatus] = useState('loading')
 
@@ -39,6 +39,11 @@ function NewsImage({ src, avifSrc = '' }) {
             key={src}
             src={src}
             alt=""
+            width="1200"
+            height="750"
+            loading={eager ? 'eager' : 'lazy'}
+            fetchPriority={eager ? 'high' : 'auto'}
+            decoding="async"
             onLoad={() => setStatus('loaded')}
             onError={() => setStatus('error')}
           />
@@ -48,11 +53,11 @@ function NewsImage({ src, avifSrc = '' }) {
   )
 }
 
-function News({ img, imgAvif, title, description, category, date, readingTime, slug }) {
+function News({ img, imgAvif, title, description, category, date, readingTime, slug, imageEager = false }) {
   return (
     <article className="group flex min-h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-surface transition duration-200 hover:-translate-y-1.5 hover:border-brand/40 hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
       <div className="relative aspect-[16/10] overflow-hidden">
-        <NewsImage src={img} avifSrc={imgAvif} />
+        <NewsImage src={img} avifSrc={imgAvif} eager={imageEager} />
         <div className="absolute inset-0 bg-gradient-to-t from-bg/55 to-transparent" />
         {category ? (
           <span className="absolute left-3.5 top-3.5 z-[2] rounded-full border border-white/15 bg-bg/60 px-3 py-1.5 text-[11.5px] font-bold uppercase tracking-[0.08em] text-brand-2 backdrop-blur">

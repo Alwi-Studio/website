@@ -641,7 +641,10 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange }) {
 
                 <label className={labelClass}>
                   Image URL
-                  <input className={inputClass} placeholder="https://i.imgur.com/example.jpg" value={form.imageUrl} onChange={(event) => updateField('imageUrl', event.target.value)} />
+                  <input className={inputClass} placeholder="https://example.com/news-image.avif" value={form.imageUrl} onChange={(event) => updateField('imageUrl', event.target.value)} />
+                  <span className="text-xs font-medium leading-5 text-muted">
+                    Use a direct optimized image URL, preferably .avif or .webp. Large .jpg/.png files can slow the news page even with lazy loading.
+                  </span>
                 </label>
 
                 <label className={labelClass}>

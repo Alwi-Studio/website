@@ -40,6 +40,11 @@ function HeroImage({ src, avifSrc = '' }) {
             key={src}
             src={src}
             alt=""
+            width="1920"
+            height="1080"
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
             onLoad={() => setStatus('loaded')}
             onError={() => setStatus('error')}
           />
