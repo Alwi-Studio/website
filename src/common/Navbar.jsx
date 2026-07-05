@@ -14,10 +14,6 @@ const links = [
 
 const storeHref = 'https://store.alwination.id'
 
-function easeOutCubic(progress) {
-  return 1 - Math.pow(1 - progress, 3)
-}
-
 function Navbar({ activeSection = 'home' }) {
   const [isOpen, setIsOpen] = useState(false)
 
@@ -30,49 +26,8 @@ function Navbar({ activeSection = 'home' }) {
     )
   }
 
-  function scrollToHomeSection(sectionId) {
-    const section = document.getElementById(sectionId)
-    if (!section) {
-      return
-    }
-
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const navOffset = sectionId === 'home' ? 0 : 88
-    const targetY = section.getBoundingClientRect().top + window.scrollY - navOffset
-
-    window.history.pushState(null, '', `/#${sectionId}`)
-
-    if (prefersReducedMotion) {
-      window.scrollTo(0, targetY)
-      return
-    }
-
-    const startY = window.scrollY
-    const distance = targetY - startY
-    const duration = 700
-    const startTime = performance.now()
-
-    function step(currentTime) {
-      const progress = Math.min((currentTime - startTime) / duration, 1)
-      window.scrollTo(0, startY + distance * easeOutCubic(progress))
-
-      if (progress < 1) {
-        window.requestAnimationFrame(step)
-      }
-    }
-
-    window.requestAnimationFrame(step)
-  }
-
   function handleNavClick(event, link) {
     setIsOpen(false)
-
-    if (!link.href.startsWith('/#') || window.location.pathname !== '/') {
-      return
-    }
-
-    event.preventDefault()
-    scrollToHomeSection(link.href.slice(2))
   }
 
   return (

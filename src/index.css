@@ -23,10 +23,6 @@
   color-scheme: dark;
 }
 
-html {
-  scroll-behavior: smooth;
-}
-
 body {
   margin: 0;
   background: var(--color-bg);
@@ -80,10 +76,4 @@ body {
   background-size: 54px 54px;
   -webkit-mask-image: radial-gradient(80% 60% at 50% 40%, #000, transparent 85%);
   mask-image: radial-gradient(80% 60% at 50% 40%, #000, transparent 85%);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
 }

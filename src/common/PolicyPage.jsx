@@ -10,10 +10,6 @@ function slugifySection(value, index) {
   return base || `section-${index + 1}`
 }
 
-function easeOutCubic(progress) {
-  return 1 - Math.pow(1 - progress, 3)
-}
-
 function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey = 'rules' }) {
   const withIds = useMemo(
     () =>
@@ -84,41 +80,6 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
     }
   }, [contentTargets])
 
-  function handleSectionClick(event, sectionId) {
-    event.preventDefault()
-
-    const section = document.getElementById(sectionId)
-    if (!section) {
-      return
-    }
-
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    window.history.pushState(null, '', `#${sectionId}`)
-
-    const targetY = section.getBoundingClientRect().top + window.scrollY - 112
-
-    if (prefersReducedMotion) {
-      window.scrollTo(0, targetY)
-      return
-    }
-
-    const startY = window.scrollY
-    const distance = targetY - startY
-    const duration = 650
-    const startTime = performance.now()
-
-    function step(currentTime) {
-      const progress = Math.min((currentTime - startTime) / duration, 1)
-      window.scrollTo(0, startY + distance * easeOutCubic(progress))
-
-      if (progress < 1) {
-        window.requestAnimationFrame(step)
-      }
-    }
-
-    window.requestAnimationFrame(step)
-  }
-
   return (
     <main className="min-h-svh bg-bg pb-24 pt-32 text-white">
       {/* Header */}
@@ -172,7 +133,6 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
                     <li key={section._id}>
                       <a
                         href={`#${section._id}`}
-                        onClick={(event) => handleSectionClick(event, section._id)}
                         className={`flex items-start gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
                           isParentActive
                             ? 'bg-brand/12 text-white shadow-[inset_0_0_0_1px_rgba(255,90,48,0.28)]'
@@ -192,7 +152,6 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
                             <li key={subsection._id}>
                               <a
                                 href={`#${subsection._id}`}
-                                onClick={(event) => handleSectionClick(event, subsection._id)}
                                 className={`block rounded-lg px-3 py-1.5 text-xs font-medium leading-5 transition ${
                                   activeSectionId === subsection._id
                                     ? 'bg-brand/10 text-white'
