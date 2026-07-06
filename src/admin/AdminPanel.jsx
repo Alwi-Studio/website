@@ -527,9 +527,9 @@ function PreviewArticleBlock({ block }) {
 
   if (block.type === 'callout') {
     return (
-      <div className="rounded-lg border border-brand/50 bg-brand/[0.08] p-4">
-        <h4 className="font-bold text-white"><RichInline text={block.title} /></h4>
-        <p className="mt-2 text-sm leading-6 text-muted"><RichInline text={block.text} /></p>
+      <div className="rounded-lg border border-[#ff5732]/60 bg-[#2a1d19] p-5">
+        <h4 className="text-lg font-bold text-white"><RichInline text={block.title} /></h4>
+        <p className="mt-3 text-sm leading-7 text-zinc-200"><RichInline text={block.text} /></p>
       </div>
     )
   }
