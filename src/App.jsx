@@ -257,9 +257,9 @@ function Hero({ serverStatus }) {
       value: serverStatus.loading ? '—' : serverStatus.online ? String(serverStatus.players) : '0',
       label: 'Players online',
     },
-    { value: '12k+', label: 'Members' },
-    { value: '99.9%', label: 'Uptime' },
-    { value: '1.21', label: 'Version' },
+    { value: '100k+', label: 'Members' },
+    { value: '10', label: 'Unique Realms' },
+    { value: '1.21.11', label: 'Recommended Version' },
   ]
 
   return (
