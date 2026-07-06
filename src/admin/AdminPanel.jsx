@@ -141,6 +141,19 @@ const staffFormattingExamples = [
   },
 ]
 
+const editingNotes = [
+  {
+    title: 'Editing existing news posts',
+    description: 'When you click Edit on a saved news post, the editor should restore structured blocks back into editable syntax.',
+    code: '# Heading stays a heading\n\n- List item stays a list item\n\n> Quote text\n> -- Quote author\n\n:::callout Title\nCallout text\n:::\n\n:::stats\nLabel: Value\n:::',
+  },
+  {
+    title: 'If formatting disappears',
+    description: 'If a block comes back as plain text, re-add the marker before saving: # for headings, - for lists, > for quotes, or the ::: fenced block for callouts/stats.',
+    code: '# Heading\n- List item\n> Quote\n:::callout Title\nText\n:::',
+  },
+]
+
 function slugify(value) {
   return value
     .toLowerCase()
@@ -761,6 +774,12 @@ function FormattingDocs() {
       title: 'Staff editor',
       description: 'Staff uses groups and pipe-separated member rows. Member notes support inline rich text.',
       examples: staffFormattingExamples,
+    },
+    {
+      id: 'editing-notes',
+      title: 'Editing existing content',
+      description: 'These notes explain what should happen when saved content is opened again in an admin editor.',
+      examples: editingNotes,
     },
   ]
 
