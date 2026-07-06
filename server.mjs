@@ -691,6 +691,7 @@ function serveFile(req, res, pathname) {
     pathname === '/' ||
     pathname === '/news' ||
     pathname === '/admin' ||
+    pathname === '/admin/docs' ||
     pathname === '/rules' ||
     pathname === '/terms' ||
     /^\/news\/[^/]+\/?$/.test(pathname)

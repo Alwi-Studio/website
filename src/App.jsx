@@ -539,7 +539,8 @@ function App() {
   const [isLoadingWiki, setIsLoadingWiki] = useState(true)
   const serverStatus = useServerStatus()
   const visibleNewsItems = newsItems.slice(0, newsToShow)
-  const isAdminPage = window.location.pathname === '/admin'
+  const isAdminPage = window.location.pathname === '/admin' || window.location.pathname === '/admin/docs'
+  const isAdminDocsPage = window.location.pathname === '/admin/docs'
   const isNewsListPage = window.location.pathname === '/news'
   const isRulesPage = window.location.pathname === '/rules'
   const isTermsPage = window.location.pathname === '/terms'
@@ -729,6 +730,7 @@ function App() {
             onStaffChange={setStaff}
             wiki={wiki}
             onWikiChange={setWiki}
+            initialTab={isAdminDocsPage ? 'docs' : 'news'}
           />
         )}
         <Footer />

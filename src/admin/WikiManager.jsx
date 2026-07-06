@@ -488,6 +488,7 @@ function WikiManager({ wiki, onWikiChange }) {
           {saveButtonLabel}
         </button>
         <a className={`${secondaryButtonClass} min-h-12`} href="/wiki" target="_blank" rel="noreferrer">Preview wiki</a>
+        <a className={`${secondaryButtonClass} min-h-12`} href="/admin/docs">Formatting docs</a>
         <button
           type="button"
           onClick={handleReset}

@@ -36,6 +36,111 @@ const policyMeta = {
 
 const staffMeta = { label: 'Staff', heading: 'Staff', path: '/staff', fallbackEyebrow: 'Meet the Team' }
 
+const sharedArticleExamples = [
+  {
+    title: 'Inline text',
+    description: 'Works inside rich text fields such as news body, wiki body, rules descriptions, terms descriptions, and staff notes.',
+    code: '**bold**\n*italic*\n__underline__\n~~strike~~\n`inline code`\n[link text](https://alwination.id)\n||spoiler text||',
+  },
+  {
+    title: 'Headings',
+    description: 'Use headings to split news and wiki articles into readable sections.',
+    code: '# Main section\n## Subsection\n### Small heading',
+  },
+  {
+    title: 'Lists',
+    description: 'Use one list item per line. Both dash and asterisk bullets are supported.',
+    code: '- First point\n- Second point\n* Third point',
+  },
+  {
+    title: 'Quotes',
+    description: 'Use quote blocks for important notes or quoted statements.',
+    code: '> The server update is planned for this weekend.\n> Keep an eye on Discord for the exact time.',
+  },
+  {
+    title: 'Code blocks',
+    description: 'Use fenced code blocks for commands, config snippets, or examples that should keep spacing.',
+    code: '```yaml\nserver: alwination\nmode: survival\n```',
+  },
+  {
+    title: 'Callouts',
+    description: 'Use callouts for highlighted article notes. Supported in news and wiki article bodies.',
+    code: ':::callout Database note\nThis structure is ready to connect to a database later.\n:::',
+  },
+  {
+    title: 'Stats',
+    description: 'Use stats for short label/value cards. Each stat line must use Label: Value. Supported in news and wiki article bodies.',
+    code: ':::stats\nNews pages: 3\nPost fields: 10+\nDatabase-ready: Yes\n:::',
+  },
+]
+
+const formattingExamples = [
+  {
+    title: 'News body',
+    description: 'Use the shared article syntax in the Body field. Highlights are separate: one highlight per line.',
+    code: '# Update title\nShort intro paragraph with **bold** text.\n\n:::callout Important\nRestart your launcher before joining.\n:::\n\n:::stats\nPlayers online: 120\nVersion: 1.21.11\n:::\n\n- Added new rewards\n- Fixed spawn protection',
+  },
+  {
+    title: 'News highlights',
+    description: 'Highlights are not markdown blocks. Put each short highlight on its own line.',
+    code: 'Dedicated article page\nCustom image and metadata\nReady for database content',
+  },
+  {
+    title: 'News image URL',
+    description: 'Use a direct image URL that starts with http:// or https://. Direct .avif or .webp images are preferred.',
+    code: 'https://example.com/news-image.webp',
+  },
+]
+
+const wikiFormattingExamples = [
+  {
+    title: 'Wiki page details',
+    description: 'The page title, intro, and updated fields are plain text fields. Categories group articles on /wiki.',
+    code: 'Eyebrow: Server Wiki\nTitle: AlwiNation Wiki\nIntro: Guides for every realm, command, and feature.\nUpdated: July 7, 2026',
+  },
+  {
+    title: 'Wiki categories',
+    description: 'Each category needs a name. Icon is optional and can be an emoji. Category descriptions support plain text.',
+    code: 'Icon: 🌍\nName: Survival\nDescription: Land claiming, economy, homes, and server basics.',
+  },
+  {
+    title: 'Wiki article body',
+    description: 'Use the shared article syntax. Callouts and stats work here too because wiki uses the same MarkdownBody renderer.',
+    code: '# Claiming land\nUse `/claim` to protect your base.\n\n:::callout Tip\nStand inside your build before creating a claim.\n:::\n\n:::stats\nClaim blocks: Earned by playtime\nProtection: Enabled\n:::',
+  },
+]
+
+const policyFormattingExamples = [
+  {
+    title: 'Rules sections',
+    description: 'Rules use sections and subsections so the public page can build the table of contents. Use # for sections and ## for subsections.',
+    code: '# General rules\nFollow staff instructions and keep the server fair.\n- No cheating or unfair clients\n- No harassment or hate speech\n\n## Chat rules\nKeep chat readable and respectful.\n- No spam\n- No impersonation',
+  },
+  {
+    title: 'Terms sections',
+    description: 'Terms use the same structure as rules. Inline formatting works in titles, descriptions, and bullet items.',
+    code: '# Account responsibility\nYou are responsible for activity on your account.\n- Keep your login secure\n- Report unauthorized access quickly\n\n## Purchases\nStore purchases are subject to the posted store terms.\n- Chargebacks may restrict access',
+  },
+  {
+    title: 'Policy inline formatting',
+    description: 'Rules and terms do not support callout or stats blocks. Use inline formatting inside section text and bullets.',
+    code: '# Appeals\nSubmit appeals through [Discord](https://discord.alwination.id).\n- Include your username\n- Explain what happened with **clear details**',
+  },
+]
+
+const staffFormattingExamples = [
+  {
+    title: 'Staff groups',
+    description: 'Staff uses groups and pipe-separated members instead of article markdown.',
+    code: '# Admins\nJessen | Owner | Handles server direction\nAlex | Moderator | Helps with player reports\n\n# Builders\nSam | Builder',
+  },
+  {
+    title: 'Staff member notes',
+    description: 'The note field supports inline formatting. Role and note are optional, but keep the pipe separators when adding a note.',
+    code: '# Moderators\nAlya | Senior Mod | Handles **appeals** and chat reports\nRafi | Helper\nNina',
+  },
+]
+
 function slugify(value) {
   return value
     .toLowerCase()
@@ -613,12 +718,87 @@ function StaffLivePreview({ staff }) {
   )
 }
 
-function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff, onStaffChange, wiki, onWikiChange }) {
+function FormattingDocs() {
+  const docsSections = [
+    {
+      id: 'shared-formatting',
+      title: 'Shared rich text syntax',
+      description: 'These blocks are used by news and wiki article bodies. Inline formatting also works in policy descriptions, policy bullets, and staff notes.',
+      examples: sharedArticleExamples,
+    },
+    {
+      id: 'news-formatting',
+      title: 'News editor',
+      description: 'News has article metadata, a body field using the shared rich text syntax, and a separate highlights field.',
+      examples: formattingExamples,
+    },
+    {
+      id: 'wiki-formatting',
+      title: 'Wiki editor',
+      description: 'Wiki content is organized as page details, categories, and articles. Article bodies use the shared rich text syntax.',
+      examples: wikiFormattingExamples,
+    },
+    {
+      id: 'policy-formatting',
+      title: 'Rules and terms editors',
+      description: 'Rules and terms use structured sections so the public pages can generate table of contents navigation.',
+      examples: policyFormattingExamples,
+    },
+    {
+      id: 'staff-formatting',
+      title: 'Staff editor',
+      description: 'Staff uses groups and pipe-separated member rows. Member notes support inline rich text.',
+      examples: staffFormattingExamples,
+    },
+  ]
+
+  return (
+    <div className="mt-8 grid gap-6">
+      <section className="rounded-2xl border border-white/10 bg-surface p-6">
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-2">Formatting Docs</p>
+        <h2 className="mt-3 text-2xl font-bold leading-tight text-white">Editor formatting guide</h2>
+        <p className="mt-3 max-w-[74ch] text-sm leading-7 text-muted">
+          These formats are used by the admin editors and live previews. Each editable page type has its own section below.
+        </p>
+        <div className="mt-5 flex flex-wrap gap-3">
+          <a className={`${secondaryButtonClass} min-h-10`} href="/admin">
+            Back to admin
+          </a>
+          {docsSections.map((section) => (
+            <a className={`${secondaryButtonClass} min-h-10`} href={`#${section.id}`} key={section.id}>
+              {section.title}
+            </a>
+          ))}
+        </div>
+      </section>
+
+      {docsSections.map((section) => (
+        <section id={section.id} className="scroll-mt-28 rounded-2xl border border-white/10 bg-surface p-6" key={section.id}>
+          <h3 className="text-xl font-bold text-white">{section.title}</h3>
+          <p className="mt-2 text-sm leading-7 text-muted">{section.description}</p>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {section.examples.map((example) => (
+              <article className="rounded-xl border border-white/10 bg-bg-2 p-4" key={example.title}>
+                <h4 className="font-bold text-white">{example.title}</h4>
+                <p className="mt-2 text-sm leading-6 text-muted">{example.description}</p>
+                <pre className="mt-4 overflow-x-auto rounded-lg border border-white/10 bg-black/35 p-4 text-xs leading-6 text-brand-2">
+                  <code>{example.code}</code>
+                </pre>
+              </article>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff, onStaffChange, wiki, onWikiChange, initialTab = 'news' }) {
   const [isCheckingSession, setIsCheckingSession] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
   const [loginError, setLoginError] = useState('')
-  const [activeTab, setActiveTab] = useState('news')
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [form, setForm] = useState(defaultForm)
   const [saveMessage, setSaveMessage] = useState('')
   const [isSavingNews, setIsSavingNews] = useState(false)
@@ -1001,6 +1181,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
     { id: 'wiki', label: 'Wiki' },
     { id: 'rules', label: 'Rules' },
     { id: 'terms', label: 'Terms' },
+    { id: 'docs', label: 'Docs' },
   ]
 
   const activeMeta = isPolicyTab ? policyMeta[activeTab] : null
@@ -1013,7 +1194,9 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
         ? 'Edit Staff'
         : activeTab === 'wiki'
           ? 'Edit Wiki'
-          : `Edit ${activeMeta.heading}`
+          : activeTab === 'docs'
+            ? 'Formatting Docs'
+            : `Edit ${activeMeta.heading}`
   const newsSaveButtonLabel = newsSaveState === 'saving'
     ? 'Saving...'
     : newsSaveState === 'saved'
@@ -1060,7 +1243,10 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {
+                    setActiveTab(tab.id)
+                    window.history.pushState(null, '', tab.id === 'docs' ? '/admin/docs' : '/admin')
+                  }}
                   className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
                     isActive ? 'bg-brand text-white' : 'text-muted hover:bg-white/[0.06] hover:text-white'
                   }`}
@@ -1077,6 +1263,8 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
             })}
           </div>
         </div>
+
+        {activeTab === 'docs' && <FormattingDocs />}
 
         {/* News manager */}
         {activeTab === 'news' && (
@@ -1136,6 +1324,10 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                   />
                   <span className="text-xs font-medium leading-5 text-muted">
                     Use :::callout Title and :::stats fenced blocks for special news sections.
+                    {' '}
+                    <a className="font-semibold text-brand-2 underline underline-offset-4 hover:text-brand" href="/admin/docs">
+                      View formatting docs
+                    </a>
                   </span>
                 </label>
 
@@ -1306,6 +1498,9 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                   Changes apply to the live {activeMeta.path} page after saving.
                 </p>
               </div>
+              <a className={`${secondaryButtonClass} mt-4 min-h-10 w-full`} href="/admin/docs">
+                View formatting docs
+              </a>
             </aside>
           </div>
         )}
@@ -1390,6 +1585,9 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                 <p className="mt-2 text-sm font-semibold text-white">{parsedMemberCount} member{parsedMemberCount === 1 ? '' : 's'}</p>
                 <p className="mt-3 text-xs leading-5 text-muted">Changes apply to the live /staff page after saving.</p>
               </div>
+              <a className={`${secondaryButtonClass} mt-4 min-h-10 w-full`} href="/admin/docs">
+                View formatting docs
+              </a>
             </aside>
           </div>
         )}
