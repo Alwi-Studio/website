@@ -516,10 +516,18 @@ function normalizeBodyBlock(block) {
     return null
   }
 
-  if (block.type === 'lead' || block.type === 'paragraph' || block.type === 'heading') {
+  if (block.type === 'lead' || block.type === 'paragraph') {
     const text = trimText(block.text)
 
     return text ? { type: block.type, text } : null
+  }
+
+  if (block.type === 'heading') {
+    const text = trimText(block.text)
+    const level = Number(block.level)
+    const normalizedLevel = level === 1 || level === 3 ? level : 2
+
+    return text ? { type: 'heading', level: normalizedLevel, text } : null
   }
 
   if (block.type === 'list') {
@@ -537,6 +545,13 @@ function normalizeBodyBlock(block) {
     return text ? { type: 'quote', text, ...(cite ? { cite } : {}) } : null
   }
 
+  if (block.type === 'code') {
+    const text = trimText(block.text)
+    const language = trimText(block.language, 40)
+
+    return text ? { type: 'code', text, ...(language ? { language } : {}) } : null
+  }
+
   if (block.type === 'callout') {
     const title = trimText(block.title, 160)
     const text = trimText(block.text)
@@ -548,8 +563,8 @@ function normalizeBodyBlock(block) {
     const items = Array.isArray(block.items)
       ? block.items
           .map((item) => ({
-            label: trimText(item.label, 80),
-            value: trimText(item.value, 80),
+            label: trimText(item?.label, 80),
+            value: trimText(item?.value, 80),
           }))
           .filter((item) => item.label && item.value)
           .slice(0, 8)
