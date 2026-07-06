@@ -1,9 +1,63 @@
 import { newsItems as seedNewsItems } from './newsData.js'
 
+function normalizeText(value) {
+  return String(value ?? '').replace(/\s+/g, ' ').trim()
+}
+
+function getLegacyBlockText(block) {
+  if (typeof block === 'string') {
+    return block
+  }
+
+  if (block.type === 'list') {
+    return block.items.join(' ')
+  }
+
+  if (block.type === 'quote') {
+    return [block.text, block.cite].filter(Boolean).join(' ')
+  }
+
+  if (block.type === 'callout') {
+    return [block.title, block.text].filter(Boolean).join(' ')
+  }
+
+  if (block.type === 'stats') {
+    return block.items.map((item) => `${item.label}: ${item.value}`).join(' ')
+  }
+
+  return block.text ?? ''
+}
+
+function repairLegacySeedBody(item) {
+  const seedItem = seedNewsItems.find((seed) => seed.slug === item.slug)
+
+  if (!seedItem || !Array.isArray(item.body)) {
+    return item.body
+  }
+
+  return item.body.map((block) => {
+    if (!block || typeof block === 'string' || (block.type !== 'paragraph' && block.type !== 'lead')) {
+      return block
+    }
+
+    const flattenedText = normalizeText(block.text)
+    const matchingSeedBlock = seedItem.body.find(
+      (seedBlock) =>
+        typeof seedBlock === 'object' &&
+        seedBlock.type !== 'paragraph' &&
+        seedBlock.type !== 'lead' &&
+        normalizeText(getLegacyBlockText(seedBlock)) === flattenedText,
+    )
+
+    return matchingSeedBlock ?? block
+  })
+}
+
 function normalizeAdminItem(item) {
   return {
     ...item,
     img: item.img || item.imageUrl || '',
+    body: repairLegacySeedBody(item),
     source: 'admin',
     deleted: Boolean(item.deleted),
   }
