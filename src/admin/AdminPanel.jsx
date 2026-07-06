@@ -6,9 +6,11 @@ import {
   logoutAdmin,
   saveAdminNewsItem,
 } from '../news/adminNewsStore.js'
-import { parseMarkdownBlocks } from '../common/RichText.jsx'
+import { RichInline, parseMarkdownBlocks } from '../common/RichText.jsx'
 import { isPolicyCustomized, resetAdminPolicy, saveAdminPolicy } from '../content/policyStore.js'
 import { isStaffCustomized, resetAdminStaff, saveAdminStaff } from '../content/staffStore.js'
+import { isWikiCustomized } from '../content/wikiStore.js'
+import WikiManager from './WikiManager.jsx'
 
 const defaultForm = {
   title: '',
@@ -60,11 +62,11 @@ function getBlockText(block) {
   }
 
   if (block.type === 'callout') {
-    return [block.title, block.text].filter(Boolean).join('\n')
+    return [`:::callout ${block.title ?? ''}`.trim(), block.text, ':::'].filter(Boolean).join('\n')
   }
 
   if (block.type === 'stats') {
-    return block.items.map((item) => `${item.label}: ${item.value}`).join('\n')
+    return [':::stats', ...block.items.map((item) => `${item.label}: ${item.value}`), ':::'].join('\n')
   }
 
   return block.text ?? ''
@@ -344,7 +346,274 @@ const primaryButtonClass =
 const secondaryButtonClass =
   'inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/[0.04] px-5 text-sm font-semibold text-zinc-200 transition hover:border-white/25 hover:text-white'
 
-function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff, onStaffChange }) {
+function PreviewShell({ children }) {
+  return (
+    <div className="mt-6 rounded-xl border border-white/10 bg-bg-2/50 p-5">
+      <p className="mb-4 text-xs font-bold uppercase tracking-[0.14em] text-muted-2">Live preview</p>
+      {children}
+    </div>
+  )
+}
+
+function PreviewEmpty({ children = 'Start typing to see a preview.' }) {
+  return <p className="text-sm text-muted">{children}</p>
+}
+
+function PreviewArticleBlock({ block }) {
+  if (typeof block === 'string') {
+    return <p><RichInline text={block} /></p>
+  }
+
+  if (block.type === 'lead') {
+    return <p className="text-base font-semibold leading-7 text-zinc-100"><RichInline text={block.text} /></p>
+  }
+
+  if (block.type === 'heading') {
+    const HeadingTag = block.level === 3 ? 'h4' : 'h3'
+    return (
+      <HeadingTag className={`${block.level === 3 ? 'text-base' : 'text-lg'} pt-2 font-bold leading-tight text-white`}>
+        <RichInline text={block.text} />
+      </HeadingTag>
+    )
+  }
+
+  if (block.type === 'list') {
+    return (
+      <ul className="grid gap-2 p-0">
+        {block.items.map((item) => (
+          <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
+            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-2" />
+            <span><RichInline text={item} /></span>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  if (block.type === 'quote') {
+    return (
+      <figure className="rounded-r-lg border-l-2 border-brand/60 bg-surface-2/50 py-2 pl-4 pr-3 text-sm italic leading-7 text-muted">
+        <blockquote><RichInline text={block.text} /></blockquote>
+        {block.cite && <figcaption className="mt-2 text-xs not-italic text-muted-2">{block.cite}</figcaption>}
+      </figure>
+    )
+  }
+
+  if (block.type === 'code') {
+    return (
+      <pre className="overflow-x-auto rounded-lg border border-white/10 bg-black/35 p-4 text-xs leading-6 text-zinc-200">
+        <code>{block.text}</code>
+      </pre>
+    )
+  }
+
+  if (block.type === 'stats') {
+    return (
+      <div className="grid gap-3 sm:grid-cols-3">
+        {block.items.map((item) => (
+          <div className="rounded-lg border border-white/10 bg-surface-2 p-4" key={item.label}>
+            <p className="text-xl font-bold leading-tight text-white">{item.value}</p>
+            <p className="mt-1 text-xs font-semibold text-muted">{item.label}</p>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (block.type === 'callout') {
+    return (
+      <div className="rounded-lg border border-brand/50 bg-brand/[0.08] p-4">
+        <h4 className="font-bold text-white"><RichInline text={block.title} /></h4>
+        <p className="mt-2 text-sm leading-6 text-muted"><RichInline text={block.text} /></p>
+      </div>
+    )
+  }
+
+  return <p><RichInline text={block.text} /></p>
+}
+
+function NewsLivePreview({ item }) {
+  const hasContent = item.title || item.description || item.body.length > 0 || item.highlights.length > 0
+
+  return (
+    <PreviewShell>
+      {!hasContent ? (
+        <PreviewEmpty />
+      ) : (
+        <article className="overflow-hidden rounded-xl border border-white/10 bg-surface">
+          {item.img ? (
+            <div className="relative aspect-video bg-bg">
+              <img className="h-full w-full object-cover" src={item.img} alt="" loading="lazy" />
+            </div>
+          ) : null}
+          <div className="p-5">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-brand-2">
+              <span>{item.category || 'Announcement'}</span>
+              <span className="h-1 w-1 rounded-full bg-muted-2" />
+              <span>{item.date}</span>
+              <span className="h-1 w-1 rounded-full bg-muted-2" />
+              <span>{item.readingTime || '2 min read'}</span>
+            </div>
+            <h3 className="mt-3 text-2xl font-bold leading-tight text-white">{item.title || 'Untitled news post'}</h3>
+            {item.description && (
+              <p className="mt-3 text-sm leading-7 text-muted"><RichInline text={item.description} /></p>
+            )}
+            <p className="mt-3 text-xs font-semibold text-muted">By {item.author || 'AlwiNation Team'}</p>
+
+            {item.body.length > 0 && (
+              <div className="mt-5 grid gap-4 text-sm leading-7 text-muted">
+                {item.body.map((block, index) => (
+                  <PreviewArticleBlock block={block} key={`${typeof block === 'string' ? block : block.type}-${index}`} />
+                ))}
+              </div>
+            )}
+
+            {item.highlights.length > 0 && (
+              <div className="mt-5 rounded-lg border border-white/10 bg-bg-2 p-4">
+                <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-brand-2">Highlights</h4>
+                <ul className="mt-3 grid gap-2 p-0">
+                  {item.highlights.map((highlight) => (
+                    <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={highlight}>
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-2" />
+                      <span><RichInline text={highlight} /></span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </article>
+      )}
+    </PreviewShell>
+  )
+}
+
+function PolicyLivePreview({ policy, activeKey }) {
+  return (
+    <PreviewShell>
+      {!policy.title && !policy.intro && policy.sections.length === 0 ? (
+        <PreviewEmpty />
+      ) : (
+        <article className="grid gap-4">
+          <div className="rounded-xl border border-white/10 bg-surface p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="eyebrow">{policy.eyebrow}</span>
+              <span className="rounded-full border border-white/10 bg-bg-2 px-3 py-1 text-xs font-semibold text-muted">
+                {policy.sections.length} sections
+              </span>
+            </div>
+            <h3 className="mt-3 text-2xl font-bold leading-tight text-white">{policy.title || 'Untitled page'}</h3>
+            {policy.intro && <p className="mt-3 text-sm leading-7 text-muted"><RichInline text={policy.intro} /></p>}
+            <p className="mt-4 text-xs font-semibold text-muted">Last updated {policy.updated}</p>
+          </div>
+
+          {policy.sections.map((section, index) => (
+            <section className="rounded-xl border border-white/10 bg-surface p-5" key={`${section.title}-${index}`}>
+              <div className="flex items-start gap-3">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand/12 text-xs font-bold text-brand-2">
+                  {index + 1}
+                </span>
+                <div className="min-w-0">
+                  <h4 className="font-bold leading-tight text-white"><RichInline text={section.title} /></h4>
+                  {section.description && <p className="mt-2 text-sm leading-7 text-muted"><RichInline text={section.description} /></p>}
+                  {section.items?.length > 0 && (
+                    <ul className="mt-3 grid gap-2 p-0">
+                      {section.items.map((item) => (
+                        <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
+                          <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-2" />
+                          <span><RichInline text={item} /></span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {section.subsections?.length > 0 && (
+                    <div className="mt-4 grid gap-3">
+                      {section.subsections.map((subsection) => (
+                        <section className="rounded-lg border border-white/10 bg-bg-2/50 p-4" key={subsection.title}>
+                          <h5 className="text-sm font-bold text-white"><RichInline text={subsection.title} /></h5>
+                          {subsection.description && <p className="mt-2 text-sm leading-6 text-muted"><RichInline text={subsection.description} /></p>}
+                          {subsection.items?.length > 0 && (
+                            <ul className="mt-3 grid gap-2 p-0">
+                              {subsection.items.map((item) => (
+                                <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
+                                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-2" />
+                                  <span><RichInline text={item} /></span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </section>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+          ))}
+
+          <div className="rounded-xl border border-brand/25 bg-brand/[0.06] p-5">
+            <h4 className="font-bold text-white">Questions about the {activeKey === 'rules' ? 'rules' : 'terms'}?</h4>
+            <p className="mt-2 text-sm leading-6 text-muted">Reach out to the staff team for clarifications, appeals, or reports.</p>
+          </div>
+        </article>
+      )}
+    </PreviewShell>
+  )
+}
+
+function StaffLivePreview({ staff }) {
+  const totalMembers = staff.groups.reduce((sum, group) => sum + group.members.length, 0)
+
+  return (
+    <PreviewShell>
+      {!staff.title && !staff.intro && staff.groups.length === 0 ? (
+        <PreviewEmpty />
+      ) : (
+        <article className="grid gap-4">
+          <div className="rounded-xl border border-white/10 bg-surface p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="eyebrow">{staff.eyebrow}</span>
+              <span className="rounded-full border border-white/10 bg-bg-2 px-3 py-1 text-xs font-semibold text-muted">
+                {totalMembers} member{totalMembers === 1 ? '' : 's'}
+              </span>
+            </div>
+            <h3 className="mt-3 text-2xl font-bold leading-tight text-white">{staff.title || 'Untitled staff page'}</h3>
+            {staff.intro && <p className="mt-3 text-sm leading-7 text-muted"><RichInline text={staff.intro} /></p>}
+            <p className="mt-4 text-xs font-semibold text-muted">Last updated {staff.updated}</p>
+          </div>
+
+          {staff.groups.map((group) => (
+            <section key={group.name}>
+              <div className="flex items-center gap-3">
+                <h4 className="font-bold tracking-tight text-white">{group.name}</h4>
+                <span className="rounded-full border border-white/10 bg-bg-2 px-2.5 py-0.5 text-xs font-semibold text-muted">
+                  {group.members.length}
+                </span>
+                <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
+              </div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {group.members.map((member) => (
+                  <article className="flex items-start gap-3 rounded-xl border border-white/10 bg-surface p-4" key={`${group.name}-${member.name}`}>
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-gradient-to-b from-brand-2 to-brand text-sm font-bold text-[#1a0d07]">
+                      {String(member.name || '?').slice(0, 2).toUpperCase()}
+                    </span>
+                    <div className="min-w-0">
+                      <h5 className="truncate font-bold leading-tight text-white">{member.name}</h5>
+                      {member.role && <p className="mt-0.5 text-sm font-semibold text-brand-2">{member.role}</p>}
+                      {member.note && <p className="mt-2 text-sm leading-6 text-muted"><RichInline text={member.note} /></p>}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ))}
+        </article>
+      )}
+    </PreviewShell>
+  )
+}
+
+function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff, onStaffChange, wiki, onWikiChange }) {
   const [isCheckingSession, setIsCheckingSession] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
@@ -377,6 +646,44 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
         ? parseGroups(staffForm.groupsText).reduce((sum, group) => sum + group.members.length, 0)
         : 0,
     [isStaffTab, staffForm.groupsText],
+  )
+  const newsPreview = useMemo(
+    () => ({
+      slug: editingSlug || slugify(form.title),
+      img: form.imageUrl.trim(),
+      title: form.title.trim(),
+      description: form.description.trim(),
+      category: form.category.trim() || 'Announcement',
+      date: formatDisplayDate(form.date),
+      author: form.author.trim() || 'AlwiNation Team',
+      readingTime: form.readingTime.trim() || '2 min read',
+      body: createBodyBlocks(form.bodyText),
+      highlights: form.highlightsText
+        .split('\n')
+        .map((highlight) => highlight.trim())
+        .filter(Boolean),
+    }),
+    [editingSlug, form],
+  )
+  const policyPreview = useMemo(() => {
+    const meta = isPolicyTab ? policyMeta[activeTab] : policyMeta.rules
+    return {
+      eyebrow: policyForm.eyebrow.trim() || meta.fallbackEyebrow,
+      title: policyForm.title.trim(),
+      intro: policyForm.intro.trim(),
+      updated: policyForm.updated.trim() || formatDisplayDate(''),
+      sections: parseSections(policyForm.sectionsText),
+    }
+  }, [activeTab, isPolicyTab, policyForm])
+  const staffPreview = useMemo(
+    () => ({
+      eyebrow: staffForm.eyebrow.trim() || staffMeta.fallbackEyebrow,
+      title: staffForm.title.trim(),
+      intro: staffForm.intro.trim(),
+      updated: staffForm.updated.trim() || formatDisplayDate(''),
+      groups: parseGroups(staffForm.groupsText),
+    }),
+    [staffForm],
   )
 
   useEffect(() => {
@@ -691,6 +998,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
   const tabs = [
     { id: 'news', label: 'News' },
     { id: 'staff', label: 'Staff' },
+    { id: 'wiki', label: 'Wiki' },
     { id: 'rules', label: 'Rules' },
     { id: 'terms', label: 'Terms' },
   ]
@@ -703,7 +1011,9 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
         : 'Create News'
       : activeTab === 'staff'
         ? 'Edit Staff'
-        : `Edit ${activeMeta.heading}`
+        : activeTab === 'wiki'
+          ? 'Edit Wiki'
+          : `Edit ${activeMeta.heading}`
   const newsSaveButtonLabel = newsSaveState === 'saving'
     ? 'Saving...'
     : newsSaveState === 'saved'
@@ -743,7 +1053,9 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
               const customized =
                 tab.id === 'staff'
                   ? isStaffCustomized()
-                  : tab.id !== 'news' && isPolicyCustomized(tab.id)
+                  : tab.id === 'wiki'
+                    ? isWikiCustomized()
+                    : (tab.id === 'rules' || tab.id === 'terms') && isPolicyCustomized(tab.id)
               return (
                 <button
                   key={tab.id}
@@ -816,13 +1128,23 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
 
                 <label className={labelClass}>
                   Body
-                  <textarea className={`${textareaClass} min-h-48`} placeholder="Use Discord-style formatting: # title, **bold**, *italic*, `code`, ```code block```, > quote, - list." value={form.bodyText} onChange={(event) => updateField('bodyText', event.target.value)} />
+                  <textarea
+                    className={`${textareaClass} min-h-48`}
+                    placeholder={'Use Discord-style formatting:\n# title\n> quote\n- list\n```code block```\n\n:::callout Title\nCallout text\n:::\n\n:::stats\nPlayers: 120\nUptime: 99%\n:::'}
+                    value={form.bodyText}
+                    onChange={(event) => updateField('bodyText', event.target.value)}
+                  />
+                  <span className="text-xs font-medium leading-5 text-muted">
+                    Use :::callout Title and :::stats fenced blocks for special news sections.
+                  </span>
                 </label>
 
                 <label className={labelClass}>
                   Highlights
                   <textarea className={`${textareaClass} min-h-28`} placeholder="One highlight per line." value={form.highlightsText} onChange={(event) => updateField('highlightsText', event.target.value)} />
                 </label>
+
+                <NewsLivePreview item={newsPreview} />
 
                 {saveMessage && <p className="text-sm font-semibold text-brand-2">{saveMessage}</p>}
 
@@ -926,6 +1248,8 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                   />
                 </label>
 
+                <PolicyLivePreview policy={policyPreview} activeKey={activeTab} />
+
                 {policyMessage && <p className="text-sm font-semibold text-brand-2">{policyMessage}</p>}
 
                 <div className="flex flex-wrap items-center gap-3">
@@ -1020,6 +1344,8 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                   />
                 </label>
 
+                <StaffLivePreview staff={staffPreview} />
+
                 {staffMessage && <p className="text-sm font-semibold text-brand-2">{staffMessage}</p>}
 
                 <div className="flex flex-wrap items-center gap-3">
@@ -1065,6 +1391,11 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                 <p className="mt-3 text-xs leading-5 text-muted">Changes apply to the live /staff page after saving.</p>
               </div>
             </aside>
+          </div>
+        )}
+        {activeTab === 'wiki' && (
+          <div className="mt-8">
+            <WikiManager wiki={wiki} onWikiChange={onWikiChange} />
           </div>
         )}
       </section>

@@ -13,6 +13,9 @@ import { getPolicies, loadPolicies } from './content/policyStore.js'
 import StaffPage from './common/StaffPage.jsx'
 import { getStaff, loadStaff } from './content/staffStore.js'
 import { getNewsItemBySlug, loadNewsItems } from './news/adminNewsStore.js'
+import WikiPage from './common/WikiPage.jsx'
+import WikiArticle from './common/WikiArticle.jsx'
+import { getWiki, loadWiki, getWikiArticle } from './content/wikiStore.js'
 
 const SERVER_ADDRESS = 'play.alwination.id'
 const BEDROCK_PORT = '19132'
@@ -503,6 +506,27 @@ function StaffPageLoading() {
   )
 }
 
+function WikiPageLoading() {
+  return (
+    <main className="min-h-svh bg-bg pb-24 pt-32 text-white">
+      <section className="mx-auto max-w-[1080px] px-6">
+        <div className="rounded-[24px] border border-white/10 bg-surface p-7 sm:p-10">
+          <div className="h-4 w-36 animate-pulse rounded-full bg-white/10" />
+          <div className="mt-5 h-12 max-w-[520px] animate-pulse rounded-full bg-white/10" />
+          <div className="mt-6 h-11 max-w-[640px] animate-pulse rounded-xl bg-white/10" />
+        </div>
+      </section>
+      <section className="mx-auto mt-8 max-w-[1080px] px-6">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }, (_, index) => (
+            <div className="h-36 animate-pulse rounded-[18px] border border-white/10 bg-surface" key={`wiki-loading-${index}`} />
+          ))}
+        </div>
+      </section>
+    </main>
+  )
+}
+
 function App() {
   const [activeSection, setActiveSection] = useState(getInitialActiveSection)
   const [newsItems, setNewsItems] = useState([])
@@ -511,6 +535,8 @@ function App() {
   const [isLoadingPolicies, setIsLoadingPolicies] = useState(true)
   const [staff, setStaff] = useState(getStaff)
   const [isLoadingStaff, setIsLoadingStaff] = useState(true)
+  const [wiki, setWiki] = useState(getWiki)
+  const [isLoadingWiki, setIsLoadingWiki] = useState(true)
   const serverStatus = useServerStatus()
   const visibleNewsItems = newsItems.slice(0, newsToShow)
   const isAdminPage = window.location.pathname === '/admin'
@@ -518,11 +544,22 @@ function App() {
   const isRulesPage = window.location.pathname === '/rules'
   const isTermsPage = window.location.pathname === '/terms'
   const isStaffPage = window.location.pathname === '/staff'
+  const isWikiListPage = window.location.pathname === '/wiki'
   const isHomePage = window.location.pathname === '/'
   const newsSlug = window.location.pathname.match(/^\/news\/([^/]+)\/?$/)?.[1]
   const selectedNewsItem = newsSlug ? getNewsItemBySlug(newsItems, decodeURIComponent(newsSlug)) : null
+  const wikiSlug = window.location.pathname.match(/^\/wiki\/([^/]+)\/?$/)?.[1]
+  const selectedWikiArticle = wikiSlug ? getWikiArticle(wiki, decodeURIComponent(wikiSlug)) : null
   const isKnownPath =
-    isHomePage || isAdminPage || isNewsListPage || isRulesPage || isTermsPage || isStaffPage || Boolean(newsSlug)
+    isHomePage ||
+    isAdminPage ||
+    isNewsListPage ||
+    isRulesPage ||
+    isTermsPage ||
+    isStaffPage ||
+    isWikiListPage ||
+    Boolean(newsSlug) ||
+    Boolean(wikiSlug)
 
   useEffect(() => {
     let isCurrent = true
@@ -578,8 +615,36 @@ function App() {
     }
   }, [isStaffPage, isAdminPage])
 
+  useEffect(() => {
+    let isCurrent = true
+
+    async function loadWikiContent() {
+      setIsLoadingWiki(true)
+      const loaded = await loadWiki()
+      if (isCurrent) {
+        setWiki(loaded)
+        setIsLoadingWiki(false)
+      }
+    }
+
+    loadWikiContent()
+    return () => {
+      isCurrent = false
+    }
+  }, [isWikiListPage, wikiSlug, isAdminPage])
+
   useLayoutEffect(() => {
-    if (newsSlug || isNewsListPage || isAdminPage || isRulesPage || isTermsPage || isStaffPage || !isKnownPath) {
+    if (
+      newsSlug ||
+      isNewsListPage ||
+      isAdminPage ||
+      isRulesPage ||
+      isTermsPage ||
+      isStaffPage ||
+      isWikiListPage ||
+      wikiSlug ||
+      !isKnownPath
+    ) {
       setActiveSection('news')
       return undefined
     }
@@ -636,7 +701,7 @@ function App() {
       window.removeEventListener('scroll', updateActiveSection)
       window.removeEventListener('resize', updateActiveSection)
     }
-  }, [newsSlug, isNewsListPage, isAdminPage, isRulesPage, isTermsPage, isStaffPage, isKnownPath])
+  }, [newsSlug, isNewsListPage, isAdminPage, isRulesPage, isTermsPage, isStaffPage, isWikiListPage, wikiSlug, isKnownPath])
 
   if (!isKnownPath) {
     return (
@@ -652,7 +717,7 @@ function App() {
     return (
       <div className="min-h-svh overflow-x-hidden bg-bg">
         <Navbar activeSection="admin" />
-        {isLoadingNews || isLoadingPolicies || isLoadingStaff ? (
+        {isLoadingNews || isLoadingPolicies || isLoadingStaff || isLoadingWiki ? (
           <AdminPageLoading />
         ) : (
           <AdminPanel
@@ -662,6 +727,8 @@ function App() {
             onPoliciesChange={setPolicies}
             staff={staff}
             onStaffChange={setStaff}
+            wiki={wiki}
+            onWikiChange={setWiki}
           />
         )}
         <Footer />
@@ -709,6 +776,45 @@ function App() {
       <div className="min-h-svh bg-bg">
         <Navbar activeSection="staff" />
         {isLoadingStaff ? <StaffPageLoading /> : <StaffPage {...staff} />}
+        <Footer />
+      </div>
+    )
+  }
+
+  if (isWikiListPage) {
+    return (
+      <div className="min-h-svh bg-bg">
+        <Navbar activeSection="wiki" />
+        {isLoadingWiki ? <WikiPageLoading /> : <WikiPage {...wiki} />}
+        <Footer />
+      </div>
+    )
+  }
+
+  if (wikiSlug) {
+    return (
+      <div className="min-h-svh bg-bg">
+        <Navbar activeSection="wiki" />
+        {isLoadingWiki ? (
+          <WikiPageLoading />
+        ) : selectedWikiArticle ? (
+          <WikiArticle
+            article={selectedWikiArticle.article}
+            category={selectedWikiArticle.category}
+            wiki={wiki}
+          />
+        ) : (
+          <ErrorPage
+            code="404"
+            eyebrow="Article not found"
+            title="This wiki page does not exist."
+            description="It may have been moved, renamed, or deleted."
+            primaryHref="/wiki"
+            primaryLabel="Browse the wiki"
+            secondaryHref="/"
+            secondaryLabel="Go home"
+          />
+        )}
         <Footer />
       </div>
     )

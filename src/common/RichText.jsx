@@ -115,6 +115,40 @@ export function parseMarkdownBlocks(text) {
       continue
     }
 
+    if (trimmed.startsWith(':::callout')) {
+      const title = trimmed.slice(':::callout'.length).trim()
+      const calloutLines = []
+      index += 1
+      while (index < lines.length && lines[index].trim() !== ':::') {
+        calloutLines.push(lines[index].trim())
+        index += 1
+      }
+      blocks.push({ type: 'callout', title: title || 'Note', text: calloutLines.filter(Boolean).join(' ') })
+      index += 1
+      continue
+    }
+
+    if (trimmed.startsWith(':::stats')) {
+      const items = []
+      index += 1
+      while (index < lines.length && lines[index].trim() !== ':::') {
+        const statLine = lines[index].trim()
+        const separatorIndex = statLine.indexOf(':')
+        if (separatorIndex > 0) {
+          items.push({
+            label: statLine.slice(0, separatorIndex).trim(),
+            value: statLine.slice(separatorIndex + 1).trim(),
+          })
+        }
+        index += 1
+      }
+      if (items.length > 0) {
+        blocks.push({ type: 'stats', items })
+      }
+      index += 1
+      continue
+    }
+
     const heading = trimmed.match(/^(#{1,3})\s+(.+)$/)
     if (heading) {
       blocks.push({ type: 'heading', level: heading[1].length, text: heading[2].trim() })
@@ -147,6 +181,8 @@ export function parseMarkdownBlocks(text) {
       index < lines.length &&
       lines[index].trim() &&
       !lines[index].trim().startsWith('```') &&
+      !lines[index].trim().startsWith(':::callout') &&
+      !lines[index].trim().startsWith(':::stats') &&
       !/^(#{1,3})\s+/.test(lines[index].trim()) &&
       !lines[index].trim().startsWith('> ') &&
       !/^[-*]\s+/.test(lines[index].trim())
@@ -159,4 +195,3 @@ export function parseMarkdownBlocks(text) {
 
   return blocks
 }
-

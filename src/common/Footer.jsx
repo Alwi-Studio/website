@@ -13,6 +13,7 @@ const communityLinks = [
   { label: 'Store', href: 'https://store.alwination.id' },
   { label: 'Support', href: '/#contact' },
   { label: 'Server IP', href: '/#home' },
+  { label: 'Wiki', href: '/wiki' },
   { label: 'Staff', href: '/staff' },
   { label: 'Rules', href: '/rules' },
   { label: 'Terms', href: '/terms' },
