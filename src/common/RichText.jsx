@@ -162,7 +162,13 @@ export function parseMarkdownBlocks(text) {
         quoteLines.push(lines[index].trim().slice(2).trim())
         index += 1
       }
-      blocks.push({ type: 'quote', text: quoteLines.join('\n') })
+      const lastLine = quoteLines.at(-1) ?? ''
+      const citeMatch = lastLine.match(/^(?:--|—)\s*(.+)$/)
+      if (citeMatch) {
+        blocks.push({ type: 'quote', text: quoteLines.slice(0, -1).join('\n'), cite: citeMatch[1].trim() })
+      } else {
+        blocks.push({ type: 'quote', text: quoteLines.join('\n') })
+      }
       continue
     }
 

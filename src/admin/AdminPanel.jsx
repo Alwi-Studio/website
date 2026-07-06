@@ -55,7 +55,7 @@ const sharedArticleExamples = [
   {
     title: 'Quotes',
     description: 'Use quote blocks for important notes or quoted statements.',
-    code: '> The server update is planned for this weekend.\n> Keep an eye on Discord for the exact time.',
+    code: '> The server update is planned for this weekend.\n> Keep an eye on Discord for the exact time.\n> -- AlwiNation Team',
   },
   {
     title: 'Code blocks',
@@ -163,7 +163,13 @@ function getBlockText(block) {
   }
 
   if (block.type === 'quote') {
-    return block.cite ? `${block.text}\n${block.cite}` : block.text
+    const quoteLines = String(block.text ?? '')
+      .split('\n')
+      .map((line) => `> ${line}`)
+    if (block.cite) {
+      quoteLines.push(`> -- ${block.cite}`)
+    }
+    return quoteLines.join('\n')
   }
 
   if (block.type === 'callout') {
@@ -497,9 +503,11 @@ function PreviewArticleBlock({ block }) {
 
   if (block.type === 'quote') {
     return (
-      <figure className="rounded-r-lg border-l-2 border-brand/60 bg-surface-2/50 py-2 pl-4 pr-3 text-sm italic leading-7 text-muted">
-        <blockquote><RichInline text={block.text} /></blockquote>
-        {block.cite && <figcaption className="mt-2 text-xs not-italic text-muted-2">{block.cite}</figcaption>}
+      <figure className="border-l-4 border-[#ff5732] bg-[#202020] px-5 py-4">
+        <blockquote className="whitespace-pre-line text-lg font-semibold leading-8 text-white">
+          <RichInline text={block.text} />
+        </blockquote>
+        {block.cite && <figcaption className="mt-3 text-sm text-zinc-400">{block.cite}</figcaption>}
       </figure>
     )
   }
@@ -1318,7 +1326,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                   Body
                   <textarea
                     className={`${textareaClass} min-h-48`}
-                    placeholder={'Use Discord-style formatting:\n# title\n> quote\n- list\n```code block```\n\n:::callout Title\nCallout text\n:::\n\n:::stats\nPlayers: 120\nUptime: 99%\n:::'}
+                    placeholder={'Use Discord-style formatting:\n# title\n> quote\n> -- AlwiNation Team\n- list\n```code block```\n\n:::callout Title\nCallout text\n:::\n\n:::stats\nPlayers: 120\nUptime: 99%\n:::'}
                     value={form.bodyText}
                     onChange={(event) => updateField('bodyText', event.target.value)}
                   />
