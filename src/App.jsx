@@ -13,6 +13,7 @@ import { getPolicies, loadPolicies } from './content/policyStore.js'
 import { getNewsItemBySlug, loadNewsItems } from './news/adminNewsStore.js'
 
 const SERVER_ADDRESS = 'play.alwination.id'
+const BEDROCK_PORT = '19132'
 
 const workItems = [
   {
@@ -71,10 +72,17 @@ const aboutFeatures = [
 
 const contactItems = [
   {
-    label: 'Server IP',
+    label: 'Java IP',
     value: 'play.alwination.id',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M6 9h6M6 13h3" /></svg>
+    ),
+  },
+  {
+    label: 'Bedrock IP',
+    value: 'play.alwination.id : 19132',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="7" y="2" width="10" height="20" rx="2" /><path d="M11 18h2" /></svg>
     ),
   },
   {
@@ -218,35 +226,67 @@ function StatusPill({ serverStatus }) {
   )
 }
 
-function CopyIpCard() {
+function CopyButton({ value, label = 'Copy', copiedLabel = 'Copied!', className = '', showIcon = true }) {
   const [copied, setCopied] = useState(false)
+  const timeoutRef = useRef(null)
+
+  useEffect(() => () => window.clearTimeout(timeoutRef.current), [])
 
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText(SERVER_ADDRESS)
+      await navigator.clipboard.writeText(value)
       setCopied(true)
-      window.setTimeout(() => setCopied(false), 1600)
+      window.clearTimeout(timeoutRef.current)
+      timeoutRef.current = window.setTimeout(() => setCopied(false), 1600)
     } catch {
       /* clipboard unavailable */
     }
   }
 
   return (
-    <div className="flex items-center gap-3.5 rounded-2xl border border-white/15 bg-white/[0.04] py-2 pl-[18px] pr-2 backdrop-blur">
-      <div>
-        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-2">Server IP</div>
-        <div className="text-base font-bold tracking-tight text-white">{SERVER_ADDRESS}</div>
-      </div>
-      <button
-        type="button"
-        onClick={handleCopy}
-        className="inline-flex items-center gap-2 rounded-[10px] bg-gradient-to-b from-brand-2 to-brand px-4 py-2.5 text-sm font-semibold text-[#1a0d07] transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-brand/70"
-      >
+    <button type="button" onClick={handleCopy} aria-label={`Copy ${value}`} className={className}>
+      {showIcon ? (
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" />
         </svg>
-        {copied ? 'Copied!' : 'Copy IP'}
-      </button>
+      ) : null}
+      {copied ? copiedLabel : label}
+    </button>
+  )
+}
+
+const primaryCopyClass =
+  'inline-flex min-h-[40px] items-center gap-2 rounded-[10px] bg-gradient-to-b from-brand-2 to-brand px-3.5 py-2 text-[13px] font-semibold text-[#1a0d07] transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-brand/70'
+
+function CopyIpCard() {
+  return (
+    <div className="w-full max-w-[360px] overflow-hidden rounded-2xl border border-white/15 bg-white/[0.04] backdrop-blur">
+      <div className="flex items-center gap-3 px-4 py-3">
+        <div className="min-w-0 flex-1">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-2">Java Edition</div>
+          <div className="truncate text-[15px] font-bold tracking-tight text-white">{SERVER_ADDRESS}</div>
+        </div>
+        <CopyButton value={SERVER_ADDRESS} label="Copy" copiedLabel="Copied!" className={primaryCopyClass} />
+      </div>
+
+      <div className="h-px bg-white/10" />
+
+      <div className="flex items-center gap-3 px-4 py-3">
+        <div className="min-w-0 flex-1">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-2">Bedrock Edition</div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-2">
+            <span className="truncate text-[15px] font-bold tracking-tight text-white">{SERVER_ADDRESS}</span>
+            <CopyButton
+              value={BEDROCK_PORT}
+              label={`Port ${BEDROCK_PORT}`}
+              copiedLabel="Copied!"
+              showIcon={false}
+              className="inline-flex items-center rounded-md border border-white/15 bg-white/[0.05] px-2 py-0.5 text-[12px] font-semibold text-muted transition hover:border-white/25 hover:text-white focus:outline-none focus:ring-2 focus:ring-brand/60"
+            />
+          </div>
+        </div>
+        <CopyButton value={SERVER_ADDRESS} label="Copy" copiedLabel="Copied!" className={primaryCopyClass} />
+      </div>
     </div>
   )
 }
@@ -763,7 +803,7 @@ function App() {
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-[20px] border border-white/10 bg-surface">
+            <div className="relative top-33 overflow-hidden rounded-[20px] border border-white/10 bg-surface">
               {contactItems.map((item) => (
                 <div
                   key={item.label}

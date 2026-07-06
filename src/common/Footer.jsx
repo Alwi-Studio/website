@@ -91,7 +91,7 @@ function Footer() {
 
         <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6 text-[13.5px] text-muted-2">
           <span>© 2026 AlwiNation. All rights reserved.</span>
-          <span>play.alwination.id</span>
+          <span>play.alwination.id · Bedrock port 19132</span>
         </div>
       </div>
     </footer>

@@ -66,11 +66,11 @@ function Navbar({ activeSection = 'home' }) {
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-bg/60 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-4 px-6 py-3.5">
+      <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-4 px-6 py-2.5">
         <a href="/#home" className="flex h-[38px] items-center">
           <picture className="hidden sm:contents">
             <source srcSet={logoLongAvif} type="image/avif" />
-            <img className="hidden h-[30px] w-auto object-contain sm:block" src={logoLong} alt="AlwiNation" width="556" height="110" />
+            <img className="hidden h-[25px] w-auto object-contain sm:block" src={logoLong} alt="AlwiNation" width="556" height="110" />
           </picture>
           <picture className="contents sm:hidden">
             <source srcSet={logoMarkAvif} type="image/avif" />
@@ -78,7 +78,7 @@ function Navbar({ activeSection = 'home' }) {
           </picture>
         </a>
 
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav className="hidden items-center gap-2 md:flex">
           {links.map((link) => (
             <a
               key={link.href}
