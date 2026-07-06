@@ -8,6 +8,7 @@ import {
 } from '../news/adminNewsStore.js'
 import { parseMarkdownBlocks } from '../common/RichText.jsx'
 import { isPolicyCustomized, resetAdminPolicy, saveAdminPolicy } from '../content/policyStore.js'
+import { isStaffCustomized, resetAdminStaff, saveAdminStaff } from '../content/staffStore.js'
 
 const defaultForm = {
   title: '',
@@ -24,10 +25,14 @@ const defaultForm = {
 
 const emptyPolicyForm = { eyebrow: '', title: '', updated: '', intro: '', sectionsText: '' }
 
+const emptyStaffForm = { eyebrow: '', title: '', updated: '', intro: '', groupsText: '' }
+
 const policyMeta = {
   rules: { label: 'Rules', heading: 'Server Rules', path: '/rules', fallbackEyebrow: 'Community Rules' },
   terms: { label: 'Terms', heading: 'Terms of Service', path: '/terms', fallbackEyebrow: 'Terms of Service' },
 }
+
+const staffMeta = { label: 'Staff', heading: 'Staff', path: '/staff', fallbackEyebrow: 'Meet the Team' }
 
 function slugify(value) {
   return value
@@ -249,6 +254,86 @@ function policyToForm(policy) {
   }
 }
 
+// Convert stored staff groups into the editable mini-syntax used in the textarea.
+function groupsToText(groups = []) {
+  return groups
+    .map((group) => {
+      const lines = [`# ${group.name}`]
+      const members = group.members ?? []
+      members.forEach((member) => {
+        const parts = [member.name]
+        if (member.role || member.note) {
+          parts.push(member.role ?? '')
+        }
+        if (member.note) {
+          parts.push(member.note)
+        }
+        lines.push(parts.join(' | '))
+      })
+      return lines.join('\n')
+    })
+    .join('\n\n')
+}
+
+// Parse the editable mini-syntax back into structured staff groups.
+// "# Group" starts a group; each other line is "Name | Role | note".
+function parseGroups(text) {
+  const groups = []
+  let current = null
+
+  function ensureGroup() {
+    if (!current) {
+      current = { name: 'Team', members: [] }
+      groups.push(current)
+    }
+  }
+
+  for (const rawLine of text.split('\n')) {
+    const trimmed = rawLine.trim()
+    if (!trimmed) {
+      continue
+    }
+
+    if (trimmed.startsWith('# ')) {
+      current = { name: trimmed.slice(2).trim() || 'Team', members: [] }
+      groups.push(current)
+    } else {
+      ensureGroup()
+      const parts = trimmed.split('|').map((part) => part.trim())
+      const name = parts[0]
+      if (!name) {
+        continue
+      }
+      const member = { name }
+      if (parts[1]) {
+        member.role = parts[1]
+      }
+      const note = parts.slice(2).join(' | ')
+      if (note) {
+        member.note = note
+      }
+      current.members.push(member)
+    }
+  }
+
+  return groups
+    .map((group) => ({ name: group.name, members: group.members }))
+    .filter((group) => group.members.length > 0)
+}
+
+function staffToForm(staff) {
+  if (!staff) {
+    return emptyStaffForm
+  }
+  return {
+    eyebrow: staff.eyebrow ?? '',
+    title: staff.title ?? '',
+    updated: staff.updated ?? '',
+    intro: staff.intro ?? '',
+    groupsText: groupsToText(staff.groups),
+  }
+}
+
 const inputClass =
   'min-h-11 rounded-xl border border-white/10 bg-surface-2 px-3 text-white outline-none transition focus:border-brand'
 const textareaClass =
@@ -259,7 +344,7 @@ const primaryButtonClass =
 const secondaryButtonClass =
   'inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/[0.04] px-5 text-sm font-semibold text-zinc-200 transition hover:border-white/25 hover:text-white'
 
-function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange }) {
+function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff, onStaffChange }) {
   const [isCheckingSession, setIsCheckingSession] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
@@ -274,12 +359,24 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange }) {
   const [policyMessage, setPolicyMessage] = useState('')
   const [isSavingPolicy, setIsSavingPolicy] = useState(false)
   const [policySaveState, setPolicySaveState] = useState('idle')
+  const [staffForm, setStaffForm] = useState(emptyStaffForm)
+  const [staffMessage, setStaffMessage] = useState('')
+  const [isSavingStaff, setIsSavingStaff] = useState(false)
+  const [staffSaveState, setStaffSaveState] = useState('idle')
 
   const editablePosts = useMemo(() => newsItems, [newsItems])
   const isPolicyTab = activeTab === 'rules' || activeTab === 'terms'
   const parsedSectionCount = useMemo(
     () => (isPolicyTab ? parseSections(policyForm.sectionsText).length : 0),
     [isPolicyTab, policyForm.sectionsText],
+  )
+  const isStaffTab = activeTab === 'staff'
+  const parsedMemberCount = useMemo(
+    () =>
+      isStaffTab
+        ? parseGroups(staffForm.groupsText).reduce((sum, group) => sum + group.members.length, 0)
+        : 0,
+    [isStaffTab, staffForm.groupsText],
   )
 
   useEffect(() => {
@@ -309,6 +406,14 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange }) {
     setPolicyForm(policyToForm(policies?.[activeTab]))
     setPolicyMessage('')
   }, [activeTab, isPolicyTab, policies])
+
+  useEffect(() => {
+    if (!isStaffTab) {
+      return
+    }
+    setStaffForm(staffToForm(staff))
+    setStaffMessage('')
+  }, [isStaffTab, staff])
 
   function updateField(field, value) {
     setForm((currentForm) => ({
@@ -537,14 +642,68 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange }) {
     )
   }
 
+  async function handleStaffSubmit(event) {
+    event.preventDefault()
+
+    const groups = parseGroups(staffForm.groupsText)
+
+    if (!staffForm.title.trim() || groups.length === 0) {
+      setStaffMessage('Title and at least one staff member are required.')
+      return
+    }
+
+    const nextStaff = {
+      eyebrow: staffForm.eyebrow.trim() || staffMeta.fallbackEyebrow,
+      title: staffForm.title.trim(),
+      intro: staffForm.intro.trim(),
+      updated: staffForm.updated.trim() || formatDisplayDate(''),
+      groups,
+    }
+
+    try {
+      setIsSavingStaff(true)
+      setStaffSaveState('saving')
+      const saved = await saveAdminStaff(nextStaff)
+      onStaffChange(saved)
+      setStaffForm(staffToForm(saved))
+      setStaffMessage('Saved the Staff page.')
+      setStaffSaveState('saved')
+      window.setTimeout(() => setStaffSaveState('idle'), 1800)
+    } catch (error) {
+      setStaffMessage(error.message)
+      setStaffSaveState('idle')
+    } finally {
+      setIsSavingStaff(false)
+    }
+  }
+
+  async function handleStaffReset() {
+    try {
+      const saved = await resetAdminStaff()
+      onStaffChange(saved)
+      setStaffForm(staffToForm(saved))
+      setStaffMessage('Restored the default staff list.')
+    } catch (error) {
+      setStaffMessage(error.message)
+    }
+  }
+
   const tabs = [
     { id: 'news', label: 'News' },
+    { id: 'staff', label: 'Staff' },
     { id: 'rules', label: 'Rules' },
     { id: 'terms', label: 'Terms' },
   ]
 
   const activeMeta = isPolicyTab ? policyMeta[activeTab] : null
-  const heading = activeTab === 'news' ? (editingSlug ? 'Edit News' : 'Create News') : `Edit ${activeMeta.heading}`
+  const heading =
+    activeTab === 'news'
+      ? editingSlug
+        ? 'Edit News'
+        : 'Create News'
+      : activeTab === 'staff'
+        ? 'Edit Staff'
+        : `Edit ${activeMeta.heading}`
   const newsSaveButtonLabel = newsSaveState === 'saving'
     ? 'Saving...'
     : newsSaveState === 'saved'
@@ -557,6 +716,11 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange }) {
     : policySaveState === 'saved'
       ? 'Saved'
       : `Save ${activeMeta?.label ?? 'Policy'} page`
+  const staffSaveButtonLabel = staffSaveState === 'saving'
+    ? 'Saving...'
+    : staffSaveState === 'saved'
+      ? 'Saved'
+      : 'Save Staff page'
 
   return (
     <main className="min-h-svh bg-bg px-5 pb-16 pt-36 text-white sm:px-8 lg:px-12">
@@ -576,7 +740,10 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange }) {
           <div className="flex flex-wrap gap-1.5 rounded-xl border border-white/10 bg-bg-2 p-1.5">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id
-              const customized = tab.id !== 'news' && isPolicyCustomized(tab.id)
+              const customized =
+                tab.id === 'staff'
+                  ? isStaffCustomized()
+                  : tab.id !== 'news' && isPolicyCustomized(tab.id)
               return (
                 <button
                   key={tab.id}
@@ -814,6 +981,88 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange }) {
                 <p className="mt-3 text-xs leading-5 text-muted">
                   Changes apply to the live {activeMeta.path} page after saving.
                 </p>
+              </div>
+            </aside>
+          </div>
+        )}
+
+        {isStaffTab && (
+          <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_320px]">
+            <div className="rounded-2xl border border-white/10 bg-surface p-6">
+              <form className="grid gap-5" onSubmit={handleStaffSubmit}>
+                <div className="grid gap-5 md:grid-cols-2">
+                  <label className={labelClass}>
+                    Eyebrow
+                    <input className={inputClass} placeholder={staffMeta.fallbackEyebrow} value={staffForm.eyebrow} onChange={(event) => setStaffForm((current) => ({ ...current, eyebrow: event.target.value }))} />
+                  </label>
+                  <label className={labelClass}>
+                    Last updated
+                    <input className={inputClass} placeholder="July 6, 2026" value={staffForm.updated} onChange={(event) => setStaffForm((current) => ({ ...current, updated: event.target.value }))} />
+                  </label>
+                </div>
+
+                <label className={labelClass}>
+                  Page title
+                  <input className={inputClass} value={staffForm.title} onChange={(event) => setStaffForm((current) => ({ ...current, title: event.target.value }))} />
+                </label>
+
+                <label className={labelClass}>
+                  Intro
+                  <textarea className={`${textareaClass} min-h-24`} value={staffForm.intro} onChange={(event) => setStaffForm((current) => ({ ...current, intro: event.target.value }))} />
+                </label>
+
+                <label className={labelClass}>
+                  Staff groups
+                  <textarea
+                    className={`${textareaClass} min-h-[360px] font-mono text-[13px] leading-6`}
+                    value={staffForm.groupsText}
+                    onChange={(event) => setStaffForm((current) => ({ ...current, groupsText: event.target.value }))}
+                  />
+                </label>
+
+                {staffMessage && <p className="text-sm font-semibold text-brand-2">{staffMessage}</p>}
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    className={`${primaryButtonClass} min-h-12 min-w-[150px] ${
+                      staffSaveState === 'saved' ? 'from-positive to-positive text-[#062412]' : ''
+                    } active:translate-y-0.5 active:scale-[0.98] disabled:cursor-wait disabled:opacity-80`}
+                    type="submit"
+                    disabled={isSavingStaff}
+                  >
+                    {staffSaveButtonLabel}
+                  </button>
+                  <a className={`${secondaryButtonClass} min-h-12`} href={staffMeta.path} target="_blank" rel="noreferrer">
+                    Preview page
+                  </a>
+                  <button className="inline-flex min-h-12 items-center justify-center rounded-xl border border-red-400/40 px-5 text-sm font-semibold text-red-300 transition hover:bg-red-500/10" type="button" onClick={handleStaffReset}>
+                    Reset to default
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <aside className="rounded-2xl border border-white/10 bg-surface p-6 lg:sticky lg:top-28">
+              <h2 className="text-xl font-bold text-white">Formatting guide</h2>
+              <p className="mt-3 text-sm leading-6 text-muted">Structure the staff list with this simple syntax:</p>
+              <ul className="mt-4 grid gap-3 p-0">
+                <li className="flex items-start gap-3 text-sm text-muted">
+                  <code className="rounded-md bg-surface-2 px-2 py-0.5 text-brand-2"># Group</code>
+                  <span>starts a new group (e.g. Moderators)</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-muted">
+                  <code className="rounded-md bg-surface-2 px-2 py-0.5 text-brand-2">Name | Role | note</code>
+                  <span>adds a member (role and note optional)</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-muted">
+                  <code className="rounded-md bg-surface-2 px-2 py-0.5 text-zinc-300">Name</code>
+                  <span>a name alone is a member with no role</span>
+                </li>
+              </ul>
+              <div className="mt-6 rounded-xl border border-white/10 bg-surface-2 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-2">Detected</p>
+                <p className="mt-2 text-sm font-semibold text-white">{parsedMemberCount} member{parsedMemberCount === 1 ? '' : 's'}</p>
+                <p className="mt-3 text-xs leading-5 text-muted">Changes apply to the live /staff page after saving.</p>
               </div>
             </aside>
           </div>

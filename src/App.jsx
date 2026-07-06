@@ -10,6 +10,8 @@ import NewsList from './news/NewsList.jsx'
 import News from './news/News.jsx'
 import PolicyPage from './common/PolicyPage.jsx'
 import { getPolicies, loadPolicies } from './content/policyStore.js'
+import StaffPage from './common/StaffPage.jsx'
+import { getStaff, loadStaff } from './content/staffStore.js'
 import { getNewsItemBySlug, loadNewsItems } from './news/adminNewsStore.js'
 
 const SERVER_ADDRESS = 'play.alwination.id'
@@ -480,23 +482,47 @@ function AdminPageLoading() {
   )
 }
 
+function StaffPageLoading() {
+  return (
+    <main className="min-h-svh bg-bg pb-24 pt-32 text-white">
+      <section className="mx-auto max-w-[1080px] px-6">
+        <div className="rounded-[24px] border border-white/10 bg-surface p-7 sm:p-10">
+          <div className="h-4 w-36 animate-pulse rounded-full bg-white/10" />
+          <div className="mt-5 h-12 max-w-[520px] animate-pulse rounded-full bg-white/10" />
+          <div className="mt-6 h-4 max-w-[680px] animate-pulse rounded-full bg-white/10" />
+        </div>
+      </section>
+      <section className="mx-auto mt-8 max-w-[1080px] px-6">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }, (_, index) => (
+            <div className="h-28 animate-pulse rounded-[18px] border border-white/10 bg-surface" key={`staff-loading-${index}`} />
+          ))}
+        </div>
+      </section>
+    </main>
+  )
+}
+
 function App() {
   const [activeSection, setActiveSection] = useState(getInitialActiveSection)
   const [newsItems, setNewsItems] = useState([])
   const [isLoadingNews, setIsLoadingNews] = useState(true)
   const [policies, setPolicies] = useState(getPolicies)
   const [isLoadingPolicies, setIsLoadingPolicies] = useState(true)
+  const [staff, setStaff] = useState(getStaff)
+  const [isLoadingStaff, setIsLoadingStaff] = useState(true)
   const serverStatus = useServerStatus()
   const visibleNewsItems = newsItems.slice(0, newsToShow)
   const isAdminPage = window.location.pathname === '/admin'
   const isNewsListPage = window.location.pathname === '/news'
   const isRulesPage = window.location.pathname === '/rules'
   const isTermsPage = window.location.pathname === '/terms'
+  const isStaffPage = window.location.pathname === '/staff'
   const isHomePage = window.location.pathname === '/'
   const newsSlug = window.location.pathname.match(/^\/news\/([^/]+)\/?$/)?.[1]
   const selectedNewsItem = newsSlug ? getNewsItemBySlug(newsItems, decodeURIComponent(newsSlug)) : null
   const isKnownPath =
-    isHomePage || isAdminPage || isNewsListPage || isRulesPage || isTermsPage || Boolean(newsSlug)
+    isHomePage || isAdminPage || isNewsListPage || isRulesPage || isTermsPage || isStaffPage || Boolean(newsSlug)
 
   useEffect(() => {
     let isCurrent = true
@@ -534,8 +560,26 @@ function App() {
     }
   }, [isRulesPage, isTermsPage, isAdminPage])
 
+  useEffect(() => {
+    let isCurrent = true
+
+    async function loadStaffContent() {
+      setIsLoadingStaff(true)
+      const loaded = await loadStaff()
+      if (isCurrent) {
+        setStaff(loaded)
+        setIsLoadingStaff(false)
+      }
+    }
+
+    loadStaffContent()
+    return () => {
+      isCurrent = false
+    }
+  }, [isStaffPage, isAdminPage])
+
   useLayoutEffect(() => {
-    if (newsSlug || isNewsListPage || isAdminPage || isRulesPage || isTermsPage || !isKnownPath) {
+    if (newsSlug || isNewsListPage || isAdminPage || isRulesPage || isTermsPage || isStaffPage || !isKnownPath) {
       setActiveSection('news')
       return undefined
     }
@@ -592,7 +636,7 @@ function App() {
       window.removeEventListener('scroll', updateActiveSection)
       window.removeEventListener('resize', updateActiveSection)
     }
-  }, [newsSlug, isNewsListPage, isAdminPage, isRulesPage, isTermsPage, isKnownPath])
+  }, [newsSlug, isNewsListPage, isAdminPage, isRulesPage, isTermsPage, isStaffPage, isKnownPath])
 
   if (!isKnownPath) {
     return (
@@ -608,7 +652,7 @@ function App() {
     return (
       <div className="min-h-svh overflow-x-hidden bg-bg">
         <Navbar activeSection="admin" />
-        {isLoadingNews || isLoadingPolicies ? (
+        {isLoadingNews || isLoadingPolicies || isLoadingStaff ? (
           <AdminPageLoading />
         ) : (
           <AdminPanel
@@ -616,6 +660,8 @@ function App() {
             onNewsChange={setNewsItems}
             policies={policies}
             onPoliciesChange={setPolicies}
+            staff={staff}
+            onStaffChange={setStaff}
           />
         )}
         <Footer />
@@ -653,6 +699,16 @@ function App() {
       <div className="min-h-svh overflow-x-hidden bg-bg">
         <Navbar activeSection="news" />
         <NewsList newsItems={newsItems} isLoading={isLoadingNews} />
+        <Footer />
+      </div>
+    )
+  }
+
+  if (isStaffPage) {
+    return (
+      <div className="min-h-svh bg-bg">
+        <Navbar activeSection="staff" />
+        {isLoadingStaff ? <StaffPageLoading /> : <StaffPage {...staff} />}
         <Footer />
       </div>
     )
