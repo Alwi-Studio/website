@@ -158,8 +158,12 @@ function getBlockText(block) {
     return block
   }
 
+  if (block.type === 'heading') {
+    return `${'#'.repeat(Math.min(Math.max(block.level ?? 2, 1), 3))} ${block.text ?? ''}`.trim()
+  }
+
   if (block.type === 'list') {
-    return block.items.join('\n')
+    return block.items.map((item) => `- ${item}`).join('\n')
   }
 
   if (block.type === 'quote') {
