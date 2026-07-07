@@ -11,6 +11,10 @@ const maxNewsBodyBytes = 64 * 1024
 const maxHighlights = 12
 const maxHighlightLength = 160
 const maxTextLength = 5000
+const maxStaffGroups = 24
+const maxStaffMembers = 200
+const maxWikiCategories = 40
+const maxWikiArticles = 400
 
 export function json(res, status, body, extraHeaders = {}) {
   res.statusCode = status
@@ -138,6 +142,7 @@ function requireSupabase() {
 
 async function supabaseRequest(path, options = {}) {
   requireSupabase()
+  const tableName = path.split('?')[0]
 
   const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
     ...options,
@@ -155,10 +160,10 @@ async function supabaseRequest(path, options = {}) {
   if (!response.ok) {
     if (
       parsedData?.code === 'PGRST205' ||
-      parsedData?.message?.includes("Could not find the table 'public.news_posts'")
+      parsedData?.message?.includes(`Could not find the table 'public.${tableName}'`)
     ) {
       throw new Error(
-        'Supabase is configured, but public.news_posts does not exist yet. Run database/supabase-news.sql in the Supabase SQL editor, then retry.',
+        `Supabase is configured, but public.${tableName} does not exist yet. Run database/supabase-news.sql in the Supabase SQL editor, then retry.`,
       )
     }
 
@@ -228,6 +233,24 @@ export async function readPolicies() {
   }, {})
 }
 
+export async function readStaff() {
+  const rows = await supabaseRequest('staff_pages?key=eq.main&select=staff&limit=1')
+  if (!Array.isArray(rows) || !rows[0]?.staff) {
+    return null
+  }
+
+  return normalizeStaff(rows[0].staff)
+}
+
+export async function readWiki() {
+  const rows = await supabaseRequest('wiki_pages?key=eq.main&select=wiki&limit=1')
+  if (!Array.isArray(rows) || !rows[0]?.wiki) {
+    return null
+  }
+
+  return normalizeWiki(rows[0].wiki)
+}
+
 export async function savePolicy(key, policy) {
   if (key !== 'rules' && key !== 'terms') {
     throw new Error('Unknown policy key.')
@@ -246,12 +269,68 @@ export async function savePolicy(key, policy) {
   })
 }
 
+export async function saveStaff(staff) {
+  const normalizedStaff = normalizeStaff(staff)
+  validateStaff(normalizedStaff)
+
+  await supabaseRequest('staff_pages?on_conflict=key', {
+    method: 'POST',
+    body: JSON.stringify({
+      key: 'main',
+      staff: normalizedStaff,
+      updated_at: new Date().toISOString(),
+    }),
+    headers: {
+      Prefer: 'resolution=merge-duplicates,return=representation',
+    },
+  })
+
+  return normalizedStaff
+}
+
+export async function saveWiki(wiki) {
+  const normalizedWiki = normalizeWiki(wiki)
+  validateWiki(normalizedWiki)
+
+  await supabaseRequest('wiki_pages?on_conflict=key', {
+    method: 'POST',
+    body: JSON.stringify({
+      key: 'main',
+      wiki: normalizedWiki,
+      updated_at: new Date().toISOString(),
+    }),
+    headers: {
+      Prefer: 'resolution=merge-duplicates,return=representation',
+    },
+  })
+
+  return normalizedWiki
+}
+
 export async function deletePolicy(key) {
   if (key !== 'rules' && key !== 'terms') {
     throw new Error('Unknown policy key.')
   }
 
   await supabaseRequest(`policy_pages?key=eq.${encodeURIComponent(key)}`, {
+    method: 'DELETE',
+    headers: {
+      Prefer: 'return=minimal',
+    },
+  })
+}
+
+export async function deleteStaff() {
+  await supabaseRequest('staff_pages?key=eq.main', {
+    method: 'DELETE',
+    headers: {
+      Prefer: 'return=minimal',
+    },
+  })
+}
+
+export async function deleteWiki() {
+  await supabaseRequest('wiki_pages?key=eq.main', {
     method: 'DELETE',
     headers: {
       Prefer: 'return=minimal',
@@ -302,6 +381,171 @@ export async function deleteAdminNews(slug) {
 
 function trimText(value, maxLength = maxTextLength) {
   return String(value ?? '').trim().slice(0, maxLength)
+}
+
+function normalizeStaffMember(member) {
+  if (typeof member === 'string') {
+    const name = trimText(member, 120)
+    return name ? { name } : null
+  }
+
+  if (!member || typeof member !== 'object') {
+    return null
+  }
+
+  const name = trimText(member.name, 120)
+  if (!name) {
+    return null
+  }
+
+  const role = trimText(member.role, 160)
+  const note = trimText(member.note, 1000)
+
+  return {
+    name,
+    ...(role ? { role } : {}),
+    ...(note ? { note } : {}),
+  }
+}
+
+function normalizeStaffGroup(group) {
+  if (!group || typeof group !== 'object') {
+    return null
+  }
+
+  const name = trimText(group.name, 120)
+  const members = Array.isArray(group.members)
+    ? group.members.map(normalizeStaffMember).filter(Boolean)
+    : []
+
+  if (!name || members.length === 0) {
+    return null
+  }
+
+  return {
+    name,
+    members,
+  }
+}
+
+export function normalizeStaff(staff) {
+  const groups = Array.isArray(staff?.groups)
+    ? staff.groups.map(normalizeStaffGroup).filter(Boolean).slice(0, maxStaffGroups)
+    : []
+
+  return {
+    eyebrow: trimText(staff?.eyebrow, 80) || 'Meet the Team',
+    title: trimText(staff?.title, 160),
+    updated: trimText(staff?.updated, 80),
+    intro: trimText(staff?.intro, 1000),
+    groups,
+  }
+}
+
+export function validateStaff(staff) {
+  if (!staff.title || !Array.isArray(staff.groups) || staff.groups.length === 0) {
+    throw new Error('Staff title and at least one staff member are required.')
+  }
+
+  const memberCount = staff.groups.reduce((sum, group) => sum + group.members.length, 0)
+  if (memberCount > maxStaffMembers) {
+    throw new Error(`Staff page can include up to ${maxStaffMembers} members.`)
+  }
+
+  if (Buffer.byteLength(JSON.stringify(staff), 'utf8') > 65536) {
+    throw new Error('Staff page is too large. Keep it under 64 KB of text content.')
+  }
+}
+
+function slugifyText(value) {
+  return trimText(value, 160)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function normalizeWikiArticle(article, usedSlugs) {
+  if (!article || typeof article !== 'object') {
+    return null
+  }
+
+  const title = trimText(article.title, 180)
+  if (!title) {
+    return null
+  }
+
+  const baseSlug = slugifyText(article.slug) || slugifyText(title) || 'page'
+  let slug = baseSlug
+  let counter = 2
+  while (usedSlugs.has(slug)) {
+    slug = `${baseSlug}-${counter}`
+    counter += 1
+  }
+  usedSlugs.add(slug)
+
+  return {
+    slug,
+    title,
+    ...(trimText(article.excerpt, 400) ? { excerpt: trimText(article.excerpt, 400) } : {}),
+    ...(trimText(article.updated, 80) ? { updated: trimText(article.updated, 80) } : {}),
+    body: trimText(article.body, 20000),
+  }
+}
+
+function normalizeWikiCategory(category, usedSlugs) {
+  if (!category || typeof category !== 'object') {
+    return null
+  }
+
+  const name = trimText(category.name, 140)
+  if (!name) {
+    return null
+  }
+
+  const articles = Array.isArray(category.articles)
+    ? category.articles.map((article) => normalizeWikiArticle(article, usedSlugs)).filter(Boolean)
+    : []
+
+  return {
+    id: slugifyText(category.id) || slugifyText(name) || 'category',
+    name,
+    icon: trimText(category.icon, 8) || '\uD83D\uDCC4',
+    ...(trimText(category.description, 500) ? { description: trimText(category.description, 500) } : {}),
+    articles,
+  }
+}
+
+export function normalizeWiki(wiki) {
+  const usedSlugs = new Set()
+  const categories = Array.isArray(wiki?.categories)
+    ? wiki.categories
+        .map((category) => normalizeWikiCategory(category, usedSlugs))
+        .filter(Boolean)
+        .slice(0, maxWikiCategories)
+    : []
+
+  return {
+    eyebrow: trimText(wiki?.eyebrow, 80) || 'Server Wiki',
+    title: trimText(wiki?.title, 160),
+    updated: trimText(wiki?.updated, 80),
+    intro: trimText(wiki?.intro, 1000),
+    categories,
+  }
+}
+
+export function validateWiki(wiki) {
+  if (!wiki.title || !Array.isArray(wiki.categories) || wiki.categories.length === 0) {
+    throw new Error('Wiki title and at least one category are required.')
+  }
+
+  const articleCount = wiki.categories.reduce((sum, category) => sum + category.articles.length, 0)
+  if (articleCount > maxWikiArticles) {
+    throw new Error(`Wiki can include up to ${maxWikiArticles} articles.`)
+  }
+
+  if (Buffer.byteLength(JSON.stringify(wiki), 'utf8') > 512 * 1024) {
+    throw new Error('Wiki is too large. Keep it under 512 KB of text content.')
+  }
 }
 
 function normalizeBodyBlock(block) {

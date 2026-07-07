@@ -46,3 +46,37 @@ create policy "Public can read policy pages"
   on public.policy_pages
   for select
   using (true);
+
+create table if not exists public.staff_pages (
+  key text primary key,
+  staff jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint staff_pages_known_key check (key = 'main'),
+  constraint staff_pages_staff_size check (octet_length(staff::text) <= 65536)
+);
+
+alter table public.staff_pages enable row level security;
+
+drop policy if exists "Public can read staff pages" on public.staff_pages;
+create policy "Public can read staff pages"
+  on public.staff_pages
+  for select
+  using (true);
+
+create table if not exists public.wiki_pages (
+  key text primary key,
+  wiki jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint wiki_pages_known_key check (key = 'main'),
+  constraint wiki_pages_wiki_size check (octet_length(wiki::text) <= 524288)
+);
+
+alter table public.wiki_pages enable row level security;
+
+drop policy if exists "Public can read wiki pages" on public.wiki_pages;
+create policy "Public can read wiki pages"
+  on public.wiki_pages
+  for select
+  using (true);

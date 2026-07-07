@@ -77,7 +77,9 @@ async function requestJson(url, options = {}) {
   })
   const data = await response.json().catch(() => ({}))
   if (!response.ok) {
-    throw new Error(data.error ?? 'Request failed.')
+    const error = new Error(data.error ?? 'Request failed.')
+    error.status = response.status
+    throw error
   }
   return data
 }
@@ -100,15 +102,21 @@ export async function loadWiki() {
 // Persist an admin edit. Tries the server, then always mirrors locally so the
 // change is visible immediately even without a backend endpoint.
 export async function saveAdminWiki(wiki) {
+  let savedWiki = wiki
+
   try {
-    await requestJson('/api/admin/wiki', {
+    const data = await requestJson('/api/admin/wiki', {
       method: 'POST',
       body: JSON.stringify({ wiki }),
     })
-  } catch {
-    // Server endpoint not available \u2014 local override still applies.
+    savedWiki = data.wiki ?? wiki
+  } catch (error) {
+    if (error.status !== 404) {
+      throw error
+    }
+    // Server endpoint not available in local/static mode; local override still applies.
   }
-  writeOverride(wiki)
+  writeOverride(savedWiki)
   return getWiki()
 }
 
@@ -116,8 +124,11 @@ export async function saveAdminWiki(wiki) {
 export async function resetAdminWiki() {
   try {
     await requestJson('/api/admin/wiki', { method: 'DELETE' })
-  } catch {
-    // Ignore missing endpoint.
+  } catch (error) {
+    if (error.status !== 404) {
+      throw error
+    }
+    // Ignore missing endpoint in local/static mode.
   }
   writeOverride(null)
   return getWiki()

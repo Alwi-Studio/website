@@ -62,7 +62,9 @@ async function requestJson(url, options = {}) {
   })
   const data = await response.json().catch(() => ({}))
   if (!response.ok) {
-    throw new Error(data.error ?? 'Request failed.')
+    const error = new Error(data.error ?? 'Request failed.')
+    error.status = response.status
+    throw error
   }
   return data
 }
@@ -85,15 +87,21 @@ export async function loadStaff() {
 // Persist an admin edit. Tries the server, then always mirrors locally so the
 // change is visible immediately even without a backend endpoint.
 export async function saveAdminStaff(staff) {
+  let savedStaff = staff
+
   try {
-    await requestJson('/api/admin/staff', {
+    const data = await requestJson('/api/admin/staff', {
       method: 'POST',
       body: JSON.stringify({ staff }),
     })
-  } catch {
-    // Server endpoint not available \u2014 local override still applies.
+    savedStaff = data.staff ?? staff
+  } catch (error) {
+    if (error.status !== 404) {
+      throw error
+    }
+    // Server endpoint not available in local/static mode; local override still applies.
   }
-  writeOverride(staff)
+  writeOverride(savedStaff)
   return getStaff()
 }
 
@@ -101,8 +109,11 @@ export async function saveAdminStaff(staff) {
 export async function resetAdminStaff() {
   try {
     await requestJson('/api/admin/staff', { method: 'DELETE' })
-  } catch {
-    // Ignore missing endpoint.
+  } catch (error) {
+    if (error.status !== 404) {
+      throw error
+    }
+    // Ignore missing endpoint in local/static mode.
   }
   writeOverride(null)
   return getStaff()
