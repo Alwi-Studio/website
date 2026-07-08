@@ -3,7 +3,7 @@ import { createReadStream, existsSync } from 'node:fs'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { extname, resolve } from 'node:path'
-import sharp from 'sharp'
+import { optimizedRemoteImage } from './image-optimizer.mjs'
 
 const rootDir = process.cwd()
 const distDir = resolve(rootDir, 'dist')
@@ -66,9 +66,6 @@ const maxNewsBodyBytes = 64 * 1024
 const maxHighlights = 12
 const maxHighlightLength = 160
 const maxTextLength = 5000
-const maxRemoteImageBytes = 8 * 1024 * 1024
-const maxOptimizedImageWidth = 1920
-
 if (!sessionSecret || sessionSecret.length < 32) {
   console.warn('SESSION_SECRET should be set to a random value with at least 32 characters.')
 }
@@ -88,97 +85,6 @@ function json(res, status, body, extraHeaders = {}) {
     ...extraHeaders,
   })
   res.end(JSON.stringify(body))
-}
-
-function isPrivateIpv4(hostname) {
-  const parts = hostname.split('.').map((part) => Number(part))
-
-  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
-    return false
-  }
-
-  const [first, second] = parts
-
-  return (
-    first === 10 ||
-    first === 127 ||
-    (first === 172 && second >= 16 && second <= 31) ||
-    (first === 192 && second === 168) ||
-    (first === 169 && second === 254) ||
-    first === 0
-  )
-}
-
-function validateRemoteImageUrl(value) {
-  let url
-
-  try {
-    url = new URL(value)
-  } catch {
-    throw new Error('Invalid image URL.')
-  }
-
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new Error('Image URL must use HTTP or HTTPS.')
-  }
-
-  const hostname = url.hostname.toLowerCase()
-
-  if (
-    hostname === 'localhost' ||
-    hostname === '::1' ||
-    hostname.endsWith('.local') ||
-    isPrivateIpv4(hostname)
-  ) {
-    throw new Error('Image host is not allowed.')
-  }
-
-  return url
-}
-
-async function optimizedRemoteImage(url) {
-  const imageUrl = validateRemoteImageUrl(url.searchParams.get('url') ?? '')
-  const requestedWidth = Number(url.searchParams.get('w'))
-  const width =
-    Number.isFinite(requestedWidth) && requestedWidth > 0
-      ? Math.min(Math.round(requestedWidth), maxOptimizedImageWidth)
-      : 1200
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 8000)
-
-  try {
-    const response = await fetch(imageUrl, {
-      signal: controller.signal,
-      headers: {
-        Accept: 'image/avif,image/webp,image/*,*/*;q=0.8',
-        'User-Agent': 'AlwiNation image optimizer',
-      },
-    })
-
-    if (!response.ok) {
-      throw new Error('Could not fetch image.')
-    }
-
-    const contentLength = Number(response.headers.get('content-length') ?? '0')
-
-    if (contentLength > maxRemoteImageBytes) {
-      throw new Error('Image is too large.')
-    }
-
-    const sourceBuffer = Buffer.from(await response.arrayBuffer())
-
-    if (sourceBuffer.byteLength > maxRemoteImageBytes) {
-      throw new Error('Image is too large.')
-    }
-
-    return sharp(sourceBuffer, { animated: false })
-      .rotate()
-      .resize({ width, withoutEnlargement: true })
-      .avif({ quality: 52, effort: 6 })
-      .toBuffer()
-  } finally {
-    clearTimeout(timeout)
-  }
 }
 
 async function readJsonBody(req) {
@@ -613,11 +519,11 @@ async function handleApi(req, res, url) {
     const image = await optimizedRemoteImage(url)
 
     res.writeHead(200, {
-      'Content-Type': 'image/avif',
-      'Content-Length': String(image.byteLength),
+      'Content-Type': image.contentType,
+      'Content-Length': String(image.buffer.byteLength),
       'Cache-Control': 'public, max-age=86400, s-maxage=31536000, stale-while-revalidate=604800',
     })
-    res.end(image)
+    res.end(image.buffer)
     return
   }
 

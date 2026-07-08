@@ -1,4 +1,5 @@
 import { isSafeImageUrl } from './safeUrls.js'
+import { getOptimizedImageUrl } from './imageOptimizer.js'
 import { RichInline, parseMarkdownBlocks } from './RichText.jsx'
 
 // Renders Discord-style markdown (the same mini-syntax used across the site) into
@@ -96,11 +97,13 @@ export function MarkdownBody({ text, className = '' }) {
             return null
           }
 
+          const imageSrc = getOptimizedImageUrl(block.src, 1200) || block.src
+
           return (
             <figure key={key} className="overflow-hidden rounded-xl border border-white/10 bg-bg-2">
               <img
                 className="h-auto max-h-[560px] w-full object-cover"
-                src={block.src}
+                src={imageSrc}
                 alt={block.alt}
                 loading="lazy"
                 decoding="async"

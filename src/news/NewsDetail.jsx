@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import News from './News.jsx'
 import { RichInline } from '../common/RichText.jsx'
 import { isSafeImageUrl } from '../common/safeUrls.js'
-import { getOptimizedImageUrl } from './imageOptimizer.js'
+import { getOptimizedImageUrl } from '../common/imageOptimizer.js'
 
 function HeroImage({ src, avifSrc = '' }) {
   const imageRef = useRef(null)
@@ -150,11 +150,13 @@ function ArticleBlock({ block }) {
       return null
     }
 
+    const imageSrc = getOptimizedImageUrl(block.src, 1400) || block.src
+
     return (
       <figure className="overflow-hidden rounded-lg border border-white/10 bg-[#202020]">
         <img
           className="h-auto max-h-[620px] w-full object-cover"
-          src={block.src}
+          src={imageSrc}
           alt={block.alt}
           loading="lazy"
           decoding="async"

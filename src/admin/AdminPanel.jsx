@@ -93,8 +93,8 @@ const formattingExamples = [
   },
   {
     title: 'News image URL',
-    description: 'Use a direct image URL that starts with http:// or https://. Direct .avif or .webp images are preferred.',
-    code: 'https://example.com/news-image.webp',
+    description: 'Use a direct image URL that starts with http:// or https://. PNG, JPG, and WebP images are converted to optimized WebP.',
+    code: 'https://example.com/news-image.png',
   },
 ]
 
@@ -1369,9 +1369,9 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
 
                 <label className={labelClass}>
                   Image URL
-                  <input className={inputClass} placeholder="https://example.com/news-image.avif" value={form.imageUrl} onChange={(event) => updateField('imageUrl', event.target.value)} />
+                  <input className={inputClass} placeholder="https://example.com/news-image.png" value={form.imageUrl} onChange={(event) => updateField('imageUrl', event.target.value)} />
                   <span className="text-xs font-medium leading-5 text-muted">
-                    Use a direct optimized image URL, preferably .avif or .webp. Large .jpg/.png files can slow the news page even with lazy loading.
+                    Use a direct image URL. PNG, JPG, and WebP images are converted to optimized WebP.
                   </span>
                 </label>
 
