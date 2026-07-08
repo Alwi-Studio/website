@@ -1,4 +1,8 @@
 import { spawn } from 'node:child_process'
+import { randomBytes } from 'node:crypto'
+import { readFile, unlink } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import ffmpeg from '@ffmpeg-installer/ffmpeg'
 
 const maxSourceBytes = 8 * 1024 * 1024
@@ -102,8 +106,9 @@ function convertImageToWebp(sourceBuffer, width) {
     throw new Error('FFmpeg binary is not available.')
   }
 
+  const outputPath = join(tmpdir(), `alwination-${Date.now()}-${randomBytes(6).toString('hex')}.webp`)
+
   return new Promise((resolve, reject) => {
-    const chunks = []
     const errors = []
     const args = [
       '-hide_banner',
@@ -123,9 +128,8 @@ function convertImageToWebp(sourceBuffer, width) {
       '5',
       '-preset',
       'picture',
-      '-f',
-      'webp',
-      'pipe:1',
+      '-y',
+      outputPath,
     ]
     const ffmpegProcess = spawn(ffmpeg.path, args, { stdio: ['pipe', 'pipe', 'pipe'] })
     const timeout = setTimeout(() => {
@@ -133,22 +137,29 @@ function convertImageToWebp(sourceBuffer, width) {
       reject(new Error('Image conversion timed out.'))
     }, ffmpegTimeoutMs)
 
-    ffmpegProcess.stdout.on('data', (chunk) => chunks.push(chunk))
     ffmpegProcess.stderr.on('data', (chunk) => errors.push(chunk))
     ffmpegProcess.on('error', (error) => {
       clearTimeout(timeout)
       reject(error)
     })
-    ffmpegProcess.on('close', (code) => {
+    ffmpegProcess.on('close', async (code) => {
       clearTimeout(timeout)
 
       if (code !== 0) {
         const message = Buffer.concat(errors).toString('utf8').trim()
+        await unlink(outputPath).catch(() => {})
         reject(new Error(message || 'Image conversion failed.'))
         return
       }
 
-      resolve(Buffer.concat(chunks))
+      try {
+        const outputBuffer = await readFile(outputPath)
+        resolve(outputBuffer)
+      } catch (error) {
+        reject(error)
+      } finally {
+        await unlink(outputPath).catch(() => {})
+      }
     })
 
     ffmpegProcess.stdin.end(sourceBuffer)

@@ -3,5 +3,5 @@ export function getOptimizedImageUrl(src, width) {
     return ''
   }
 
-  return `/api/image?url=${encodeURIComponent(src)}&w=${width}`
+  return `/api/image?url=${encodeURIComponent(src)}&w=${width}&v=webp-file-1`
 }
