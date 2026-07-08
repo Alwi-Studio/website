@@ -234,7 +234,7 @@ function Navbar({ activeSection = 'home' }) {
       <div
         id="navbar-menu"
         className={`origin-top overflow-hidden px-4 transition-all duration-200 ease-out md:hidden ${
-          isOpen ? 'max-h-[560px] pb-4 opacity-100' : 'max-h-0 opacity-0'
+          isOpen ? 'max-h-[660px] pb-4 opacity-100' : 'max-h-0 opacity-0'
         }`}
       >
         <ul className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-surface-2/95 p-2 shadow-[0_18px_40px_rgba(0,0,0,0.34)] backdrop-blur-xl">
@@ -287,9 +287,20 @@ function Navbar({ activeSection = 'home' }) {
               target="_blank"
               rel="noreferrer"
               onClick={() => setIsOpen(false)}
-              className="mt-1 flex min-h-11 items-center justify-center rounded-lg bg-gradient-to-b from-brand-2 to-brand px-4 text-sm font-semibold text-[#1a0d07]"
+              className="mt-1 flex min-h-11 items-center justify-center rounded-lg bg-gradient-to-b from-brand-2 to-brand px-4 text-sm font-semibold text-[#212121]"
             >
               Store
+            </a>
+          </li>
+          <li>
+            <a
+                href={storeHref}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => setIsOpen(false)}
+                className="mt-1 flex min-h-11 items-center justify-center rounded-lg bg-gradient-to-b from-brand-2-discord to-brand-discord px-4 text-sm font-semibold text-[#212121]"
+            >
+              Discord
             </a>
           </li>
         </ul>
