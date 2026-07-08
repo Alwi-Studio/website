@@ -23,7 +23,7 @@ const BEDROCK_PORT = '19132'
 const workItems = [
   {
     title: 'Realms',
-    description: 'Explore a variety of custom gameplay experiences, including Survival SlimeFun, Survival RPG, Survival War, OneBlock SlimeFun, OneBlock Classic, Gens Tycoon, Prison, Earth, Creative, Semi-Vanilla, PvP Arena.',
+    description: 'Embark on unforgettable journeys across a variety of unique realms, each offering its own challenges, progression systems, and gameplay experiences.',
     list: [
         'Multiple Game Modes',
         'Custom Features',
