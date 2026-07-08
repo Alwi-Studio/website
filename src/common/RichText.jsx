@@ -1,6 +1,4 @@
-function isSafeUrl(value) {
-  return /^(https?:\/\/|mailto:|\/)/i.test(value)
-}
+import { isSafeUrl } from './safeUrls.js'
 
 function parseInline(text) {
   const pattern =
@@ -156,6 +154,18 @@ export function parseMarkdownBlocks(text) {
       continue
     }
 
+    const image = trimmed.match(/^!\[([^\]]*)\]\(([^)\s]+)\)(?:\s+(.+))?$/)
+    if (image) {
+      blocks.push({
+        type: 'image',
+        alt: image[1].trim(),
+        src: image[2].trim(),
+        caption: (image[3] ?? '').trim(),
+      })
+      index += 1
+      continue
+    }
+
     if (trimmed.startsWith('> ')) {
       const quoteLines = []
       while (index < lines.length && lines[index].trim().startsWith('> ')) {
@@ -190,6 +200,7 @@ export function parseMarkdownBlocks(text) {
       !lines[index].trim().startsWith(':::callout') &&
       !lines[index].trim().startsWith(':::stats') &&
       !/^(#{1,3})\s+/.test(lines[index].trim()) &&
+      !/^!\[[^\]]*\]\([^)]+\)(?:\s+.+)?$/.test(lines[index].trim()) &&
       !lines[index].trim().startsWith('> ') &&
       !/^[-*]\s+/.test(lines[index].trim())
     ) {

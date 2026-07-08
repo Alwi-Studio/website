@@ -573,6 +573,14 @@ function normalizeBodyBlock(block) {
     return items.length > 0 ? { type: 'stats', items } : null
   }
 
+  if (block.type === 'image') {
+    const src = trimText(block.src, 1000)
+    const alt = trimText(block.alt, 180)
+    const caption = trimText(block.caption, 500)
+
+    return /^(https?:\/\/|\/)/i.test(src) ? { type: 'image', src, alt, ...(caption ? { caption } : {}) } : null
+  }
+
   const text = trimText(block.text)
 
   return text ? { type: 'paragraph', text } : null

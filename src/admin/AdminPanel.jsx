@@ -7,6 +7,7 @@ import {
   saveAdminNewsItem,
 } from '../news/adminNewsStore.js'
 import { RichInline, parseMarkdownBlocks } from '../common/RichText.jsx'
+import { isSafeImageUrl } from '../common/safeUrls.js'
 import { isPolicyCustomized, resetAdminPolicy, saveAdminPolicy } from '../content/policyStore.js'
 import { isStaffCustomized, resetAdminStaff, saveAdminStaff } from '../content/staffStore.js'
 import { isWikiCustomized } from '../content/wikiStore.js'
@@ -72,13 +73,18 @@ const sharedArticleExamples = [
     description: 'Use stats for short label/value cards. Each stat line must use Label: Value. Supported in news and wiki article bodies.',
     code: ':::stats\nNews pages: 3\nPost fields: 10+\nDatabase-ready: Yes\n:::',
   },
+  {
+    title: 'Article images',
+    description: 'Put an image on its own line in a news or wiki article body. Add optional caption text after the URL.',
+    code: '![Spawn preview](https://example.com/spawn.webp) Optional caption text',
+  },
 ]
 
 const formattingExamples = [
   {
     title: 'News body',
     description: 'Use the shared article syntax in the Body field. Highlights are separate: one highlight per line.',
-    code: '# Update title\nShort intro paragraph with **bold** text.\n\n:::callout Important\nRestart your launcher before joining.\n:::\n\n:::stats\nPlayers online: 120\nVersion: 1.21.11\n:::\n\n- Added new rewards\n- Fixed spawn protection',
+    code: '# Update title\nShort intro paragraph with **bold** text.\n\n![Update preview](https://example.com/news-image.webp) Preview caption\n\n:::callout Important\nRestart your launcher before joining.\n:::\n\n:::stats\nPlayers online: 120\nVersion: 1.21.11\n:::\n\n- Added new rewards\n- Fixed spawn protection',
   },
   {
     title: 'News highlights',
@@ -106,7 +112,7 @@ const wikiFormattingExamples = [
   {
     title: 'Wiki article body',
     description: 'Use the shared article syntax. Callouts and stats work here too because wiki uses the same MarkdownBody renderer.',
-    code: '# Claiming land\nUse `/claim` to protect your base.\n\n:::callout Tip\nStand inside your build before creating a claim.\n:::\n\n:::stats\nClaim blocks: Earned by playtime\nProtection: Enabled\n:::',
+    code: '# Claiming land\nUse `/claim` to protect your base.\n\n![Claim example](https://example.com/claim-guide.webp) Claim area example\n\n:::callout Tip\nStand inside your build before creating a claim.\n:::\n\n:::stats\nClaim blocks: Earned by playtime\nProtection: Enabled\n:::',
   },
 ]
 
@@ -195,6 +201,13 @@ function getBlockText(block) {
 
   if (block.type === 'stats') {
     return [':::stats', ...block.items.map((item) => `${item.label}: ${item.value}`), ':::'].join('\n')
+  }
+
+  if (block.type === 'image') {
+    const alt = block.alt ?? ''
+    const src = block.src ?? ''
+    const caption = block.caption ? ` ${block.caption}` : ''
+    return src ? `![${alt}](${src})${caption}` : ''
   }
 
   return block.text ?? ''
@@ -556,6 +569,23 @@ function PreviewArticleBlock({ block }) {
         <h4 className="text-lg font-bold text-white"><RichInline text={block.title} /></h4>
         <p className="mt-3 text-sm leading-7 text-zinc-200"><RichInline text={block.text} /></p>
       </div>
+    )
+  }
+
+  if (block.type === 'image') {
+    if (!isSafeImageUrl(block.src)) {
+      return null
+    }
+
+    return (
+      <figure className="overflow-hidden rounded-lg border border-white/10 bg-bg-2">
+        <img className="h-auto max-h-[360px] w-full object-cover" src={block.src} alt={block.alt} loading="lazy" decoding="async" />
+        {block.caption && (
+          <figcaption className="border-t border-white/10 px-4 py-3 text-xs leading-5 text-muted">
+            <RichInline text={block.caption} />
+          </figcaption>
+        )}
+      </figure>
     )
   }
 
@@ -1349,12 +1379,12 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                   Body
                   <textarea
                     className={`${textareaClass} min-h-48`}
-                    placeholder={'Use Discord-style formatting:\n# title\n> quote\n> -- AlwiNation Team\n- list\n```code block```\n\n:::callout Title\nCallout text\n:::\n\n:::stats\nPlayers: 120\nUptime: 99%\n:::'}
+                    placeholder={'Use Discord-style formatting:\n# title\n![Image alt](https://example.com/image.webp) Optional caption\n> quote\n> -- AlwiNation Team\n- list\n```code block```\n\n:::callout Title\nCallout text\n:::\n\n:::stats\nPlayers: 120\nUptime: 99%\n:::'}
                     value={form.bodyText}
                     onChange={(event) => updateField('bodyText', event.target.value)}
                   />
                   <span className="text-xs font-medium leading-5 text-muted">
-                    Use :::callout Title and :::stats fenced blocks for special news sections.
+                    Use ![alt](https://example.com/image.webp) for article images, plus :::callout Title and :::stats fenced blocks for special news sections.
                     {' '}
                     <a className="font-semibold text-brand-2 underline underline-offset-4 hover:text-brand" href="/admin/docs">
                       View formatting docs

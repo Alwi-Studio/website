@@ -1,3 +1,4 @@
+import { isSafeImageUrl } from './safeUrls.js'
 import { RichInline, parseMarkdownBlocks } from './RichText.jsx'
 
 // Renders Discord-style markdown (the same mini-syntax used across the site) into
@@ -87,6 +88,29 @@ export function MarkdownBody({ text, className = '' }) {
               <h3 className="font-bold text-white"><RichInline text={block.title} /></h3>
               <p className="mt-2 text-sm leading-6 text-muted"><RichInline text={block.text} /></p>
             </div>
+          )
+        }
+
+        if (block.type === 'image') {
+          if (!isSafeImageUrl(block.src)) {
+            return null
+          }
+
+          return (
+            <figure key={key} className="overflow-hidden rounded-xl border border-white/10 bg-bg-2">
+              <img
+                className="h-auto max-h-[560px] w-full object-cover"
+                src={block.src}
+                alt={block.alt}
+                loading="lazy"
+                decoding="async"
+              />
+              {block.caption && (
+                <figcaption className="border-t border-white/10 px-4 py-3 text-xs leading-5 text-muted">
+                  <RichInline text={block.caption} />
+                </figcaption>
+              )}
+            </figure>
           )
         }
 

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import News from './News.jsx'
 import { RichInline } from '../common/RichText.jsx'
+import { isSafeImageUrl } from '../common/safeUrls.js'
 import { getOptimizedImageUrl } from './imageOptimizer.js'
 
 function HeroImage({ src, avifSrc = '' }) {
@@ -141,6 +142,29 @@ function ArticleBlock({ block }) {
         <h3 className="text-lg font-bold text-white"><RichInline text={block.title} /></h3>
         <p className="mt-3 text-sm leading-7 text-zinc-200"><RichInline text={block.text} /></p>
       </div>
+    )
+  }
+
+  if (block.type === 'image') {
+    if (!isSafeImageUrl(block.src)) {
+      return null
+    }
+
+    return (
+      <figure className="overflow-hidden rounded-lg border border-white/10 bg-[#202020]">
+        <img
+          className="h-auto max-h-[620px] w-full object-cover"
+          src={block.src}
+          alt={block.alt}
+          loading="lazy"
+          decoding="async"
+        />
+        {block.caption && (
+          <figcaption className="border-t border-white/10 px-4 py-3 text-sm leading-6 text-zinc-400">
+            <RichInline text={block.caption} />
+          </figcaption>
+        )}
+      </figure>
     )
   }
 
