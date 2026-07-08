@@ -26,12 +26,6 @@ function NewsImage({ src, avifSrc = '', eager = false }) {
   }, [primarySrc])
 
   function handleError() {
-    if (currentSrc && currentSrc !== src) {
-      setCurrentSrc(src)
-      setStatus('loading')
-      return
-    }
-
     setStatus('error')
   }
 

@@ -28,12 +28,6 @@ function HeroImage({ src, avifSrc = '' }) {
   }, [primarySrc])
 
   function handleError() {
-    if (currentSrc && currentSrc !== src) {
-      setCurrentSrc(src)
-      setStatus('loading')
-      return
-    }
-
     setStatus('error')
   }
 
