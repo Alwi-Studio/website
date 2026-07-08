@@ -19,6 +19,7 @@ const pageLinks = [
   { label: 'Staff', href: '/staff' },
   { label: 'Rules', href: '/rules' },
   { label: 'Terms', href: '/terms' },
+  { label: 'Status', href: 'https://status.alwination.id/status/dashboard', target: '_blank'},
 ]
 
 const storeHref = 'https://store.alwination.id'
@@ -173,6 +174,7 @@ function Navbar({ activeSection = 'home' }) {
                   <a
                     key={link.href}
                     href={link.href}
+                    target={link.target}
                     onClick={() => setIsMoreOpen(false)}
                     className={`flex items-center rounded-lg px-3 py-2 text-sm font-medium transition ${
                       isActive(link)

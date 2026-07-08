@@ -9,8 +9,9 @@ const exploreLinks = [
 ]
 
 const communityLinks = [
-  { label: 'Discord', href: 'https://discord.alwination.id' },
-  { label: 'Store', href: 'https://store.alwination.id' },
+  { label: 'Discord', href: 'https://discord.alwination.id', target: '_blank', rel: 'noreferrer' },
+  { label: 'Store', href: 'https://store.alwination.id', target: '_blank', rel: 'noreferrer' },
+  { label: 'Status', href: 'https://status.alwination.id/status/dashboard', target: '_blank' },
   { label: 'Support', href: '/#contact' },
   { label: 'Server IP', href: '/#home' },
   { label: 'Wiki', href: '/wiki' },
@@ -75,7 +76,7 @@ function Footer() {
           <div>
             <h4 className="mb-4 text-[13px] font-semibold uppercase tracking-[0.12em] text-muted-2">Explore</h4>
             {exploreLinks.map((link) => (
-              <a key={link.href} href={link.href} className="block py-1.5 text-[14.5px] text-muted transition hover:text-white">
+              <a key={link.href} href={link.href} className="block w-fit py-1.5 text-[14.5px] text-muted transition hover:text-white">
                 {link.label}
               </a>
             ))}
@@ -83,11 +84,18 @@ function Footer() {
 
           <div>
             <h4 className="mb-4 text-[13px] font-semibold uppercase tracking-[0.12em] text-muted-2">Community</h4>
-            {communityLinks.map((link) => (
-              <a key={link.label} href={link.href} className="block py-1.5 text-[14.5px] text-muted transition hover:text-white">
-                {link.label}
-              </a>
-            ))}
+            <div className="grid grid-cols-2 gap-y-2">
+              {communityLinks.map((link) => (
+                  <a
+                      key={link.label}
+                      href={link.href}
+                      target={link.target}
+                      rel={link.rel}
+                      className="block w-fit py-1.5 text-[14.5px] text-muted transition hover:text-white">
+                    {link.label}
+                  </a>
+              ))}
+            </div>
           </div>
         </div>
 
