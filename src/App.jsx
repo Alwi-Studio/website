@@ -344,7 +344,7 @@ function Hero({ serverStatus }) {
       label: 'Players online',
     },
     { value: '100k+', label: 'Members' },
-    { value: '10', label: 'Unique Realms' },
+    { value: '10+', label: 'Unique Realms' },
     { value: '1.21.11', label: 'Recommended Version' },
   ]
 
