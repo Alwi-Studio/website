@@ -220,34 +220,55 @@ function useServerStatus() {
 
 function StatusPill({ serverStatus }) {
   const online = serverStatus.online && !serverStatus.loading
+  const statusText = serverStatus.loading ? 'Checking…' : online ? 'Online' : 'Offline'
+  const players = serverStatus.loading ? '…' : online ? serverStatus.players : '…'
+  const maxPlayers = serverStatus.loading ? '…' : serverStatus.maxPlayers || '…'
+
+  const accent = serverStatus.loading
+      ? { border: 'border-white/15', text: 'text-zinc-300', iconBg: 'bg-white/[0.06]', fill: 'bg-zinc-300' }
+      : online
+          ? { border: 'border-positive/40', text: 'text-positive', iconBg: 'bg-positive/12', fill: 'bg-positive' }
+          : { border: 'border-[#e56458]/40', text: 'text-[#e56458]', iconBg: 'bg-[#e56458]/40', fill: 'bg-[#e56458]' }
+
   return (
-    <span
-      className={`inline-flex items-center gap-2.5 rounded-xl border px-4 py-[11px] text-sm font-semibold ${
-        serverStatus.loading
-          ? 'border-white/15 bg-white/[0.04] text-muted'
-          : online
-            ? 'border-positive/30 bg-positive/10 text-white'
-            : 'border-[#e56458]/30 bg-[#e56458]/10 text-white'
-      }`}
-    >
-      <span
-        className={`h-2.5 w-2.5 rounded-full ${
-          serverStatus.loading
-            ? 'animate-pulse bg-zinc-400'
-            : online
-              ? 'bg-positive shadow-[0_0_12px_rgba(63,208,127,0.9)]'
-              : 'bg-[#e56458] shadow-[0_0_12px_rgba(229,100,88,0.9)]'
-        }`}
-      />
-      <span>{serverStatus.loading ? 'Checking…' : online ? 'Online' : 'Offline'}</span>
-      <span className="font-medium text-muted">
-        {serverStatus.loading
-          ? ''
-          : online
-            ? `${serverStatus.players}/${serverStatus.maxPlayers || '?'} players`
-            : '0 players'}
-      </span>
-    </span>
+      <div
+          aria-live="polite"
+          className={`flex w-full max-w-[190px] self-stretch overflow-hidden rounded-2xl border backdrop-blur ${accent.border}`}
+      >
+        <div className="flex flex-1 flex-col">
+        {/* Status row */}
+        <div className="flex flex-1 items-center gap-3 px-4 py-3">
+        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${accent.iconBg} ${accent.text}`}>
+          <span
+              className={`h-2.5 w-2.5 rounded-full ${accent.fill} shadow-[0_0_12px_currentColor] ${
+                  serverStatus.loading ? 'animate-pulse' : ''
+              }`}
+          />
+        </span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-2">Server Status</div>
+            <div className={`truncate text-[15px] font-bold tracking-tight ${accent.text}`}>{statusText}</div>
+          </div>
+        </div>
+
+        <div className="h-px bg-white/10" />
+
+        {/* Players row */}
+        <div className="flex flex-1 items-center gap-3 px-4 py-3">
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-2">Players Online</div>
+            <div className="mt-0.5 truncate text-[15px] font-bold tracking-tight text-white">
+              {players} <span className="text-muted-2">/ {maxPlayers}</span>
+            </div>
+          </div>
+          <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${accent.iconBg} ${accent.text}`}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="9" cy="8" r="3.2" /><path d="M15.2 5.3a3 3 0 0 1 0 5.4M3.5 20c0-3 2.7-4.6 5.5-4.6s5.5 1.6 5.5 4.6M16 15.6c2.3.4 4 1.9 4 4.4" />
+          </svg>
+        </span>
+        </div>
+        </div>
+      </div>
   )
 }
 
@@ -356,7 +377,7 @@ function Hero({ serverStatus }) {
             Whether you're looking to build, compete, explore, or simply have fun with friends, your adventure begins here.
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center gap-3.5">
+          <div className="mt-8 flex flex-wrap items-stretch gap-3.5">
             <CopyIpCard />
             <StatusPill serverStatus={serverStatus} />
           </div>
