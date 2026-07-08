@@ -190,15 +190,30 @@ function Navbar({ activeSection = 'home' }) {
           </div>
         </nav>
 
-        <div className="hidden md:block">
-          <a
-            href={storeHref}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center rounded-[10px] bg-gradient-to-b from-brand-2 to-brand px-[18px] py-[9px] text-[14.5px] font-semibold text-[#1a0d07] shadow-[0_6px_18px_rgba(255,90,48,0.3)] transition hover:brightness-105"
-          >
-            Store
-          </a>
+        <div className={"flex gap-4"}>
+          <div className="hidden md:block">
+            <a
+                href={storeHref}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center rounded-[10px] bg-gradient-to-b from-brand-2 to-brand px-[18px] py-[9px] text-[14.5px] font-semibold text-[#212121] shadow-[0_6px_18px_rgba(255,90,48,0.3)] transition hover:brightness-105"
+            >
+              Store
+            </a>
+          </div>
+
+          <div className="w-px bg-white/10" />
+
+          <div className="hidden md:block">
+            <a
+                href={"https://discord.alwination.id"}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center rounded-[10px] bg-gradient-to-b from-brand-2-discord to-brand-discord px-[18px] py-[9px] text-[14.5px] font-semibold text-[#212121] shadow-[0_6px_18px_rgba(129,64,220,0.3)] transition hover:brightness-105"
+            >
+              Discord
+            </a>
+          </div>
         </div>
 
         <button
