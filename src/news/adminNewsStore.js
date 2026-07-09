@@ -1,4 +1,4 @@
-import { newsItems as seedNewsItems } from './newsData.js'
+import { newsItems as seedNewsItems, showSeedNews } from './newsData.js'
 
 function normalizeText(value) {
   return String(value ?? '').replace(/\s+/g, ' ').trim()
@@ -92,10 +92,11 @@ function mergeNewsItems(adminItems, includeDeleted = false) {
   const visibleAdminItems = includeDeleted
     ? normalizedAdminItems
     : normalizedAdminItems.filter((item) => !item.deleted)
+  const visibleSeedItems = showSeedNews ? seedNewsItems.filter((item) => !adminSlugs.has(item.slug)) : []
 
   return [
     ...visibleAdminItems,
-    ...seedNewsItems.filter((item) => !adminSlugs.has(item.slug)),
+    ...visibleSeedItems,
   ]
 }
 

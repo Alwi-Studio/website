@@ -1,6 +1,11 @@
 import backgroundAvif from '../assets/background.avif'
 import backgroundImg from '../assets/background.webp'
 
+const showSeedNewsInDevelopment = true
+const showSeedNewsInProduction = false
+
+export const showSeedNews = import.meta.env.PROD ? showSeedNewsInProduction : showSeedNewsInDevelopment
+
 export const newsItems = [
   {
     id: 'launch-update-2026',
