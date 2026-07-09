@@ -659,6 +659,19 @@ async function handleApi(req, res, url) {
     return
   }
 
+  if (req.method === 'DELETE' && pathname === '/api/admin/news') {
+    const slug = url.searchParams.get('slug')?.trim() ?? ''
+
+    if (!slug) {
+      json(res, 400, { error: 'News slug is required.' })
+      return
+    }
+
+    await deleteAdminNews(slug)
+    json(res, 200, { items: await readAdminNews() })
+    return
+  }
+
   if (req.method === 'DELETE' && pathname.startsWith('/api/admin/news/')) {
     const slug = decodeURIComponent(pathname.replace('/api/admin/news/', ''))
 

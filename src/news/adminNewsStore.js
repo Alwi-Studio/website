@@ -148,7 +148,7 @@ export async function saveAdminNewsItem(item) {
 }
 
 export async function deleteAdminNewsItem(slug) {
-  const data = await requestJson(`/api/admin/news/${encodeURIComponent(slug)}`, {
+  const data = await requestJson(`/api/admin/news?slug=${encodeURIComponent(slug)}`, {
     method: 'DELETE',
   })
 
