@@ -139,6 +139,118 @@ Bullet list.
 }
 ```
 
+### Checklist
+
+Task checklist.
+
+```js
+{
+  type: 'checklist',
+  items: [
+    { checked: true, text: 'Spawn area prepared.' },
+    { checked: false, text: 'Publish the announcement.' },
+  ],
+}
+```
+
+### Table
+
+Column table.
+
+```js
+{
+  type: 'table',
+  headers: ['Rank', 'Price', 'Perks'],
+  alignments: ['left', 'right', 'left'],
+  rows: [
+    ['VIP', '$5', 'Cosmetics'],
+    ['MVP', '$10', 'Cosmetics and kits'],
+  ],
+}
+```
+
+### Columns / Grid
+
+Short titled items in columns.
+
+```js
+{
+  type: 'columns',
+  columns: 2,
+  items: [
+    { title: 'Survival', text: 'Claim land, build bases, and trade.' },
+    { title: 'Events', text: 'Join seasonal contests and tournaments.' },
+  ],
+}
+```
+
+### Cards
+
+Repeated summary cards.
+
+```js
+{
+  type: 'cards',
+  items: [
+    { title: 'VIP', text: 'Cosmetic perks and chat color.', meta: 'Store' },
+    { title: 'MVP', text: 'Extra kits and profile flair.', meta: 'Popular' },
+  ],
+}
+```
+
+### Tabs
+
+Short switchable content.
+
+```js
+{
+  type: 'tabs',
+  items: [
+    { title: 'Java', text: 'Join with the Java address.' },
+    { title: 'Bedrock', text: 'Join with the Bedrock address and port.' },
+  ],
+}
+```
+
+### Accordion / Collapse
+
+FAQ-style collapsible content.
+
+```js
+{
+  type: 'accordion',
+  items: [
+    { title: 'Can I transfer ranks?', text: 'Open a ticket with proof of purchase.' },
+    { title: 'Where do I report bugs?', text: 'Use Discord support with screenshots.' },
+  ],
+}
+```
+
+### Section / Container / Sidebar
+
+Grouped article areas.
+
+```js
+{
+  type: 'section',
+  title: 'Launch notes',
+  text: 'This area introduces a new part of the article.',
+}
+
+{
+  type: 'container',
+  title: 'Important links',
+  text: 'Use this for grouped links or short reminders.',
+}
+
+{
+  type: 'sidebar',
+  title: 'Quick reminder',
+  text: 'Main explanation goes here.',
+  sidebar: 'Side note, requirement, or warning goes here.',
+}
+```
+
 ### Quote
 
 Quote block with an optional citation.

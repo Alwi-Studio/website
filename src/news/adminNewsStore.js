@@ -13,6 +13,29 @@ function getLegacyBlockText(block) {
     return block.items.join(' ')
   }
 
+  if (block.type === 'checklist') {
+    return block.items.map((item) => item.text).join(' ')
+  }
+
+  if (block.type === 'table') {
+    return [
+      ...(block.headers ?? []),
+      ...(block.rows ?? []).flat(),
+    ].join(' ')
+  }
+
+  if (block.type === 'columns' || block.type === 'grid' || block.type === 'cards' || block.type === 'tabs' || block.type === 'accordion') {
+    return block.items.map((item) => [item.title, item.text, item.meta].filter(Boolean).join(' ')).join(' ')
+  }
+
+  if (block.type === 'section' || block.type === 'container') {
+    return [block.title, block.text].filter(Boolean).join(' ')
+  }
+
+  if (block.type === 'sidebar') {
+    return [block.title, block.text, block.sidebar].filter(Boolean).join(' ')
+  }
+
   if (block.type === 'quote') {
     return [block.text, block.cite].filter(Boolean).join(' ')
   }

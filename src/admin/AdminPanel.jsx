@@ -54,6 +54,46 @@ const sharedArticleExamples = [
     code: '- First point\n- Second point\n* Third point',
   },
   {
+    title: 'Checklists',
+    description: 'Use task lists for setup steps, launch tasks, or progress notes in news and wiki bodies.',
+    code: '- [x] Spawn area prepared\n- [ ] Rewards configured\n- [ ] Announcement posted',
+  },
+  {
+    title: 'Tables',
+    description: 'Use tables for columns such as ranks, rewards, schedules, prices, or feature comparisons.',
+    code: '| Rank | Price | Perks |\n| --- | ---: | --- |\n| VIP | $5 | Cosmetics |\n| MVP | $10 | Cosmetics + kits |',
+  },
+  {
+    title: 'Columns and grid',
+    description: 'Use columns or grid for short titled items. Add 2, 3, or 4 after the block name.',
+    code: ':::columns 2\nSurvival | Claim land, build bases, and trade.\nEvents | Join seasonal contests and tournaments.\n:::',
+  },
+  {
+    title: 'Cards',
+    description: 'Use cards for repeated feature, reward, rank, or update summaries.',
+    code: ':::cards\nVIP | Cosmetic perks and chat color. | Store\nMVP | Extra kits and profile flair. | Popular\n:::',
+  },
+  {
+    title: 'Tabs',
+    description: 'Use tabs when readers should switch between short modes, platforms, or versions.',
+    code: ':::tabs\nJava | Join with play.alwination.id on Minecraft Java.\nBedrock | Join with the Bedrock address and port from Discord.\n:::',
+  },
+  {
+    title: 'Accordion',
+    description: 'Use accordion/collapse for FAQ-style content.',
+    code: ':::accordion\nCan I transfer ranks? | Open a ticket with your username and proof.\nWhere do I report bugs? | Use Discord support and include screenshots.\n:::',
+  },
+  {
+    title: 'Sections and containers',
+    description: 'Use section for a separated article area, or container for a bordered content box.',
+    code: ':::section Launch notes\nThis area introduces a new part of the article.\n:::\n\n:::container Important links\nUse this for grouped links or short reminders.\n:::',
+  },
+  {
+    title: 'Sidebar',
+    description: 'Use sidebar for main text with a compact side note. Put --- between main and side content.',
+    code: ':::sidebar Quick reminder\nMain explanation goes here.\n---\nSide note, requirement, or warning goes here.\n:::',
+  },
+  {
     title: 'Quotes',
     description: 'Use quote blocks for important notes or quoted statements.',
     code: '> The server update is planned for this weekend.\n> Keep an eye on Discord for the exact time.\n> -- AlwiNation Team',
@@ -84,7 +124,7 @@ const formattingExamples = [
   {
     title: 'News body',
     description: 'Use the shared article syntax in the Body field. Highlights are separate: one highlight per line.',
-    code: '# Update title\nShort intro paragraph with **bold** text.\n\n![Update preview](https://example.com/news-image.webp) Preview caption\n\n:::callout Important\nRestart your launcher before joining.\n:::\n\n:::stats\nPlayers online: 120\nVersion: 1.21.11\n:::\n\n- Added new rewards\n- Fixed spawn protection',
+    code: '# Update title\nShort intro paragraph with **bold** text.\n\n![Update preview](https://example.com/news-image.webp) Preview caption\n\n| Reward | Amount |\n| --- | ---: |\n| Coins | 500 |\n| Keys | 3 |\n\n- [x] Added new rewards\n- [ ] Publish Discord recap\n\n:::callout Important\nRestart your launcher before joining.\n:::\n\n:::stats\nPlayers online: 120\nVersion: 1.21.11\n:::',
   },
   {
     title: 'News highlights',
@@ -112,7 +152,7 @@ const wikiFormattingExamples = [
   {
     title: 'Wiki article body',
     description: 'Use the shared article syntax. Callouts and stats work here too because wiki uses the same MarkdownBody renderer.',
-    code: '# Claiming land\nUse `/claim` to protect your base.\n\n![Claim example](https://example.com/claim-guide.webp) Claim area example\n\n:::callout Tip\nStand inside your build before creating a claim.\n:::\n\n:::stats\nClaim blocks: Earned by playtime\nProtection: Enabled\n:::',
+    code: '# Claiming land\nUse `/claim` to protect your base.\n\n| Command | Purpose |\n| --- | --- |\n| `/claim` | Protect land |\n| `/trust <name>` | Share access |\n\n- [x] Hold claim tool\n- [ ] Confirm claim corners\n\n![Claim example](https://example.com/claim-guide.webp) Claim area example\n\n:::callout Tip\nStand inside your build before creating a claim.\n:::\n\n:::stats\nClaim blocks: Earned by playtime\nProtection: Enabled\n:::',
   },
 ]
 
@@ -151,7 +191,7 @@ const editingNotes = [
   {
     title: 'Editing existing news posts',
     description: 'When you click Edit on a saved news post, the editor should restore structured blocks back into editable syntax.',
-    code: '# Heading stays a heading\n\n- List item stays a list item\n\n> Quote text\n> -- Quote author\n\n:::callout Title\nCallout text\n:::\n\n:::stats\nLabel: Value\n:::',
+    code: '# Heading stays a heading\n\n- List item stays a list item\n- [x] Checklist item stays a checklist item\n\n| Column | Value |\n| --- | --- |\n| Saved | Yes |\n\n> Quote text\n> -- Quote author\n\n:::callout Title\nCallout text\n:::\n\n:::stats\nLabel: Value\n:::',
   },
   {
     title: 'If formatting disappears',
@@ -183,6 +223,54 @@ function getBlockText(block) {
 
   if (block.type === 'list') {
     return block.items.map((item) => `- ${item}`).join('\n')
+  }
+
+  if (block.type === 'checklist') {
+    return block.items.map((item) => `- [${item.checked ? 'x' : ' '}] ${item.text}`).join('\n')
+  }
+
+  if (block.type === 'table') {
+    const alignmentMarkers = (block.alignments ?? []).map((alignment) => {
+      if (alignment === 'center') {
+        return ':---:'
+      }
+      if (alignment === 'right') {
+        return '---:'
+      }
+      return '---'
+    })
+    const headers = block.headers ?? []
+    const rows = block.rows ?? []
+
+    return [
+      `| ${headers.join(' | ')} |`,
+      `| ${headers.map((_, index) => alignmentMarkers[index] ?? '---').join(' | ')} |`,
+      ...rows.map((row) => `| ${headers.map((_, index) => row[index] ?? '').join(' | ')} |`),
+    ].join('\n')
+  }
+
+  if (block.type === 'columns' || block.type === 'grid') {
+    return [`:::${block.type} ${block.columns ?? 2}`, ...block.items.map((item) => `${item.title} | ${item.text}`), ':::'].join('\n')
+  }
+
+  if (block.type === 'cards') {
+    return [':::cards', ...block.items.map((item) => [item.title, item.text, item.meta].filter(Boolean).join(' | ')), ':::'].join('\n')
+  }
+
+  if (block.type === 'tabs') {
+    return [':::tabs', ...block.items.map((item) => `${item.title} | ${item.text}`), ':::'].join('\n')
+  }
+
+  if (block.type === 'accordion') {
+    return [':::accordion', ...block.items.map((item) => `${item.title} | ${item.text}`), ':::'].join('\n')
+  }
+
+  if (block.type === 'section' || block.type === 'container') {
+    return [`:::${block.type} ${block.title ?? ''}`.trim(), block.text, ':::'].filter(Boolean).join('\n')
+  }
+
+  if (block.type === 'sidebar') {
+    return [`:::sidebar ${block.title ?? ''}`.trim(), block.text, '---', block.sidebar, ':::'].filter(Boolean).join('\n')
   }
 
   if (block.type === 'quote') {
@@ -500,6 +588,33 @@ function PreviewEmpty({ children = 'Start typing to see a preview.' }) {
   return <p className="text-sm text-muted">{children}</p>
 }
 
+function previewColumnClass(columns = 2) {
+  if (columns >= 4) {
+    return 'md:grid-cols-2 xl:grid-cols-4'
+  }
+  if (columns === 3) {
+    return 'md:grid-cols-3'
+  }
+  return 'md:grid-cols-2'
+}
+
+function PreviewTitledItems({ block, card = false }) {
+  return (
+    <div className={`grid gap-3 ${previewColumnClass(block.columns)}`}>
+      {block.items.map((item, index) => (
+        <div
+          className={`${card ? 'rounded-lg border border-white/10 bg-surface-2 p-4' : 'border-l border-white/10 pl-4'}`}
+          key={`${item.title}-${index}`}
+        >
+          <h4 className="font-bold text-white"><RichInline text={item.title} /></h4>
+          {item.text && <p className="mt-2 text-sm leading-6 text-muted"><RichInline text={item.text} /></p>}
+          {item.meta && <p className="mt-3 text-xs font-semibold uppercase tracking-[0.12em] text-brand-2"><RichInline text={item.meta} /></p>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function PreviewArticleBlock({ block }) {
   if (typeof block === 'string') {
     return <p><RichInline text={block} /></p>
@@ -528,6 +643,131 @@ function PreviewArticleBlock({ block }) {
           </li>
         ))}
       </ul>
+    )
+  }
+
+  if (block.type === 'checklist') {
+    return (
+      <ul className="grid gap-2 p-0">
+        {block.items.map((item, index) => (
+          <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={index}>
+            <span
+              className={`mt-1 grid h-5 w-5 shrink-0 place-items-center rounded border text-[11px] font-bold ${
+                item.checked ? 'border-brand-2 bg-brand-2 text-[#1a0d07]' : 'border-white/20 bg-surface-2 text-transparent'
+              }`}
+            >
+              x
+            </span>
+            <span><RichInline text={item.text} /></span>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  if (block.type === 'table') {
+    return (
+      <div className="overflow-x-auto rounded-lg border border-white/10 bg-bg-2">
+        <table className="min-w-full border-collapse text-left text-xs">
+          <thead className="bg-white/[0.04] font-bold uppercase text-zinc-300">
+            <tr>
+              {block.headers.map((header, headerIndex) => (
+                <th
+                  className="border-b border-white/10 px-3 py-2"
+                  key={`${header}-${headerIndex}`}
+                  style={{ textAlign: block.alignments?.[headerIndex] ?? 'left' }}
+                >
+                  <RichInline text={header} />
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {block.rows.map((row, rowIndex) => (
+              <tr className="border-b border-white/5 last:border-b-0" key={rowIndex}>
+                {block.headers.map((header, cellIndex) => (
+                  <td
+                    className="px-3 py-2 text-muted"
+                    key={`${header}-${cellIndex}`}
+                    style={{ textAlign: block.alignments?.[cellIndex] ?? 'left' }}
+                  >
+                    <RichInline text={row[cellIndex] ?? ''} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  if (block.type === 'columns' || block.type === 'grid') {
+    return <PreviewTitledItems block={block} />
+  }
+
+  if (block.type === 'cards') {
+    return <PreviewTitledItems block={{ ...block, columns: 3 }} card />
+  }
+
+  if (block.type === 'tabs') {
+    return (
+      <div className="rounded-lg border border-white/10 bg-bg-2">
+        <div className="flex gap-1 overflow-x-auto border-b border-white/10 p-2">
+          {block.items.map((item, index) => (
+            <span
+              className={`min-h-9 shrink-0 rounded-md px-3 py-2 text-sm font-semibold ${
+                index === 0 ? 'bg-brand text-white' : 'text-muted'
+              }`}
+              key={`${item.title}-${index}`}
+            >
+              <RichInline text={item.title} />
+            </span>
+          ))}
+        </div>
+        <div className="p-4 text-sm leading-7 text-muted">
+          <RichInline text={block.items[0]?.text ?? ''} />
+        </div>
+      </div>
+    )
+  }
+
+  if (block.type === 'accordion') {
+    return (
+      <div className="grid gap-2">
+        {block.items.map((item, index) => (
+          <details className="rounded-lg border border-white/10 bg-bg-2 p-4" key={`${item.title}-${index}`}>
+            <summary className="cursor-pointer font-bold text-white"><RichInline text={item.title} /></summary>
+            <p className="mt-3 text-sm leading-7 text-muted"><RichInline text={item.text} /></p>
+          </details>
+        ))}
+      </div>
+    )
+  }
+
+  if (block.type === 'section' || block.type === 'container') {
+    const isContainer = block.type === 'container'
+    return (
+      <section className={`${isContainer ? 'rounded-lg border border-white/10 bg-bg-2 p-5' : 'border-t border-white/10 pt-5'}`}>
+        {block.title && <h4 className="text-lg font-bold text-white"><RichInline text={block.title} /></h4>}
+        {block.text && <p className="mt-2 text-sm leading-7 text-muted"><RichInline text={block.text} /></p>}
+      </section>
+    )
+  }
+
+  if (block.type === 'sidebar') {
+    return (
+      <aside className="grid gap-4 rounded-lg border border-white/10 bg-bg-2 p-5 md:grid-cols-[1fr_220px]">
+        <div>
+          {block.title && <h4 className="text-lg font-bold text-white"><RichInline text={block.title} /></h4>}
+          {block.text && <p className="mt-2 text-sm leading-7 text-muted"><RichInline text={block.text} /></p>}
+        </div>
+        {block.sidebar && (
+          <div className="rounded-md border border-brand/30 bg-brand/[0.08] p-4 text-sm leading-6 text-zinc-200">
+            <RichInline text={block.sidebar} />
+          </div>
+        )}
+      </aside>
     )
   }
 
@@ -1379,12 +1619,12 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                   Body
                   <textarea
                     className={`${textareaClass} min-h-48`}
-                    placeholder={'Use Discord-style formatting:\n# title\n![Image alt](https://example.com/image.webp) Optional caption\n> quote\n> -- AlwiNation Team\n- list\n```code block```\n\n:::callout Title\nCallout text\n:::\n\n:::stats\nPlayers: 120\nUptime: 99%\n:::'}
+                    placeholder={'Use Discord-style formatting:\n# title\n![Image alt](https://example.com/image.webp) Optional caption\n| Reward | Amount |\n| --- | ---: |\n| Coins | 500 |\n- [x] checklist item\n> quote\n> -- AlwiNation Team\n- list\n```code block```\n\n:::callout Title\nCallout text\n:::\n\n:::stats\nPlayers: 120\nUptime: 99%\n:::'}
                     value={form.bodyText}
                     onChange={(event) => updateField('bodyText', event.target.value)}
                   />
                   <span className="text-xs font-medium leading-5 text-muted">
-                    Use ![alt](https://example.com/image.webp) for article images, plus :::callout Title and :::stats fenced blocks for special news sections.
+                    Use ![alt](https://example.com/image.webp) for article images, tables with | columns |, checklists with - [x], plus :::callout Title and :::stats fenced blocks.
                     {' '}
                     <a className="font-semibold text-brand-2 underline underline-offset-4 hover:text-brand" href="/admin/docs">
                       View formatting docs

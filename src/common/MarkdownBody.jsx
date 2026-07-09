@@ -1,6 +1,61 @@
+import { useState } from 'react'
 import { isSafeImageUrl } from './safeUrls.js'
 import { getOptimizedImageUrl } from './imageOptimizer.js'
 import { RichInline, parseMarkdownBlocks } from './RichText.jsx'
+
+function columnClass(columns = 2) {
+  if (columns >= 4) {
+    return 'md:grid-cols-2 xl:grid-cols-4'
+  }
+  if (columns === 3) {
+    return 'md:grid-cols-3'
+  }
+  return 'md:grid-cols-2'
+}
+
+function TitledItemsGrid({ block, card = false }) {
+  return (
+    <div className={`grid gap-3 ${columnClass(block.columns)}`}>
+      {block.items.map((item, index) => (
+        <div
+          className={`${card ? 'rounded-lg border border-white/10 bg-surface-2 p-4' : 'border-l border-white/10 pl-4'}`}
+          key={`${item.title}-${index}`}
+        >
+          <h4 className="font-bold text-white"><RichInline text={item.title} /></h4>
+          {item.text && <p className="mt-2 text-sm leading-6 text-muted"><RichInline text={item.text} /></p>}
+          {item.meta && <p className="mt-3 text-xs font-semibold uppercase tracking-[0.12em] text-brand-2"><RichInline text={item.meta} /></p>}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ArticleTabs({ items }) {
+  const [activeIndex, setActiveIndex] = useState(0)
+  const activeItem = items[activeIndex] ?? items[0]
+
+  return (
+    <div className="rounded-lg border border-white/10 bg-bg-2">
+      <div className="flex gap-1 overflow-x-auto border-b border-white/10 p-2">
+        {items.map((item, index) => (
+          <button
+            className={`min-h-9 shrink-0 rounded-md px-3 text-sm font-semibold transition ${
+              index === activeIndex ? 'bg-brand text-white' : 'text-muted hover:bg-white/[0.06] hover:text-white'
+            }`}
+            key={`${item.title}-${index}`}
+            type="button"
+            onClick={() => setActiveIndex(index)}
+          >
+            <RichInline text={item.title} />
+          </button>
+        ))}
+      </div>
+      <div className="p-4 text-sm leading-7 text-muted">
+        <RichInline text={activeItem?.text ?? ''} />
+      </div>
+    </div>
+  )
+}
 
 // Renders Discord-style markdown (the same mini-syntax used across the site) into
 // styled article content. Shared by the public wiki article page and the admin
@@ -51,6 +106,120 @@ export function MarkdownBody({ text, className = '' }) {
                 </li>
               ))}
             </ul>
+          )
+        }
+
+        if (block.type === 'checklist') {
+          return (
+            <ul key={key} className="grid gap-2 p-0">
+              {block.items.map((item, itemIndex) => (
+                <li key={itemIndex} className="flex items-start gap-3 text-[15px] leading-7 text-muted">
+                  <span
+                    className={`mt-1.5 grid h-5 w-5 shrink-0 place-items-center rounded border text-[11px] font-bold ${
+                      item.checked
+                        ? 'border-brand-2 bg-brand-2 text-[#1a0d07]'
+                        : 'border-white/20 bg-surface-2 text-transparent'
+                    }`}
+                  >
+                    x
+                  </span>
+                  <span className={item.checked ? 'text-zinc-300' : ''}>
+                    <RichInline text={item.text} />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )
+        }
+
+        if (block.type === 'table') {
+          return (
+            <div key={key} className="overflow-x-auto rounded-lg border border-white/10 bg-bg-2">
+              <table className="min-w-full border-collapse text-left text-sm">
+                <thead className="bg-white/[0.04] text-xs font-bold uppercase text-zinc-300">
+                  <tr>
+                    {block.headers.map((header, headerIndex) => (
+                      <th
+                        key={`${header}-${headerIndex}`}
+                        className="border-b border-white/10 px-4 py-3"
+                        style={{ textAlign: block.alignments?.[headerIndex] ?? 'left' }}
+                      >
+                        <RichInline text={header} />
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {block.rows.map((row, rowIndex) => (
+                    <tr key={rowIndex} className="border-b border-white/5 last:border-b-0">
+                      {block.headers.map((header, cellIndex) => (
+                        <td
+                          key={`${header}-${cellIndex}`}
+                          className="px-4 py-3 text-muted"
+                          style={{ textAlign: block.alignments?.[cellIndex] ?? 'left' }}
+                        >
+                          <RichInline text={row[cellIndex] ?? ''} />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        }
+
+        if (block.type === 'columns' || block.type === 'grid') {
+          return <TitledItemsGrid key={key} block={block} />
+        }
+
+        if (block.type === 'cards') {
+          return <TitledItemsGrid key={key} block={{ ...block, columns: 3 }} card />
+        }
+
+        if (block.type === 'tabs') {
+          return <ArticleTabs key={key} items={block.items} />
+        }
+
+        if (block.type === 'accordion') {
+          return (
+            <div key={key} className="grid gap-2">
+              {block.items.map((item, itemIndex) => (
+                <details className="rounded-lg border border-white/10 bg-bg-2 p-4" key={`${item.title}-${itemIndex}`}>
+                  <summary className="cursor-pointer font-bold text-white"><RichInline text={item.title} /></summary>
+                  <p className="mt-3 text-sm leading-7 text-muted"><RichInline text={item.text} /></p>
+                </details>
+              ))}
+            </div>
+          )
+        }
+
+        if (block.type === 'section' || block.type === 'container') {
+          const isContainer = block.type === 'container'
+          return (
+            <section
+              key={key}
+              className={`${isContainer ? 'rounded-lg border border-white/10 bg-bg-2 p-5' : 'border-t border-white/10 pt-5'}`}
+            >
+              {block.title && <h3 className="font-bold text-white"><RichInline text={block.title} /></h3>}
+              {block.text && <p className="mt-2 text-sm leading-7 text-muted"><RichInline text={block.text} /></p>}
+            </section>
+          )
+        }
+
+        if (block.type === 'sidebar') {
+          return (
+            <aside key={key} className="grid gap-4 rounded-lg border border-white/10 bg-bg-2 p-5 md:grid-cols-[1fr_240px]">
+              <div>
+                {block.title && <h3 className="font-bold text-white"><RichInline text={block.title} /></h3>}
+                {block.text && <p className="mt-2 text-sm leading-7 text-muted"><RichInline text={block.text} /></p>}
+              </div>
+              {block.sidebar && (
+                <div className="rounded-md border border-brand/30 bg-brand/[0.08] p-4 text-sm leading-6 text-zinc-200">
+                  <RichInline text={block.sidebar} />
+                </div>
+              )}
+            </aside>
           )
         }
 

@@ -444,6 +444,76 @@ function normalizeBodyBlock(block) {
     return items.length > 0 ? { type: 'list', items } : null
   }
 
+  if (block.type === 'checklist') {
+    const items = Array.isArray(block.items)
+      ? block.items
+          .map((item) => ({
+            checked: Boolean(item?.checked),
+            text: trimText(item?.text, 500),
+          }))
+          .filter((item) => item.text)
+          .slice(0, 24)
+      : []
+
+    return items.length > 0 ? { type: 'checklist', items } : null
+  }
+
+  if (block.type === 'table') {
+    const headers = Array.isArray(block.headers)
+      ? block.headers.map((header) => trimText(header, 120)).filter(Boolean).slice(0, 8)
+      : []
+    const alignments = Array.isArray(block.alignments)
+      ? block.alignments
+          .slice(0, headers.length)
+          .map((alignment) => (alignment === 'center' || alignment === 'right' ? alignment : 'left'))
+      : []
+    const rows = Array.isArray(block.rows)
+      ? block.rows
+          .map((row) =>
+            Array.isArray(row) ? headers.map((_, index) => trimText(row[index], 500)) : [],
+          )
+          .filter((row) => row.some(Boolean))
+          .slice(0, 24)
+      : []
+
+    return headers.length > 0 && rows.length > 0 ? { type: 'table', headers, alignments, rows } : null
+  }
+
+  if (block.type === 'columns' || block.type === 'grid' || block.type === 'cards' || block.type === 'tabs' || block.type === 'accordion') {
+    const items = Array.isArray(block.items)
+      ? block.items
+          .map((item) => ({
+            title: trimText(item?.title, 120),
+            text: trimText(item?.text, 800),
+            ...(trimText(item?.meta, 120) ? { meta: trimText(item.meta, 120) } : {}),
+          }))
+          .filter((item) => item.title && item.text)
+          .slice(0, 12)
+      : []
+    const columns = Math.min(Math.max(Number(block.columns) || 2, 2), 4)
+
+    return items.length > 0
+      ? {
+          type: block.type,
+          ...(block.type === 'columns' || block.type === 'grid' ? { columns } : {}),
+          items,
+        }
+      : null
+  }
+
+  if (block.type === 'section' || block.type === 'container') {
+    const title = trimText(block.title, 160)
+    const text = trimText(block.text, 1200)
+    return title || text ? { type: block.type, title, text } : null
+  }
+
+  if (block.type === 'sidebar') {
+    const title = trimText(block.title, 160)
+    const text = trimText(block.text, 1200)
+    const sidebar = trimText(block.sidebar, 800)
+    return title || text || sidebar ? { type: 'sidebar', title, text, sidebar } : null
+  }
+
   if (block.type === 'quote') {
     const text = trimText(block.text)
     const cite = trimText(block.cite, 160)

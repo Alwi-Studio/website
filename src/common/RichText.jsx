@@ -38,6 +38,73 @@ function parseInline(text) {
   return parts
 }
 
+function isTableRow(line) {
+  return /^\|.+\|$/.test(line.trim())
+}
+
+function isTableSeparator(line) {
+  const cells = splitTableRow(line)
+
+  return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell))
+}
+
+function getTableAlignments(line) {
+  return splitTableRow(line).map((cell) => {
+    if (cell.startsWith(':') && cell.endsWith(':')) {
+      return 'center'
+    }
+    if (cell.endsWith(':')) {
+      return 'right'
+    }
+    return 'left'
+  })
+}
+
+function splitTableRow(line) {
+  return line
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((cell) => cell.trim())
+}
+
+function readFencedBlock(lines, startIndex) {
+  const blockLines = []
+  let index = startIndex + 1
+
+  while (index < lines.length && lines[index].trim() !== ':::') {
+    blockLines.push(lines[index].trim())
+    index += 1
+  }
+
+  return { blockLines, nextIndex: index + 1 }
+}
+
+function parsePipeItems(lines, expectedParts = 2) {
+  return lines
+    .filter(Boolean)
+    .map((line) => line.split('|').map((part) => part.trim()))
+    .filter((parts) => parts.length >= expectedParts && parts[0])
+}
+
+function parseTitledItems(lines) {
+  return parsePipeItems(lines).map(([title, ...textParts]) => ({
+    title,
+    text: textParts.join(' | '),
+  }))
+}
+
+function parseColumnsCount(value, fallback = 2) {
+  const count = Number(value)
+
+  if (!Number.isInteger(count)) {
+    return fallback
+  }
+
+  return Math.min(Math.max(count, 2), 4)
+}
+
 export function RichInline({ text }) {
   return parseInline(String(text ?? '')).map((part, index) => {
     const key = `${part.type}-${index}`
@@ -115,14 +182,87 @@ export function parseMarkdownBlocks(text) {
 
     if (trimmed.startsWith(':::callout')) {
       const title = trimmed.slice(':::callout'.length).trim()
-      const calloutLines = []
-      index += 1
-      while (index < lines.length && lines[index].trim() !== ':::') {
-        calloutLines.push(lines[index].trim())
-        index += 1
+      const { blockLines, nextIndex } = readFencedBlock(lines, index)
+      blocks.push({ type: 'callout', title: title || 'Note', text: blockLines.filter(Boolean).join(' ') })
+      index = nextIndex
+      continue
+    }
+
+    if (trimmed.startsWith(':::section')) {
+      const title = trimmed.slice(':::section'.length).trim()
+      const { blockLines, nextIndex } = readFencedBlock(lines, index)
+      blocks.push({ type: 'section', title, text: blockLines.filter(Boolean).join(' ') })
+      index = nextIndex
+      continue
+    }
+
+    if (trimmed.startsWith(':::container')) {
+      const title = trimmed.slice(':::container'.length).trim()
+      const { blockLines, nextIndex } = readFencedBlock(lines, index)
+      blocks.push({ type: 'container', title, text: blockLines.filter(Boolean).join(' ') })
+      index = nextIndex
+      continue
+    }
+
+    if (trimmed.startsWith(':::sidebar')) {
+      const title = trimmed.slice(':::sidebar'.length).trim()
+      const { blockLines, nextIndex } = readFencedBlock(lines, index)
+      const separatorIndex = blockLines.findIndex((blockLine) => blockLine === '---')
+      const textLines = separatorIndex === -1 ? blockLines : blockLines.slice(0, separatorIndex)
+      const sidebarLines = separatorIndex === -1 ? [] : blockLines.slice(separatorIndex + 1)
+
+      blocks.push({
+        type: 'sidebar',
+        title,
+        text: textLines.filter(Boolean).join(' '),
+        sidebar: sidebarLines.filter(Boolean).join(' '),
+      })
+      index = nextIndex
+      continue
+    }
+
+    if (trimmed.startsWith(':::columns') || trimmed.startsWith(':::grid')) {
+      const [type, columnsText] = trimmed.slice(3).split(/\s+/, 2)
+      const { blockLines, nextIndex } = readFencedBlock(lines, index)
+      const items = parseTitledItems(blockLines)
+
+      if (items.length > 0) {
+        blocks.push({ type: type === 'grid' ? 'grid' : 'columns', columns: parseColumnsCount(columnsText), items })
       }
-      blocks.push({ type: 'callout', title: title || 'Note', text: calloutLines.filter(Boolean).join(' ') })
-      index += 1
+      index = nextIndex
+      continue
+    }
+
+    if (trimmed.startsWith(':::cards')) {
+      const { blockLines, nextIndex } = readFencedBlock(lines, index)
+      const items = parsePipeItems(blockLines).map(([title, text, meta]) => ({ title, text, meta }))
+
+      if (items.length > 0) {
+        blocks.push({ type: 'cards', items })
+      }
+      index = nextIndex
+      continue
+    }
+
+    if (trimmed.startsWith(':::tabs')) {
+      const { blockLines, nextIndex } = readFencedBlock(lines, index)
+      const items = parseTitledItems(blockLines)
+
+      if (items.length > 0) {
+        blocks.push({ type: 'tabs', items })
+      }
+      index = nextIndex
+      continue
+    }
+
+    if (trimmed.startsWith(':::accordion') || trimmed.startsWith(':::collapse')) {
+      const { blockLines, nextIndex } = readFencedBlock(lines, index)
+      const items = parseTitledItems(blockLines)
+
+      if (items.length > 0) {
+        blocks.push({ type: 'accordion', items })
+      }
+      index = nextIndex
       continue
     }
 
@@ -144,6 +284,24 @@ export function parseMarkdownBlocks(text) {
         blocks.push({ type: 'stats', items })
       }
       index += 1
+      continue
+    }
+
+    if (isTableRow(trimmed) && isTableSeparator(lines[index + 1] ?? '')) {
+      const headers = splitTableRow(trimmed)
+      const alignments = getTableAlignments(lines[index + 1])
+      const rows = []
+      index += 2
+
+      while (index < lines.length && isTableRow(lines[index])) {
+        const cells = splitTableRow(lines[index])
+        rows.push(headers.map((_, cellIndex) => cells[cellIndex] ?? ''))
+        index += 1
+      }
+
+      if (headers.length > 0 && rows.length > 0) {
+        blocks.push({ type: 'table', headers, alignments, rows })
+      }
       continue
     }
 
@@ -182,6 +340,19 @@ export function parseMarkdownBlocks(text) {
       continue
     }
 
+    if (/^[-*]\s+\[[ xX]\]\s+/.test(trimmed)) {
+      const items = []
+      while (index < lines.length && /^[-*]\s+\[[ xX]\]\s+/.test(lines[index].trim())) {
+        const item = lines[index].trim().match(/^[-*]\s+\[([ xX])\]\s+(.+)$/)
+        if (item) {
+          items.push({ checked: item[1].toLowerCase() === 'x', text: item[2].trim() })
+        }
+        index += 1
+      }
+      blocks.push({ type: 'checklist', items })
+      continue
+    }
+
     if (/^[-*]\s+/.test(trimmed)) {
       const items = []
       while (index < lines.length && /^[-*]\s+/.test(lines[index].trim())) {
@@ -199,9 +370,20 @@ export function parseMarkdownBlocks(text) {
       !lines[index].trim().startsWith('```') &&
       !lines[index].trim().startsWith(':::callout') &&
       !lines[index].trim().startsWith(':::stats') &&
+      !lines[index].trim().startsWith(':::section') &&
+      !lines[index].trim().startsWith(':::container') &&
+      !lines[index].trim().startsWith(':::sidebar') &&
+      !lines[index].trim().startsWith(':::columns') &&
+      !lines[index].trim().startsWith(':::grid') &&
+      !lines[index].trim().startsWith(':::cards') &&
+      !lines[index].trim().startsWith(':::tabs') &&
+      !lines[index].trim().startsWith(':::accordion') &&
+      !lines[index].trim().startsWith(':::collapse') &&
+      !(isTableRow(lines[index].trim()) && isTableSeparator(lines[index + 1] ?? '')) &&
       !/^(#{1,3})\s+/.test(lines[index].trim()) &&
       !/^!\[[^\]]*\]\([^)]+\)(?:\s+.+)?$/.test(lines[index].trim()) &&
       !lines[index].trim().startsWith('> ') &&
+      !/^[-*]\s+\[[ xX]\]\s+/.test(lines[index].trim()) &&
       !/^[-*]\s+/.test(lines[index].trim())
     ) {
       paragraphLines.push(lines[index].trim())
