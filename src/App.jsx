@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import backgroundAvif from './assets/background.avif'
-import backgroundImg from './assets/background.webp'
+import backgroundImg from './assets/2026-07-08T23_36_31.webp'
+import backgroundImg2 from './assets/2026-07-08T23_39_10.webp'
 import AdminPanel from './admin/AdminPanel.jsx'
 import ErrorPage from './common/ErrorPage.jsx'
 import Footer from './common/Footer.jsx'
@@ -353,7 +354,6 @@ function Hero({ serverStatus }) {
       <div className="absolute inset-0 z-0">
         <StableImage
           src={backgroundImg}
-          avifSrc={backgroundAvif}
           alt=""
           className="h-full w-full object-cover object-[center_42%]"
           eager
@@ -942,7 +942,7 @@ function App() {
         <section id="about" className="scroll-mt-24 border-t border-white/10 bg-bg-2 py-24">
           <div className="mx-auto grid max-w-[1180px] items-center gap-14 px-6 lg:grid-cols-[0.9fr_1.1fr]">
             <div className="relative aspect-[4/3] overflow-hidden rounded-[20px] border border-white/10">
-              <StableImage src={backgroundImg} avifSrc={backgroundAvif} alt="" className="h-full w-full object-cover" />
+              <StableImage src={backgroundImg2} alt="" className="h-full w-full object-cover" />
               <div className="absolute inset-x-[18px] bottom-[18px] flex gap-[18px] rounded-2xl border border-white/15 bg-bg/60 px-[18px] py-4 backdrop-blur-md">
                 <div>
                   <b className="text-lg text-white">12,000+</b>
