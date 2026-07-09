@@ -219,8 +219,18 @@ async function saveAdminNews(item) {
   return item
 }
 
-async function deleteAdminNews(slug) {
+async function deleteAdminNews(slug, options = {}) {
   if (hasSupabaseStorage) {
+    if (!options.hide) {
+      await supabaseRequest(`news_posts?slug=eq.${encodeURIComponent(slug)}`, {
+        method: 'DELETE',
+        headers: {
+          Prefer: 'return=minimal',
+        },
+      })
+      return
+    }
+
     const existingRows = await supabaseRequest(`news_posts?slug=eq.${encodeURIComponent(slug)}&select=id&limit=1`)
     const existingId = Array.isArray(existingRows) ? existingRows[0]?.id : ''
 
@@ -254,6 +264,11 @@ async function deleteAdminNews(slug) {
   }
 
   const storedItems = await readLocalAdminNews()
+  if (!options.hide) {
+    await writeLocalAdminNews(storedItems.filter((item) => item.slug !== slug))
+    return
+  }
+
   const existingItem = storedItems.find((item) => item.slug === slug)
   const nextItems = [
     {
@@ -661,13 +676,14 @@ async function handleApi(req, res, url) {
 
   if (req.method === 'DELETE' && pathname === '/api/admin/news') {
     const slug = url.searchParams.get('slug')?.trim() ?? ''
+    const shouldHide = url.searchParams.get('hide') === 'true'
 
     if (!slug) {
       json(res, 400, { error: 'News slug is required.' })
       return
     }
 
-    await deleteAdminNews(slug)
+    await deleteAdminNews(slug, { hide: shouldHide })
     json(res, 200, { items: await readAdminNews() })
     return
   }
@@ -675,7 +691,7 @@ async function handleApi(req, res, url) {
   if (req.method === 'DELETE' && pathname.startsWith('/api/admin/news/')) {
     const slug = decodeURIComponent(pathname.replace('/api/admin/news/', ''))
 
-    await deleteAdminNews(slug)
+    await deleteAdminNews(slug, { hide: true })
     json(res, 200, { items: await readAdminNews() })
     return
   }

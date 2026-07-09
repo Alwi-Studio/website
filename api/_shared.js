@@ -350,7 +350,17 @@ export async function saveAdminNews(item) {
   return Array.isArray(rows) && rows[0] ? fromDatabaseRow(rows[0]) : item
 }
 
-export async function deleteAdminNews(slug) {
+export async function deleteAdminNews(slug, options = {}) {
+  if (!options.hide) {
+    await supabaseRequest(`news_posts?slug=eq.${encodeURIComponent(slug)}`, {
+      method: 'DELETE',
+      headers: {
+        Prefer: 'return=minimal',
+      },
+    })
+    return
+  }
+
   const existingRows = await supabaseRequest(`news_posts?slug=eq.${encodeURIComponent(slug)}&select=id&limit=1`)
   const existingId = Array.isArray(existingRows) ? existingRows[0]?.id : ''
 

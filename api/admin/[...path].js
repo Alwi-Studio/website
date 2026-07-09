@@ -89,7 +89,7 @@ async function handleNews(req, res, slug) {
 
   try {
     if (slug) {
-      await deleteAdminNews(slug)
+      await deleteAdminNews(slug, { hide: true })
       json(res, 200, { items: await readAdminNews() })
       return
     }

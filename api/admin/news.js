@@ -33,13 +33,14 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'DELETE') {
       const slug = getQueryValue(req, 'slug').trim()
+      const shouldHide = getQueryValue(req, 'hide') === 'true'
 
       if (!slug) {
         json(res, 400, { error: 'News slug is required.' })
         return
       }
 
-      await deleteAdminNews(slug)
+      await deleteAdminNews(slug, { hide: shouldHide })
       json(res, 200, { items: await readAdminNews() })
       return
     }

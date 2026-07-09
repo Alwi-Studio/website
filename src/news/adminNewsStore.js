@@ -90,7 +90,7 @@ function mergeNewsItems(adminItems, includeDeleted = false) {
   const normalizedAdminItems = adminItems.map(normalizeAdminItem)
   const adminSlugs = new Set(normalizedAdminItems.map((item) => item.slug))
   const visibleAdminItems = includeDeleted
-    ? normalizedAdminItems
+    ? normalizedAdminItems.filter((item) => showSeedNews || !item.deleted)
     : normalizedAdminItems.filter((item) => !item.deleted)
   const visibleSeedItems = showSeedNews ? seedNewsItems.filter((item) => !adminSlugs.has(item.slug)) : []
 
@@ -149,7 +149,14 @@ export async function saveAdminNewsItem(item) {
 }
 
 export async function deleteAdminNewsItem(slug) {
-  const data = await requestJson(`/api/admin/news?slug=${encodeURIComponent(slug)}`, {
+  const shouldHideSeedPost = seedNewsItems.some((item) => item.slug === slug)
+  const params = new URLSearchParams({ slug })
+
+  if (shouldHideSeedPost) {
+    params.set('hide', 'true')
+  }
+
+  const data = await requestJson(`/api/admin/news?${params.toString()}`, {
     method: 'DELETE',
   })
 
