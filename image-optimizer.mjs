@@ -1,14 +1,8 @@
-import { spawn } from 'node:child_process'
-import { randomBytes } from 'node:crypto'
-import { readFile, unlink } from 'node:fs/promises'
-import { join } from 'node:path'
-import { tmpdir } from 'node:os'
-import ffmpeg from '@ffmpeg-installer/ffmpeg'
+import sharp from 'sharp'
 
 const maxSourceBytes = 8 * 1024 * 1024
 const defaultWidth = 1200
 const maxWidth = 1920
-const ffmpegTimeoutMs = 12000
 
 function isPrivateIpv4(hostname) {
   const parts = hostname.split('.').map((part) => Number(part))
@@ -101,69 +95,16 @@ async function fetchRemoteImage(imageUrl) {
   }
 }
 
-function convertImageToWebp(sourceBuffer, width) {
-  if (!ffmpeg.path) {
-    throw new Error('FFmpeg binary is not available.')
+async function convertImageToWebp(sourceBuffer, width) {
+  try {
+    return await sharp(sourceBuffer, { limitInputPixels: 40_000_000 })
+      .rotate()
+      .resize({ width, withoutEnlargement: true })
+      .webp({ quality: 78, effort: 5 })
+      .toBuffer()
+  } catch {
+    throw new Error('Image conversion failed.')
   }
-
-  const outputPath = join(tmpdir(), `alwination-${Date.now()}-${randomBytes(6).toString('hex')}.webp`)
-
-  return new Promise((resolve, reject) => {
-    const errors = []
-    const args = [
-      '-hide_banner',
-      '-loglevel',
-      'error',
-      '-i',
-      'pipe:0',
-      '-vf',
-      `scale=w='min(${width},iw)':h=-2:flags=lanczos`,
-      '-frames:v',
-      '1',
-      '-c:v',
-      'libwebp',
-      '-quality',
-      '78',
-      '-compression_level',
-      '5',
-      '-preset',
-      'picture',
-      '-y',
-      outputPath,
-    ]
-    const ffmpegProcess = spawn(ffmpeg.path, args, { stdio: ['pipe', 'pipe', 'pipe'] })
-    const timeout = setTimeout(() => {
-      ffmpegProcess.kill('SIGKILL')
-      reject(new Error('Image conversion timed out.'))
-    }, ffmpegTimeoutMs)
-
-    ffmpegProcess.stderr.on('data', (chunk) => errors.push(chunk))
-    ffmpegProcess.on('error', (error) => {
-      clearTimeout(timeout)
-      reject(error)
-    })
-    ffmpegProcess.on('close', async (code) => {
-      clearTimeout(timeout)
-
-      if (code !== 0) {
-        const message = Buffer.concat(errors).toString('utf8').trim()
-        await unlink(outputPath).catch(() => {})
-        reject(new Error(message || 'Image conversion failed.'))
-        return
-      }
-
-      try {
-        const outputBuffer = await readFile(outputPath)
-        resolve(outputBuffer)
-      } catch (error) {
-        reject(error)
-      } finally {
-        await unlink(outputPath).catch(() => {})
-      }
-    })
-
-    ffmpegProcess.stdin.end(sourceBuffer)
-  })
 }
 
 export async function optimizedRemoteImage(requestUrl) {
