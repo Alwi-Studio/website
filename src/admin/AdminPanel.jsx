@@ -29,6 +29,7 @@ const defaultForm = {
 const emptyPolicyForm = { eyebrow: '', title: '', updated: '', intro: '', sectionsText: '' }
 
 const emptyStaffForm = { eyebrow: '', title: '', updated: '', intro: '', groupsText: '' }
+const maxSlugLength = 80
 
 const policyMeta = {
   rules: { label: 'Rules', heading: 'Server Rules', path: '/rules', fallbackEyebrow: 'Community Rules' },
@@ -206,6 +207,12 @@ function slugify(value) {
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
+    .slice(0, maxSlugLength)
+    .replace(/-+$/g, '')
+}
+
+function getEffectiveSlug(form) {
+  return slugify(form.slug || form.title)
 }
 
 function createBodyBlocks(bodyText) {
@@ -1130,7 +1137,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
   )
   const newsPreview = useMemo(
     () => ({
-      slug: editingSlug || slugify(form.title),
+      slug: getEffectiveSlug(form),
       img: form.imageUrl.trim(),
       title: form.title.trim(),
       description: form.description.trim(),
@@ -1144,7 +1151,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
         .map((highlight) => highlight.trim())
         .filter(Boolean),
     }),
-    [editingSlug, form],
+    [form],
   )
   const policyPreview = useMemo(() => {
     const meta = isPolicyTab ? policyMeta[activeTab] : policyMeta.rules
@@ -1206,8 +1213,13 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
   function updateField(field, value) {
     setForm((currentForm) => ({
       ...currentForm,
-      [field]: value,
-      slug: field === 'title' && !editingSlug ? slugify(value) : currentForm.slug,
+      [field]: field === 'slug' ? slugify(value) : value,
+      slug:
+        field === 'title' && (!currentForm.slug || currentForm.slug === slugify(currentForm.title))
+          ? slugify(value)
+          : field === 'slug'
+            ? slugify(value)
+            : currentForm.slug,
     }))
   }
 
@@ -1236,7 +1248,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
   async function handleSubmit(event) {
     event.preventDefault()
 
-    const slug = editingSlug || slugify(form.title)
+    const slug = getEffectiveSlug(form)
     const body = createBodyBlocks(form.bodyText)
 
     if (!form.title.trim() || !slug || !form.description.trim() || body.length === 0) {
@@ -1274,7 +1286,10 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
     try {
       setIsSavingNews(true)
       setNewsSaveState('saving')
-      const nextNewsItems = await saveAdminNewsItem(item)
+      let nextNewsItems = await saveAdminNewsItem(item)
+      if (editingSlug && editingSlug !== slug) {
+        nextNewsItems = await deleteAdminNewsItem(editingSlug)
+      }
       onNewsChange(nextNewsItems)
       setForm(defaultForm)
       setEditingSlug('')
@@ -1578,8 +1593,11 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                     <input className={inputClass} value={form.title} onChange={(event) => updateField('title', event.target.value)} />
                   </label>
                   <label className={labelClass}>
-                    Slug preview
-                    <input className={`${inputClass} bg-bg-2 text-zinc-400`} readOnly value={form.slug} />
+                    Slug
+                    <input className={inputClass} maxLength={maxSlugLength} value={form.slug} onChange={(event) => updateField('slug', event.target.value)} />
+                    <span className="text-xs font-medium leading-5 text-muted">
+                      Used in /news/{getEffectiveSlug(form) || 'your-post-slug'}. Leave empty to generate it from the title.
+                    </span>
                   </label>
                 </div>
 
