@@ -221,10 +221,13 @@ async function saveAdminNews(item) {
 
 async function deleteAdminNews(slug) {
   if (hasSupabaseStorage) {
+    const existingRows = await supabaseRequest(`news_posts?slug=eq.${encodeURIComponent(slug)}&select=id&limit=1`)
+    const existingId = Array.isArray(existingRows) ? existingRows[0]?.id : ''
+
     await supabaseRequest('news_posts?on_conflict=slug', {
       method: 'POST',
       body: JSON.stringify({
-        id: `deleted-${slug}`,
+        id: existingId || `deleted-${slug}`,
         slug,
         title: 'Deleted news post',
         description: 'This post has been hidden.',
@@ -251,9 +254,10 @@ async function deleteAdminNews(slug) {
   }
 
   const storedItems = await readLocalAdminNews()
+  const existingItem = storedItems.find((item) => item.slug === slug)
   const nextItems = [
     {
-      id: `deleted-${slug}`,
+      id: existingItem?.id || `deleted-${slug}`,
       slug,
       title: 'Deleted news post',
       description: 'This post has been hidden.',

@@ -351,10 +351,13 @@ export async function saveAdminNews(item) {
 }
 
 export async function deleteAdminNews(slug) {
+  const existingRows = await supabaseRequest(`news_posts?slug=eq.${encodeURIComponent(slug)}&select=id&limit=1`)
+  const existingId = Array.isArray(existingRows) ? existingRows[0]?.id : ''
+
   await supabaseRequest('news_posts?on_conflict=slug', {
     method: 'POST',
     body: JSON.stringify({
-      id: `deleted-${slug}`,
+      id: existingId || `deleted-${slug}`,
       slug,
       title: 'Deleted news post',
       description: 'This post has been hidden.',

@@ -108,10 +108,17 @@ async function requestJson(url, options = {}) {
     },
     ...options,
   })
-  const data = await response.json().catch(() => ({}))
+  const responseText = await response.text()
+  let data = {}
+
+  try {
+    data = responseText ? JSON.parse(responseText) : {}
+  } catch {
+    data = {}
+  }
 
   if (!response.ok) {
-    throw new Error(data.error ?? 'Request failed.')
+    throw new Error(data.error ?? (responseText || `Request failed with status ${response.status}.`))
   }
 
   return data
