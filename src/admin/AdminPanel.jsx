@@ -237,6 +237,10 @@ function getBlockText(block) {
     return block.items.map((item) => `- ${item}`).join('\n')
   }
 
+  if (block.type === 'ordered-list') {
+    return block.items.map((item, index) => `${index + 1}. ${item}`).join('\n')
+  }
+
   if (block.type === 'checklist') {
     return block.items.map((item) => `- [${item.checked ? 'x' : ' '}] ${item.text}`).join('\n')
   }
@@ -404,7 +408,7 @@ function sectionsToText(sections = []) {
         lines.push(section.description)
       }
       if (Array.isArray(section.items)) {
-        section.items.forEach((item) => lines.push(item === '---' ? '---' : `- ${item}`))
+        section.items.forEach((item) => lines.push(item === '---' || /^\d+\.\s+/.test(item) ? item : `- ${item}`))
       }
       if (Array.isArray(section.subsections)) {
         section.subsections.forEach((subsection) => {
@@ -413,7 +417,7 @@ function sectionsToText(sections = []) {
             lines.push(subsection.description)
           }
           if (Array.isArray(subsection.items)) {
-            subsection.items.forEach((item) => lines.push(item === '---' ? '---' : `- ${item}`))
+            subsection.items.forEach((item) => lines.push(item === '---' || /^\d+\.\s+/.test(item) ? item : `- ${item}`))
           }
         })
       }
@@ -459,9 +463,11 @@ function parseSections(text) {
       current.subsections.push(currentSubsection)
     } else if (trimmed.startsWith('- ')) {
       currentTarget().items.push(trimmed.slice(2).trim())
+    } else if (/^\d+\.\s+/.test(trimmed)) {
+      currentTarget().items.push(trimmed)
     } else {
       const target = currentTarget()
-      target.description = target.description ? `${target.description} ${trimmed}` : trimmed
+      target.description = target.description ? `${target.description}\n${trimmed}` : trimmed
     }
   }
 
@@ -635,11 +641,11 @@ function PreviewTitledItems({ block, card = false }) {
 
 function PreviewArticleBlock({ block }) {
   if (typeof block === 'string') {
-    return <p><RichInline text={block} /></p>
+    return <p className="whitespace-pre-line"><RichInline text={block} /></p>
   }
 
   if (block.type === 'lead') {
-    return <p className="text-base font-semibold leading-7 text-zinc-100"><RichInline text={block.text} /></p>
+    return <p className="whitespace-pre-line text-base font-semibold leading-7 text-zinc-100"><RichInline text={block.text} /></p>
   }
 
   if (block.type === 'heading') {
@@ -661,6 +667,18 @@ function PreviewArticleBlock({ block }) {
           </li>
         ))}
       </ul>
+    )
+  }
+
+  if (block.type === 'ordered-list') {
+    return (
+      <ol className="grid list-decimal gap-2 pl-5">
+        {block.items.map((item, index) => (
+          <li className="pl-1 text-sm leading-6 text-muted" key={index}>
+            <RichInline text={item} />
+          </li>
+        ))}
+      </ol>
     )
   }
 
@@ -851,7 +869,7 @@ function PreviewArticleBlock({ block }) {
     )
   }
 
-  return <p><RichInline text={block.text} /></p>
+  return <p className="whitespace-pre-line"><RichInline text={block.text} /></p>
 }
 
 function NewsLivePreview({ item }) {
@@ -937,13 +955,18 @@ function PolicyLivePreview({ policy, activeKey }) {
                 </span>
                 <div className="min-w-0">
                   <h4 className="font-bold leading-tight text-white"><RichInline text={section.title} /></h4>
-                  {section.description && <p className="mt-2 text-sm leading-7 text-muted"><RichInline text={section.description} /></p>}
+                  {section.description && <p className="mt-2 whitespace-pre-line text-sm leading-7 text-muted"><RichInline text={section.description} /></p>}
                   {section.items?.length > 0 && (
                     <ul className="mt-3 grid gap-2 p-0">
                       {section.items.map((item, itemIndex) => (
                         item === '---' ? (
                           <li className="list-none py-1" key={`divider-${itemIndex}`}>
                             <hr className="border-0 border-t border-white/10" />
+                          </li>
+                        ) : /^\d+\.\s+/.test(item) ? (
+                          <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
+                            <span className="min-w-5 shrink-0 font-bold text-brand-2">{item.match(/^(\d+)\./)?.[1]}.</span>
+                            <span><RichInline text={item.replace(/^\d+\.\s+/, '')} /></span>
                           </li>
                         ) : (
                           <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
@@ -959,13 +982,18 @@ function PolicyLivePreview({ policy, activeKey }) {
                       {section.subsections.map((subsection) => (
                         <section className="rounded-lg border border-white/10 bg-bg-2/50 p-4" key={subsection.title}>
                           <h5 className="text-sm font-bold text-white"><RichInline text={subsection.title} /></h5>
-                          {subsection.description && <p className="mt-2 text-sm leading-6 text-muted"><RichInline text={subsection.description} /></p>}
+                          {subsection.description && <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted"><RichInline text={subsection.description} /></p>}
                           {subsection.items?.length > 0 && (
                             <ul className="mt-3 grid gap-2 p-0">
                               {subsection.items.map((item, itemIndex) => (
                                 item === '---' ? (
                                   <li className="list-none py-1" key={`divider-${itemIndex}`}>
                                     <hr className="border-0 border-t border-white/10" />
+                                  </li>
+                                ) : /^\d+\.\s+/.test(item) ? (
+                                  <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
+                                    <span className="min-w-5 shrink-0 font-bold text-brand-2">{item.match(/^(\d+)\./)?.[1]}.</span>
+                                    <span><RichInline text={item.replace(/^\d+\.\s+/, '')} /></span>
                                   </li>
                                 ) : (
                                   <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>

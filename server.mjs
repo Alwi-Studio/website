@@ -467,6 +467,14 @@ function normalizeBodyBlock(block) {
     return items.length > 0 ? { type: 'list', items } : null
   }
 
+  if (block.type === 'ordered-list') {
+    const items = Array.isArray(block.items)
+      ? block.items.map((item) => trimText(item, 500)).filter(Boolean).slice(0, 24)
+      : []
+
+    return items.length > 0 ? { type: 'ordered-list', items } : null
+  }
+
   if (block.type === 'checklist') {
     const items = Array.isArray(block.items)
       ? block.items

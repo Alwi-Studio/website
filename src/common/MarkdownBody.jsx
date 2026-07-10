@@ -113,6 +113,18 @@ export function MarkdownBody({ text, className = '' }) {
           )
         }
 
+        if (block.type === 'ordered-list') {
+          return (
+            <ol key={key} className="grid list-decimal gap-2 pl-5">
+              {block.items.map((item, itemIndex) => (
+                <li key={itemIndex} className="pl-1 text-[15px] leading-7 text-muted">
+                  <RichInline text={item} />
+                </li>
+              ))}
+            </ol>
+          )
+        }
+
         if (block.type === 'checklist') {
           return (
             <ul key={key} className="grid gap-2 p-0">
@@ -292,7 +304,7 @@ export function MarkdownBody({ text, className = '' }) {
 
         const isLead = block.type === 'lead'
         return (
-          <p key={key} className={`${isLead ? 'text-[17px] text-zinc-200' : 'text-[15px] text-muted'} leading-7`}>
+          <p key={key} className={`${isLead ? 'text-[17px] text-zinc-200' : 'text-[15px] text-muted'} whitespace-pre-line leading-7`}>
             <RichInline text={block.text} />
           </p>
         )

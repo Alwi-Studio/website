@@ -369,6 +369,19 @@ export function parseMarkdownBlocks(text) {
       continue
     }
 
+    if (/^\d+\.\s+/.test(trimmed)) {
+      const items = []
+      while (index < lines.length && /^\d+\.\s+/.test(lines[index].trim())) {
+        const item = lines[index].trim().match(/^\d+\.\s+(.+)$/)
+        if (item) {
+          items.push(item[1].trim())
+        }
+        index += 1
+      }
+      blocks.push({ type: 'ordered-list', items })
+      continue
+    }
+
     const paragraphLines = []
     while (
       index < lines.length &&
@@ -391,12 +404,13 @@ export function parseMarkdownBlocks(text) {
       !/^!\[[^\]]*\]\([^)]+\)(?:\s+.+)?$/.test(lines[index].trim()) &&
       !lines[index].trim().startsWith('> ') &&
       !/^[-*]\s+\[[ xX]\]\s+/.test(lines[index].trim()) &&
-      !/^[-*]\s+/.test(lines[index].trim())
+      !/^[-*]\s+/.test(lines[index].trim()) &&
+      !/^\d+\.\s+/.test(lines[index].trim())
     ) {
       paragraphLines.push(lines[index].trim())
       index += 1
     }
-    blocks.push({ type: blocks.length === 0 ? 'lead' : 'paragraph', text: paragraphLines.join(' ') })
+    blocks.push({ type: blocks.length === 0 ? 'lead' : 'paragraph', text: paragraphLines.join('\n') })
   }
 
   return blocks

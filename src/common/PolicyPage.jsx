@@ -216,7 +216,7 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
                   <div className="min-w-0">
                     <h2 className="text-xl font-bold leading-tight text-white"><RichInline text={section.title} /></h2>
                     {section.description && (
-                      <p className="mt-3 text-sm leading-7 text-muted"><RichInline text={section.description} /></p>
+                      <p className="mt-3 whitespace-pre-line text-sm leading-7 text-muted"><RichInline text={section.description} /></p>
                     )}
                     {section.items && section.items.length > 0 && (
                       <ul className="mt-3 grid gap-2 p-0">
@@ -224,6 +224,11 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
                           item === '---' ? (
                             <li className="list-none py-1" key={`divider-${itemIndex}`}>
                               <hr className="border-0 border-t border-white/10" />
+                            </li>
+                          ) : /^\d+\.\s+/.test(item) ? (
+                            <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
+                              <span className="min-w-5 shrink-0 font-bold text-brand-2">{item.match(/^(\d+)\./)?.[1]}.</span>
+                              <span><RichInline text={item.replace(/^\d+\.\s+/, '')} /></span>
                             </li>
                           ) : (
                             <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
@@ -244,7 +249,7 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
                           >
                             <h3 className="text-base font-bold leading-tight text-white"><RichInline text={subsection.title} /></h3>
                             {subsection.description && (
-                              <p className="mt-2 text-sm leading-7 text-muted"><RichInline text={subsection.description} /></p>
+                              <p className="mt-2 whitespace-pre-line text-sm leading-7 text-muted"><RichInline text={subsection.description} /></p>
                             )}
                             {subsection.items && subsection.items.length > 0 && (
                               <ul className="mt-3 grid gap-2 p-0">
@@ -252,6 +257,11 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
                                   item === '---' ? (
                                     <li className="list-none py-1" key={`divider-${itemIndex}`}>
                                       <hr className="border-0 border-t border-white/10" />
+                                    </li>
+                                  ) : /^\d+\.\s+/.test(item) ? (
+                                    <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
+                                      <span className="min-w-5 shrink-0 font-bold text-brand-2">{item.match(/^(\d+)\./)?.[1]}.</span>
+                                      <span><RichInline text={item.replace(/^\d+\.\s+/, '')} /></span>
                                     </li>
                                   ) : (
                                     <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>

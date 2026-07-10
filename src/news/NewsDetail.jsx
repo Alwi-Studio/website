@@ -121,11 +121,11 @@ function ArticleTabs({ items }) {
 
 function ArticleBlock({ block }) {
   if (typeof block === 'string') {
-    return <p><RichInline text={block} /></p>
+    return <p className="whitespace-pre-line"><RichInline text={block} /></p>
   }
 
   if (block.type === 'lead') {
-    return <p className="text-xl font-semibold leading-8 text-zinc-100"><RichInline text={block.text} /></p>
+    return <p className="whitespace-pre-line text-xl font-semibold leading-8 text-zinc-100"><RichInline text={block.text} /></p>
   }
 
   if (block.type === 'heading') {
@@ -149,6 +149,18 @@ function ArticleBlock({ block }) {
           </li>
         ))}
       </ul>
+    )
+  }
+
+  if (block.type === 'ordered-list') {
+    return (
+      <ol className="list-decimal space-y-2 pl-5">
+        {block.items.map((item, index) => (
+          <li className="pl-1" key={index}>
+            <RichInline text={item} />
+          </li>
+        ))}
+      </ol>
     )
   }
 
@@ -329,7 +341,7 @@ function ArticleBlock({ block }) {
     )
   }
 
-  return <p><RichInline text={block.text} /></p>
+  return <p className="whitespace-pre-line"><RichInline text={block.text} /></p>
 }
 
 function NewsDetail({ item, newsItems = [] }) {
