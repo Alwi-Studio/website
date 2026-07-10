@@ -125,7 +125,7 @@ function ArticleBlock({ block }) {
   }
 
   if (block.type === 'lead') {
-    return <p className="text-xl font-semibold leading-9 text-zinc-100"><RichInline text={block.text} /></p>
+    return <p className="text-xl font-semibold leading-8 text-zinc-100"><RichInline text={block.text} /></p>
   }
 
   if (block.type === 'heading') {
@@ -150,6 +150,10 @@ function ArticleBlock({ block }) {
         ))}
       </ul>
     )
+  }
+
+  if (block.type === 'divider') {
+    return <hr className="my-2 border-0 border-t border-white/10" />
   }
 
   if (block.type === 'checklist') {
@@ -363,7 +367,7 @@ function NewsDetail({ item, newsItems = [] }) {
 
         <section className="px-5 pb-16 sm:px-8 lg:px-12">
           <div className="mx-auto grid max-w-5xl gap-10 lg:grid-cols-[1fr_280px] lg:items-start">
-            <div className="space-y-6 text-base leading-8 text-zinc-300">
+            <div className="space-y-4 text-base leading-7 text-zinc-300">
               {item.body.map((block, index) => (
                 <ArticleBlock block={block} key={`${typeof block === 'string' ? block : block.type}-${index}`} />
               ))}

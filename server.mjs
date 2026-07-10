@@ -447,6 +447,10 @@ function normalizeBodyBlock(block) {
     return text ? { type: block.type, text } : null
   }
 
+  if (block.type === 'divider') {
+    return { type: 'divider' }
+  }
+
   if (block.type === 'heading') {
     const text = trimText(block.text)
     const level = Number(block.level)

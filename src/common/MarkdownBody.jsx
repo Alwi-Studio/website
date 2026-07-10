@@ -68,7 +68,7 @@ export function MarkdownBody({ text, className = '' }) {
   }
 
   return (
-    <div className={`grid gap-4 ${className}`}>
+    <div className={`grid gap-2.5 ${className}`}>
       {blocks.map((block, index) => {
         const key = `${block.type}-${index}`
 
@@ -92,6 +92,10 @@ export function MarkdownBody({ text, className = '' }) {
               <RichInline text={block.text} />
             </h4>
           )
+        }
+
+        if (block.type === 'divider') {
+          return <hr key={key} className="my-2 border-0 border-t border-white/10" />
         }
 
         if (block.type === 'list') {
@@ -288,7 +292,7 @@ export function MarkdownBody({ text, className = '' }) {
 
         const isLead = block.type === 'lead'
         return (
-          <p key={key} className={`${isLead ? 'text-[17px] text-zinc-200' : 'text-[15px] text-muted'} leading-8`}>
+          <p key={key} className={`${isLead ? 'text-[17px] text-zinc-200' : 'text-[15px] text-muted'} leading-7`}>
             <RichInline text={block.text} />
           </p>
         )

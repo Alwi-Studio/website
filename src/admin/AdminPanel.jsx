@@ -65,6 +65,11 @@ const sharedArticleExamples = [
     code: '| Rank | Price | Perks |\n| --- | ---: | --- |\n| VIP | $5 | Cosmetics |\n| MVP | $10 | Cosmetics + kits |',
   },
   {
+    title: 'Divider',
+    description: 'Put three dashes on their own line to add a thin divider between sections.',
+    code: 'First paragraph\n---\nNext paragraph',
+  },
+  {
     title: 'Columns and grid',
     description: 'Use columns or grid for short titled items. Add 2, 3, or 4 after the block name.',
     code: ':::columns 2\nSurvival | Claim land, build bases, and trade.\nEvents | Join seasonal contests and tournaments.\n:::',
@@ -256,6 +261,10 @@ function getBlockText(block) {
     ].join('\n')
   }
 
+  if (block.type === 'divider') {
+    return '---'
+  }
+
   if (block.type === 'columns' || block.type === 'grid') {
     return [`:::${block.type} ${block.columns ?? 2}`, ...block.items.map((item) => `${item.title} | ${item.text}`), ':::'].join('\n')
   }
@@ -395,7 +404,7 @@ function sectionsToText(sections = []) {
         lines.push(section.description)
       }
       if (Array.isArray(section.items)) {
-        section.items.forEach((item) => lines.push(`- ${item}`))
+        section.items.forEach((item) => lines.push(item === '---' ? '---' : `- ${item}`))
       }
       if (Array.isArray(section.subsections)) {
         section.subsections.forEach((subsection) => {
@@ -404,7 +413,7 @@ function sectionsToText(sections = []) {
             lines.push(subsection.description)
           }
           if (Array.isArray(subsection.items)) {
-            subsection.items.forEach((item) => lines.push(`- ${item}`))
+            subsection.items.forEach((item) => lines.push(item === '---' ? '---' : `- ${item}`))
           }
         })
       }
@@ -414,7 +423,7 @@ function sectionsToText(sections = []) {
 }
 
 // Parse the editable mini-syntax back into structured policy sections.
-// "# Title" starts a section, "## Title" starts a subsection, "- item" adds a bullet.
+// "# Title" starts a section, "## Title" starts a subsection, "- item" adds a bullet, "---" adds a divider.
 function parseSections(text) {
   const sections = []
   let current = null
@@ -438,7 +447,9 @@ function parseSections(text) {
       continue
     }
 
-    if (trimmed.startsWith('# ')) {
+    if (/^-{3,}$/.test(trimmed)) {
+      currentTarget().items.push('---')
+    } else if (trimmed.startsWith('# ')) {
       current = { title: trimmed.slice(2).trim() || 'Section', description: '', items: [], subsections: [] }
       sections.push(current)
       currentSubsection = null
@@ -651,6 +662,10 @@ function PreviewArticleBlock({ block }) {
         ))}
       </ul>
     )
+  }
+
+  if (block.type === 'divider') {
+    return <hr className="my-1.5 border-0 border-t border-white/10" />
   }
 
   if (block.type === 'checklist') {
@@ -868,7 +883,7 @@ function NewsLivePreview({ item }) {
             <p className="mt-3 text-xs font-semibold text-muted">By {item.author || 'AlwiNation Team'}</p>
 
             {item.body.length > 0 && (
-              <div className="mt-5 grid gap-4 text-sm leading-7 text-muted">
+              <div className="mt-5 grid gap-2.5 text-sm leading-7 text-muted">
                 {item.body.map((block, index) => (
                   <PreviewArticleBlock block={block} key={`${typeof block === 'string' ? block : block.type}-${index}`} />
                 ))}
@@ -925,11 +940,17 @@ function PolicyLivePreview({ policy, activeKey }) {
                   {section.description && <p className="mt-2 text-sm leading-7 text-muted"><RichInline text={section.description} /></p>}
                   {section.items?.length > 0 && (
                     <ul className="mt-3 grid gap-2 p-0">
-                      {section.items.map((item) => (
-                        <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
-                          <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-2" />
-                          <span><RichInline text={item} /></span>
-                        </li>
+                      {section.items.map((item, itemIndex) => (
+                        item === '---' ? (
+                          <li className="list-none py-1" key={`divider-${itemIndex}`}>
+                            <hr className="border-0 border-t border-white/10" />
+                          </li>
+                        ) : (
+                          <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
+                            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-2" />
+                            <span><RichInline text={item} /></span>
+                          </li>
+                        )
                       ))}
                     </ul>
                   )}
@@ -941,11 +962,17 @@ function PolicyLivePreview({ policy, activeKey }) {
                           {subsection.description && <p className="mt-2 text-sm leading-6 text-muted"><RichInline text={subsection.description} /></p>}
                           {subsection.items?.length > 0 && (
                             <ul className="mt-3 grid gap-2 p-0">
-                              {subsection.items.map((item) => (
-                                <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
-                                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-2" />
-                                  <span><RichInline text={item} /></span>
-                                </li>
+                              {subsection.items.map((item, itemIndex) => (
+                                item === '---' ? (
+                                  <li className="list-none py-1" key={`divider-${itemIndex}`}>
+                                    <hr className="border-0 border-t border-white/10" />
+                                  </li>
+                                ) : (
+                                  <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
+                                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-2" />
+                                    <span><RichInline text={item} /></span>
+                                  </li>
+                                )
                               ))}
                             </ul>
                           )}
@@ -1800,6 +1827,10 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                 <li className="flex items-start gap-3 text-sm text-muted">
                   <code className="rounded-md bg-surface-2 px-2 py-0.5 text-brand-2">- item</code>
                   <span>adds a bullet point</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-muted">
+                  <code className="rounded-md bg-surface-2 px-2 py-0.5 text-brand-2">---</code>
+                  <span>adds a divider line</span>
                 </li>
                 <li className="flex items-start gap-3 text-sm text-muted">
                   <span className="rounded-md bg-surface-2 px-2 py-0.5 text-zinc-300">plain text</span>

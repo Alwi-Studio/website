@@ -180,6 +180,12 @@ export function parseMarkdownBlocks(text) {
       continue
     }
 
+    if (/^-{3,}$/.test(trimmed)) {
+      blocks.push({ type: 'divider' })
+      index += 1
+      continue
+    }
+
     if (trimmed.startsWith(':::callout')) {
       const title = trimmed.slice(':::callout'.length).trim()
       const { blockLines, nextIndex } = readFencedBlock(lines, index)
@@ -368,6 +374,7 @@ export function parseMarkdownBlocks(text) {
       index < lines.length &&
       lines[index].trim() &&
       !lines[index].trim().startsWith('```') &&
+      !/^-{3,}$/.test(lines[index].trim()) &&
       !lines[index].trim().startsWith(':::callout') &&
       !lines[index].trim().startsWith(':::stats') &&
       !lines[index].trim().startsWith(':::section') &&

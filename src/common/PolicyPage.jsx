@@ -219,17 +219,23 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
                       <p className="mt-3 text-sm leading-7 text-muted"><RichInline text={section.description} /></p>
                     )}
                     {section.items && section.items.length > 0 && (
-                      <ul className="mt-4 grid gap-3 p-0">
-                        {section.items.map((item) => (
-                          <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
-                            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-2" />
-                            <span><RichInline text={item} /></span>
-                          </li>
+                      <ul className="mt-3 grid gap-2 p-0">
+                        {section.items.map((item, itemIndex) => (
+                          item === '---' ? (
+                            <li className="list-none py-1" key={`divider-${itemIndex}`}>
+                              <hr className="border-0 border-t border-white/10" />
+                            </li>
+                          ) : (
+                            <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
+                              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-2" />
+                              <span><RichInline text={item} /></span>
+                            </li>
+                          )
                         ))}
                       </ul>
                     )}
                     {section.subsections.length > 0 && (
-                      <div className="mt-6 grid gap-4">
+                      <div className="mt-5 grid gap-3">
                         {section.subsections.map((subsection) => (
                           <section
                             id={subsection._id}
@@ -241,12 +247,18 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
                               <p className="mt-2 text-sm leading-7 text-muted"><RichInline text={subsection.description} /></p>
                             )}
                             {subsection.items && subsection.items.length > 0 && (
-                              <ul className="mt-4 grid gap-3 p-0">
-                                {subsection.items.map((item) => (
-                                  <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
-                                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-2" />
-                                    <span><RichInline text={item} /></span>
-                                  </li>
+                              <ul className="mt-3 grid gap-2 p-0">
+                                {subsection.items.map((item, itemIndex) => (
+                                  item === '---' ? (
+                                    <li className="list-none py-1" key={`divider-${itemIndex}`}>
+                                      <hr className="border-0 border-t border-white/10" />
+                                    </li>
+                                  ) : (
+                                    <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
+                                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-2" />
+                                      <span><RichInline text={item} /></span>
+                                    </li>
+                                  )
                                 ))}
                               </ul>
                             )}
