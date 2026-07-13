@@ -262,8 +262,12 @@ export function parseMarkdownBlocks(text) {
     }
 
     if (trimmed.startsWith(':::accordion') || trimmed.startsWith(':::collapse')) {
+      const marker = trimmed.startsWith(':::accordion') ? ':::accordion' : ':::collapse'
+      const title = trimmed.slice(marker.length).trim()
       const { blockLines, nextIndex } = readFencedBlock(lines, index)
-      const items = parseTitledItems(blockLines)
+      const items = title
+        ? [{ title, text: blockLines.filter(Boolean).join('\n') }]
+        : parseTitledItems(blockLines)
 
       if (items.length > 0) {
         blocks.push({ type: 'accordion', items })

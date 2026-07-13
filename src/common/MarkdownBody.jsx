@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import CollapsibleItems from './CollapsibleItems.jsx'
 import { isSafeImageUrl } from './safeUrls.js'
 import { getOptimizedImageUrl } from './imageOptimizer.js'
 import { RichInline, parseMarkdownBlocks } from './RichText.jsx'
@@ -198,16 +199,7 @@ export function MarkdownBody({ text, className = '' }) {
         }
 
         if (block.type === 'accordion') {
-          return (
-            <div key={key} className="grid gap-2">
-              {block.items.map((item, itemIndex) => (
-                <details className="rounded-lg border border-white/10 bg-bg-2 p-4" key={`${item.title}-${itemIndex}`}>
-                  <summary className="cursor-pointer font-bold text-white"><RichInline text={item.title} /></summary>
-                  <p className="mt-3 text-sm leading-7 text-muted"><RichInline text={item.text} /></p>
-                </details>
-              ))}
-            </div>
-          )
+          return <CollapsibleItems key={key} items={block.items} />
         }
 
         if (block.type === 'section' || block.type === 'container') {

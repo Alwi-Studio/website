@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
+import MarkdownBody from './MarkdownBody.jsx'
 import { RichInline } from './RichText.jsx'
+
+function PolicyDescription({ text, className = '' }) {
+  const hasCollapsibleContent = /^\s*:::(?:accordion|collapse)(?:\s|$)/m.test(text)
+
+  if (hasCollapsibleContent) {
+    return <MarkdownBody text={text} className={className} />
+  }
+
+  return <p className={`${className} whitespace-pre-line text-sm leading-7 text-muted`}><RichInline text={text} /></p>
+}
 
 function quickScrollTo(targetY) {
   const startY = window.scrollY
@@ -216,7 +227,7 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
                   <div className="min-w-0">
                     <h2 className="text-xl font-bold leading-tight text-white"><RichInline text={section.title} /></h2>
                     {section.description && (
-                      <p className="mt-3 whitespace-pre-line text-sm leading-7 text-muted"><RichInline text={section.description} /></p>
+                      <PolicyDescription text={section.description} className="mt-3" />
                     )}
                     {section.items && section.items.length > 0 && (
                       <ul className="mt-3 grid gap-2 p-0">
@@ -249,7 +260,7 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
                           >
                             <h3 className="text-base font-bold leading-tight text-white"><RichInline text={subsection.title} /></h3>
                             {subsection.description && (
-                              <p className="mt-2 whitespace-pre-line text-sm leading-7 text-muted"><RichInline text={subsection.description} /></p>
+                              <PolicyDescription text={subsection.description} className="mt-2" />
                             )}
                             {subsection.items && subsection.items.length > 0 && (
                               <ul className="mt-3 grid gap-2 p-0">

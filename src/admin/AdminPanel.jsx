@@ -6,6 +6,8 @@ import {
   logoutAdmin,
   saveAdminNewsItem,
 } from '../news/adminNewsStore.js'
+import CollapsibleItems from '../common/CollapsibleItems.jsx'
+import MarkdownBody from '../common/MarkdownBody.jsx'
 import { RichInline, parseMarkdownBlocks } from '../common/RichText.jsx'
 import { isSafeImageUrl } from '../common/safeUrls.js'
 import { isPolicyCustomized, resetAdminPolicy, saveAdminPolicy } from '../content/policyStore.js'
@@ -86,8 +88,8 @@ const sharedArticleExamples = [
   },
   {
     title: 'Accordion',
-    description: 'Use accordion/collapse for FAQ-style content.',
-    code: ':::accordion\nCan I transfer ranks? | Open a ticket with your username and proof.\nWhere do I report bugs? | Use Discord support and include screenshots.\n:::',
+    description: 'Give a collapsible block a title, then put its hidden description on the following lines.',
+    code: ':::collapse Can I transfer ranks?\nOpen a ticket with your username and proof.\n:::',
   },
   {
     title: 'Sections and containers',
@@ -175,8 +177,8 @@ const policyFormattingExamples = [
   },
   {
     title: 'Policy inline formatting',
-    description: 'Rules and terms do not support callout or stats blocks. Use inline formatting inside section text and bullets.',
-    code: '# Appeals\nSubmit appeals through [Discord](https://discord.alwination.id).\n- Include your username\n- Explain what happened with **clear details**',
+    description: 'Rules and terms support collapsible title/description blocks inside a section. Inline formatting also works inside them.',
+    code: '# Appeals\nSubmit appeals through [Discord](https://discord.alwination.id).\n\n:::collapse What should I include?\nInclude your username and explain what happened with **clear details**.\n:::',
   },
 ]
 
@@ -432,6 +434,7 @@ function parseSections(text) {
   const sections = []
   let current = null
   let currentSubsection = null
+  let richBlockOpen = false
 
   function ensureSection() {
     if (!current) {
@@ -445,13 +448,30 @@ function parseSections(text) {
     return currentSubsection ?? current
   }
 
+  function appendDescription(line) {
+    const target = currentTarget()
+    target.description = target.description ? `${target.description}\n${line}` : line
+  }
+
   for (const rawLine of text.split('\n')) {
     const trimmed = rawLine.trim()
+
+    if (richBlockOpen) {
+      appendDescription(trimmed)
+      if (trimmed === ':::') {
+        richBlockOpen = false
+      }
+      continue
+    }
+
     if (!trimmed) {
       continue
     }
 
-    if (/^-{3,}$/.test(trimmed)) {
+    if (/^:::(?:accordion|collapse)(?:\s|$)/.test(trimmed)) {
+      appendDescription(trimmed)
+      richBlockOpen = true
+    } else if (/^-{3,}$/.test(trimmed)) {
       currentTarget().items.push('---')
     } else if (trimmed.startsWith('# ')) {
       current = { title: trimmed.slice(2).trim() || 'Section', description: '', items: [], subsections: [] }
@@ -466,8 +486,7 @@ function parseSections(text) {
     } else if (/^\d+\.\s+/.test(trimmed)) {
       currentTarget().items.push(trimmed)
     } else {
-      const target = currentTarget()
-      target.description = target.description ? `${target.description}\n${trimmed}` : trimmed
+      appendDescription(trimmed)
     }
   }
 
@@ -773,16 +792,7 @@ function PreviewArticleBlock({ block }) {
   }
 
   if (block.type === 'accordion') {
-    return (
-      <div className="grid gap-2">
-        {block.items.map((item, index) => (
-          <details className="rounded-lg border border-white/10 bg-bg-2 p-4" key={`${item.title}-${index}`}>
-            <summary className="cursor-pointer font-bold text-white"><RichInline text={item.title} /></summary>
-            <p className="mt-3 text-sm leading-7 text-muted"><RichInline text={item.text} /></p>
-          </details>
-        ))}
-      </div>
-    )
+    return <CollapsibleItems items={block.items} />
   }
 
   if (block.type === 'section' || block.type === 'container') {
@@ -955,7 +965,11 @@ function PolicyLivePreview({ policy, activeKey }) {
                 </span>
                 <div className="min-w-0">
                   <h4 className="font-bold leading-tight text-white"><RichInline text={section.title} /></h4>
-                  {section.description && <p className="mt-2 whitespace-pre-line text-sm leading-7 text-muted"><RichInline text={section.description} /></p>}
+                  {section.description && (
+                    /^\s*:::(?:accordion|collapse)(?:\s|$)/m.test(section.description)
+                      ? <MarkdownBody text={section.description} className="mt-2" />
+                      : <p className="mt-2 whitespace-pre-line text-sm leading-7 text-muted"><RichInline text={section.description} /></p>
+                  )}
                   {section.items?.length > 0 && (
                     <ul className="mt-3 grid gap-2 p-0">
                       {section.items.map((item, itemIndex) => (
@@ -982,7 +996,11 @@ function PolicyLivePreview({ policy, activeKey }) {
                       {section.subsections.map((subsection) => (
                         <section className="rounded-lg border border-white/10 bg-bg-2/50 p-4" key={subsection.title}>
                           <h5 className="text-sm font-bold text-white"><RichInline text={subsection.title} /></h5>
-                          {subsection.description && <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted"><RichInline text={subsection.description} /></p>}
+                          {subsection.description && (
+                            /^\s*:::(?:accordion|collapse)(?:\s|$)/m.test(subsection.description)
+                              ? <MarkdownBody text={subsection.description} className="mt-2" />
+                              : <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted"><RichInline text={subsection.description} /></p>
+                          )}
                           {subsection.items?.length > 0 && (
                             <ul className="mt-3 grid gap-2 p-0">
                               {subsection.items.map((item, itemIndex) => (
@@ -1692,12 +1710,12 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                   Body
                   <textarea
                     className={`${textareaClass} min-h-48`}
-                    placeholder={'Use Discord-style formatting:\n# title\n![Image alt](https://example.com/image.webp) Optional caption\n| Reward | Amount |\n| --- | ---: |\n| Coins | 500 |\n- [x] checklist item\n> quote\n> -- AlwiNation Team\n- list\n```code block```\n\n:::callout Title\nCallout text\n:::\n\n:::stats\nPlayers: 120\nUptime: 99%\n:::'}
+                    placeholder={'Use Discord-style formatting:\n# title\n![Image alt](https://example.com/image.webp) Optional caption\n- list\n\n:::collapse Title\nDescription hidden until the title is opened.\n:::\n\n:::callout Title\nCallout text\n:::'}
                     value={form.bodyText}
                     onChange={(event) => updateField('bodyText', event.target.value)}
                   />
                   <span className="text-xs font-medium leading-5 text-muted">
-                    Use ![alt](https://example.com/image.webp) for article images, tables with | columns |, checklists with - [x], plus :::callout Title and :::stats fenced blocks.
+                    Use :::collapse Title, write its description on the next line, and close it with ::: to add collapsible content.
                     {' '}
                     <a className="font-semibold text-brand-2 underline underline-offset-4 hover:text-brand" href="/admin/docs">
                       View formatting docs
@@ -1859,6 +1877,10 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                 <li className="flex items-start gap-3 text-sm text-muted">
                   <code className="rounded-md bg-surface-2 px-2 py-0.5 text-brand-2">---</code>
                   <span>adds a divider line</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-muted">
+                  <code className="rounded-md bg-surface-2 px-2 py-0.5 text-brand-2">:::collapse Title</code>
+                  <span>starts a collapsible description; close it with :::</span>
                 </li>
                 <li className="flex items-start gap-3 text-sm text-muted">
                   <span className="rounded-md bg-surface-2 px-2 py-0.5 text-zinc-300">plain text</span>

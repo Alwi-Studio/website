@@ -448,7 +448,7 @@ function WikiManager({ wiki, onWikiChange }) {
                       <textarea
                         className={`${textareaClass} min-h-[320px] font-mono text-[13px] leading-6`}
                         value={activeArticle.body}
-                        placeholder={'Use Discord-style formatting:\n# Heading\n![Image alt](https://example.com/image.webp) Optional caption\n## Subheading\n- bullet point\n> quote\n`inline code`\n**bold**, *italic*, [links](https://...)'}
+                        placeholder={'Use Discord-style formatting:\n# Heading\n- bullet point\n\n:::collapse Title\nDescription hidden until opened.\n:::\n\n**bold**, *italic*, [links](https://...)'}
                         onChange={(event) => setArticleField('body', event.target.value)}
                       />
                       {showPreview && (
