@@ -25,3 +25,5 @@ data/admin-news.json
 *.njsproj
 *.sln
 *.sw?
+.pnpm-store
+.playwright-mcp

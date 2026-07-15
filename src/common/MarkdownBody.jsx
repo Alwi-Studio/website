@@ -199,7 +199,13 @@ export function MarkdownBody({ text, className = '' }) {
         }
 
         if (block.type === 'accordion') {
-          return <CollapsibleItems key={key} items={block.items} />
+          return (
+            <CollapsibleItems
+              key={key}
+              items={block.items}
+              renderContent={(content) => <MarkdownBody text={content} />}
+            />
+          )
         }
 
         if (block.type === 'section' || block.type === 'container') {

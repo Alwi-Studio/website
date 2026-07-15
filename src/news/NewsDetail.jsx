@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import News from './News.jsx'
 import CollapsibleItems from '../common/CollapsibleItems.jsx'
-import { RichInline } from '../common/RichText.jsx'
+import { RichInline, parseMarkdownBlocks } from '../common/RichText.jsx'
 import { isSafeImageUrl } from '../common/safeUrls.js'
 import { getOptimizedImageUrl } from '../common/imageOptimizer.js'
 
@@ -238,7 +238,18 @@ function ArticleBlock({ block }) {
   }
 
   if (block.type === 'accordion') {
-    return <CollapsibleItems items={block.items} />
+    return (
+      <CollapsibleItems
+        items={block.items}
+        renderContent={(content) => (
+          <div className="grid gap-4">
+            {parseMarkdownBlocks(content).map((contentBlock, index) => (
+              <ArticleBlock block={contentBlock} key={`${contentBlock.type}-${index}`} />
+            ))}
+          </div>
+        )}
+      />
+    )
   }
 
   if (block.type === 'section' || block.type === 'container') {

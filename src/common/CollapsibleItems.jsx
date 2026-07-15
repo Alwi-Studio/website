@@ -1,6 +1,6 @@
 import { RichInline } from './RichText.jsx'
 
-function CollapsibleItems({ items = [], className = '' }) {
+function CollapsibleItems({ items = [], className = '', renderContent }) {
   return (
     <div className={`grid gap-2 ${className}`}>
       {items.map((item, index) => (
@@ -28,8 +28,10 @@ function CollapsibleItems({ items = [], className = '' }) {
             </span>
           </summary>
           {item.text && (
-            <div className="border-t border-white/10 px-4 py-4 text-sm leading-7 text-muted">
-              <p className="whitespace-pre-line"><RichInline text={item.text} /></p>
+            <div className="min-w-0 border-t border-white/10 px-4 py-4 text-sm leading-7 text-muted">
+              {renderContent
+                ? renderContent(item.text, item, index)
+                : <p className="whitespace-pre-line"><RichInline text={item.text} /></p>}
             </div>
           )}
         </details>

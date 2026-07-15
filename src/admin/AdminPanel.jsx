@@ -284,6 +284,14 @@ function getBlockText(block) {
   }
 
   if (block.type === 'accordion') {
+    const hasBlockContent = block.items.some((item) => String(item.text ?? '').includes('\n'))
+
+    if (hasBlockContent) {
+      return block.items
+        .map((item) => [`:::collapse ${item.title}`, item.text, ':::'].join('\n'))
+        .join('\n\n')
+    }
+
     return [':::accordion', ...block.items.map((item) => `${item.title} | ${item.text}`), ':::'].join('\n')
   }
 
@@ -792,7 +800,18 @@ function PreviewArticleBlock({ block }) {
   }
 
   if (block.type === 'accordion') {
-    return <CollapsibleItems items={block.items} />
+    return (
+      <CollapsibleItems
+        items={block.items}
+        renderContent={(content) => (
+          <div className="grid gap-2.5">
+            {parseMarkdownBlocks(content).map((contentBlock, index) => (
+              <PreviewArticleBlock block={contentBlock} key={`${contentBlock.type}-${index}`} />
+            ))}
+          </div>
+        )}
+      />
+    )
   }
 
   if (block.type === 'section' || block.type === 'container') {

@@ -72,13 +72,44 @@ function splitTableRow(line) {
 function readFencedBlock(lines, startIndex) {
   const blockLines = []
   let index = startIndex + 1
+  let depth = 1
+  let inCodeFence = false
 
-  while (index < lines.length && lines[index].trim() !== ':::') {
-    blockLines.push(lines[index].trim())
+  while (index < lines.length) {
+    const trimmed = lines[index].trim()
+
+    if (trimmed.startsWith('```')) {
+      inCodeFence = !inCodeFence
+      blockLines.push(trimmed)
+      index += 1
+      continue
+    }
+
+    if (inCodeFence) {
+      blockLines.push(lines[index])
+      index += 1
+      continue
+    }
+
+    if (/^:::[a-z][\w-]*(?:\s|$)/i.test(trimmed)) {
+      depth += 1
+      blockLines.push(trimmed)
+      index += 1
+      continue
+    }
+
+    if (trimmed === ':::') {
+      depth -= 1
+      if (depth === 0) {
+        return { blockLines, nextIndex: index + 1 }
+      }
+    }
+
+    blockLines.push(trimmed)
     index += 1
   }
 
-  return { blockLines, nextIndex: index + 1 }
+  return { blockLines, nextIndex: index }
 }
 
 function parsePipeItems(lines, expectedParts = 2) {

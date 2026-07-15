@@ -173,6 +173,17 @@ Where do I report bugs? | Use Discord support and include screenshots.
 :::
 ```
 
+Use a titled collapse when its body needs full block formatting such as headings, lists, tables, images, code, or another fenced block:
+
+```md
+:::collapse Server versions
+| Edition | Version |
+| --- | --- |
+| Java | 1.21+ |
+| Bedrock | Latest |
+:::
+```
+
 ### Sections And Containers
 
 ```md
