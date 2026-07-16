@@ -226,7 +226,9 @@ function Navbar({ activeSection = 'home' }) {
                 href={"https://discord.alwination.id"}
                 target="_blank"
                 rel="noreferrer"
-                className="relative inline-flex items-center rounded-[10px] bg-gradient-to-b from-brand-2-discord to-brand-discord px-[18px] py-[9px] text-[14.5px] font-semibold text-[#212121] shadow-[0_6px_18px_rgba(129,64,220,0.3)] transition hover:brightness-105
+                className="
+                relative inline-flex overflow-hidden items-center rounded-[10px]
+                 bg-gradient-to-b from-brand-2-discord to-brand-discord px-[18px] py-[9px] text-[14.5px] font-semibold text-[#212121] shadow-[0_6px_18px_rgba(129,64,220,0.3)] transition hover:brightness-105
 
                   before:pointer-events-none
                   before:absolute
@@ -342,7 +344,7 @@ function Navbar({ activeSection = 'home' }) {
                 target="_blank"
                 rel="noreferrer"
                 onClick={() => setIsOpen(false)}
-                className="relative mt-1 flex min-h-11 items-center justify-center rounded-lg bg-gradient-to-b from-brand-2-discord to-brand-discord px-4 text-sm font-semibold text-[#212121]
+                className="relative mt-1 flex min-h-11 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-b from-brand-2-discord to-brand-discord px-4 text-sm font-semibold text-[#212121]
 
                 before:pointer-events-none
                   before:absolute
