@@ -3,6 +3,7 @@ import logoLongAvif from '../assets/LONG--FOR-BG-HITAM.avif'
 import logoLong from '../assets/LONG--FOR-BG-HITAM.webp'
 import logoMarkAvif from '../assets/MAIN--FOR-BG-HITAM.avif'
 import logoMark from '../assets/MAIN--FOR-BG-HITAM.webp'
+import '../index.css'
 
 // Primary in-page sections stay in the bar; secondary standalone pages move into
 // a compact "More" menu so the navbar does not get crowded as pages are added.
@@ -196,9 +197,25 @@ function Navbar({ activeSection = 'home' }) {
                 href={storeHref}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center rounded-[10px] bg-gradient-to-b from-brand-2 to-brand px-[18px] py-[9px] text-[14.5px] font-semibold text-[#212121] shadow-[0_6px_18px_rgba(255,90,48,0.3)] transition hover:brightness-105"
+                className="
+                  relative inline-flex items-center overflow-hidden rounded-[10px]
+                  bg-gradient-to-b from-brand-2 to-brand px-[18px] py-[9px]
+                  text-[14.5px] font-semibold text-[#212121]
+                  shadow-[0_6px_18px_rgba(255,90,48,0.3)]
+
+                  before:pointer-events-none
+                  before:absolute
+                  before:inset-0
+                  before:content-['']
+                  before:bg-[linear-gradient(45deg,transparent_30%,rgba(255,255,255,0.65)_50%,transparent_70%)]
+                  before:bg-[length:300%_100%]
+                  before:bg-[position:150%_0]
+                  before:bg-no-repeat
+                  before:animate-[button-shine_2.5s_ease-in-out_infinite]
+                  before:will-change-[background-position]
+                "
             >
-              Store
+              <span className="relative z-10">Store</span>
             </a>
           </div>
 
@@ -209,7 +226,19 @@ function Navbar({ activeSection = 'home' }) {
                 href={"https://discord.alwination.id"}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center rounded-[10px] bg-gradient-to-b from-brand-2-discord to-brand-discord px-[18px] py-[9px] text-[14.5px] font-semibold text-[#212121] shadow-[0_6px_18px_rgba(129,64,220,0.3)] transition hover:brightness-105"
+                className="relative inline-flex items-center rounded-[10px] bg-gradient-to-b from-brand-2-discord to-brand-discord px-[18px] py-[9px] text-[14.5px] font-semibold text-[#212121] shadow-[0_6px_18px_rgba(129,64,220,0.3)] transition hover:brightness-105
+
+                  before:pointer-events-none
+                  before:absolute
+                  before:inset-0
+                  before:content-['']
+                  before:bg-[linear-gradient(45deg,transparent_30%,rgba(255,255,255,0.65)_50%,transparent_70%)]
+                  before:bg-[length:300%_100%]
+                  before:bg-[position:150%_0]
+                  before:bg-no-repeat
+                  before:animate-[button-shine_2.5s_ease-in-out_infinite]
+                  before:will-change-[background-position]
+                "
             >
               Discord
             </a>
@@ -283,13 +312,28 @@ function Navbar({ activeSection = 'home' }) {
 
           <li>
             <a
-              href={storeHref}
-              target="_blank"
-              rel="noreferrer"
-              onClick={() => setIsOpen(false)}
-              className="mt-1 flex min-h-11 items-center justify-center rounded-lg bg-gradient-to-b from-brand-2 to-brand px-4 text-sm font-semibold text-[#212121]"
+                href={storeHref}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => setIsOpen(false)}
+                className="
+                relative mt-1 flex min-h-11 items-center justify-center overflow-hidden
+                rounded-lg bg-gradient-to-b from-brand-2 to-brand px-4
+                text-sm font-semibold text-[#212121]
+
+                  before:pointer-events-none
+                  before:absolute
+                  before:inset-0
+                  before:content-['']
+                  before:bg-[linear-gradient(45deg,transparent_30%,rgba(255,255,255,0.65)_50%,transparent_70%)]
+                  before:bg-[length:300%_100%]
+                  before:bg-[position:150%_0]
+                  before:bg-no-repeat
+                  before:animate-[button-shine_2.5s_ease-in-out_infinite]
+                  before:will-change-[background-position]
+              "
             >
-              Store
+              <span className="relative z-10">Store</span>
             </a>
           </li>
           <li>
@@ -298,7 +342,19 @@ function Navbar({ activeSection = 'home' }) {
                 target="_blank"
                 rel="noreferrer"
                 onClick={() => setIsOpen(false)}
-                className="mt-1 flex min-h-11 items-center justify-center rounded-lg bg-gradient-to-b from-brand-2-discord to-brand-discord px-4 text-sm font-semibold text-[#212121]"
+                className="relative mt-1 flex min-h-11 items-center justify-center rounded-lg bg-gradient-to-b from-brand-2-discord to-brand-discord px-4 text-sm font-semibold text-[#212121]
+
+                before:pointer-events-none
+                  before:absolute
+                  before:inset-0
+                  before:content-['']
+                  before:bg-[linear-gradient(45deg,transparent_30%,rgba(255,255,255,0.65)_50%,transparent_70%)]
+                  before:bg-[length:300%_100%]
+                  before:bg-[position:150%_0]
+                  before:bg-no-repeat
+                  before:animate-[button-shine_2.5s_ease-in-out_infinite]
+                  before:will-change-[background-position]
+                "
             >
               Discord
             </a>
