@@ -37,3 +37,21 @@ create policy "Public can read changelog entries"
   on public.changelog_entries
   for select
   using (true);
+
+-- Managed realm list (categories you create and assign to entries).
+create table if not exists public.changelog_realms (
+  key text primary key,
+  realms jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint changelog_realms_known_key check (key = 'main'),
+  constraint changelog_realms_size check (octet_length(realms::text) <= 8192)
+);
+
+alter table public.changelog_realms enable row level security;
+
+drop policy if exists "Public can read changelog realms" on public.changelog_realms;
+create policy "Public can read changelog realms"
+  on public.changelog_realms
+  for select
+  using (true);

@@ -9,6 +9,7 @@ import {
 import {
   deleteAdminChangelogEntry,
   saveAdminChangelogEntry,
+  saveChangelogRealms,
 } from '../changelog/adminChangelogStore.js'
 import { changeTypeOrder, getChangeTypeLabel } from '../changelog/changelogData.js'
 import CollapsibleItems from '../common/CollapsibleItems.jsx'
@@ -1255,7 +1256,7 @@ function FormattingDocs() {
   )
 }
 
-function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff, onStaffChange, wiki, onWikiChange, changelogEntries = [], onChangelogChange = () => {}, initialTab = 'news' }) {
+function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff, onStaffChange, wiki, onWikiChange, changelogEntries = [], onChangelogChange = () => {}, changelogRealms = [], onChangelogRealmsChange = () => {}, initialTab = 'news' }) {
   const [isCheckingSession, setIsCheckingSession] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
@@ -1279,10 +1280,27 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
   const [isSavingChangelog, setIsSavingChangelog] = useState(false)
   const [changelogSaveState, setChangelogSaveState] = useState('idle')
   const [editingChangelogSlug, setEditingChangelogSlug] = useState('')
+  const [showNewRealm, setShowNewRealm] = useState(false)
+  const [newRealmName, setNewRealmName] = useState('')
+  const [realmMessage, setRealmMessage] = useState('')
+  const [isSavingRealms, setIsSavingRealms] = useState(false)
 
   const editablePosts = useMemo(() => newsItems, [newsItems])
   const editableChangelog = useMemo(() => changelogEntries, [changelogEntries])
   const changelogPreviewGroups = useMemo(() => buildChangelogChanges(changelogForm), [changelogForm])
+  const allRealms = useMemo(() => {
+    const list = []
+    const push = (name) => {
+      const trimmed = String(name || '').trim()
+      if (trimmed && !list.some((existing) => existing.toLowerCase() === trimmed.toLowerCase())) {
+        list.push(trimmed)
+      }
+    }
+    changelogRealms.forEach(push)
+    changelogEntries.forEach((entry) => push(entry.realm))
+    push(changelogForm.realm)
+    return list.sort((a, b) => a.localeCompare(b))
+  }, [changelogRealms, changelogEntries, changelogForm.realm])
   const isPolicyTab = activeTab === 'rules' || activeTab === 'terms'
   const parsedSectionCount = useMemo(
     () => (isPolicyTab ? parseSections(policyForm.sectionsText).length : 0),
@@ -1556,6 +1574,9 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
         nextEntries = await deleteAdminChangelogEntry(editingChangelogSlug)
       }
       onChangelogChange(nextEntries)
+      if (entry.realm && !changelogRealms.some((realm) => realm.toLowerCase() === entry.realm.toLowerCase())) {
+        onChangelogRealmsChange([...changelogRealms, entry.realm])
+      }
       setChangelogForm(defaultChangelogForm)
       setEditingChangelogSlug('')
       setChangelogMessage(`Saved "${entry.realm} ${entry.version}".`)
@@ -1596,6 +1617,51 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
       setChangelogMessage('Deleted or hidden changelog entry.')
     } catch (error) {
       setChangelogMessage(error.message)
+    }
+  }
+
+  async function handleCreateRealm() {
+    const name = newRealmName.trim()
+
+    if (!name) {
+      return
+    }
+
+    const existing = allRealms.find((realm) => realm.toLowerCase() === name.toLowerCase())
+
+    if (existing) {
+      updateChangelogField('realm', existing)
+      setNewRealmName('')
+      setShowNewRealm(false)
+      setRealmMessage('')
+      return
+    }
+
+    try {
+      setIsSavingRealms(true)
+      const nextRealms = await saveChangelogRealms([...allRealms, name])
+      onChangelogRealmsChange(nextRealms)
+      updateChangelogField('realm', name)
+      setNewRealmName('')
+      setShowNewRealm(false)
+      setRealmMessage('')
+    } catch (error) {
+      setRealmMessage(error.message)
+    } finally {
+      setIsSavingRealms(false)
+    }
+  }
+
+  async function handleDeleteRealm(name) {
+    try {
+      setIsSavingRealms(true)
+      const nextRealms = await saveChangelogRealms(changelogRealms.filter((realm) => realm !== name))
+      onChangelogRealmsChange(nextRealms)
+      setRealmMessage('')
+    } catch (error) {
+      setRealmMessage(error.message)
+    } finally {
+      setIsSavingRealms(false)
     }
   }
 
@@ -1996,18 +2062,66 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
             <div className="rounded-2xl border border-white/10 bg-surface p-6">
               <form className="grid gap-5" onSubmit={handleChangelogSubmit}>
                 <div className="grid gap-5 md:grid-cols-2">
-                  <label className={labelClass}>
-                    Realm
-                    <input
+                  <div className={labelClass}>
+                    <span>Realm</span>
+                    <select
                       className={inputClass}
-                      placeholder="Skyblock, Survival, Lobby..."
                       value={changelogForm.realm}
-                      onChange={(event) => updateChangelogField('realm', event.target.value)}
-                    />
+                      onChange={(event) => {
+                        if (event.target.value === '__new__') {
+                          setShowNewRealm(true)
+                          return
+                        }
+                        updateChangelogField('realm', event.target.value)
+                      }}
+                    >
+                      <option value="">Select a realm…</option>
+                      {allRealms.map((realm) => (
+                        <option key={realm} value={realm}>
+                          {realm}
+                        </option>
+                      ))}
+                      <option value="__new__">＋ Create new realm…</option>
+                    </select>
+                    {showNewRealm ? (
+                      <div className="flex flex-wrap gap-2">
+                        <input
+                          className={`${inputClass} flex-1`}
+                          placeholder="New realm name"
+                          value={newRealmName}
+                          autoFocus
+                          onChange={(event) => setNewRealmName(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault()
+                              handleCreateRealm()
+                            }
+                          }}
+                        />
+                        <button
+                          className={`${primaryButtonClass} min-h-11 px-4`}
+                          type="button"
+                          disabled={isSavingRealms || !newRealmName.trim()}
+                          onClick={handleCreateRealm}
+                        >
+                          Add
+                        </button>
+                        <button
+                          className={`${secondaryButtonClass} min-h-11 px-4`}
+                          type="button"
+                          onClick={() => {
+                            setShowNewRealm(false)
+                            setNewRealmName('')
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : null}
                     <span className="text-xs font-medium leading-5 text-muted">
-                      The backend server / gamemode this update is for. Type any name you like.
+                      The backend server / gamemode this update is for. Create realms once, then reuse them.
                     </span>
-                  </label>
+                  </div>
                   <label className={labelClass}>
                     Version
                     <input
@@ -2048,6 +2162,9 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                     value={changelogForm.summary}
                     onChange={(event) => updateChangelogField('summary', event.target.value)}
                   />
+                  <span className="text-xs font-medium leading-5 text-muted">
+                    Supports inline formatting: **bold**, *italic*, `code`, [links](https://…), ||spoiler||.
+                  </span>
                 </label>
 
                 <div className="grid gap-5 md:grid-cols-2">
@@ -2101,7 +2218,8 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                 <div className="grid gap-4 rounded-xl border border-white/10 bg-surface-2 p-4">
                   <p className="text-sm font-bold text-white">Changes</p>
                   <p className="-mt-2 text-xs font-medium leading-5 text-muted">
-                    One change per line. Fill only the groups you need — empty groups are skipped.
+                    One change per line. Fill only the groups you need — empty groups are skipped. Inline formatting
+                    works: **bold**, *italic*, `code`, [links](https://…), ||spoiler||.
                   </p>
                   {changeTypeOrder.map((type) => {
                     const label = getChangeTypeLabel(type)
@@ -2149,7 +2267,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                     <h3 className="mt-2 text-lg font-bold leading-tight text-white">{changelogForm.title.trim()}</h3>
                   ) : null}
                   {changelogForm.summary.trim() ? (
-                    <p className="mt-1 text-sm leading-6 text-muted">{changelogForm.summary.trim()}</p>
+                    <p className="mt-1 text-sm leading-6 text-muted"><RichInline text={changelogForm.summary.trim()} /></p>
                   ) : null}
                   {changelogPreviewGroups.length > 0 ? (
                     <div className="mt-5 grid gap-5">
@@ -2165,7 +2283,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                             {group.items.map((item, index) => (
                               <li className="flex gap-2.5 text-[13.5px] leading-6 text-muted" key={`${group.type}-${index}`}>
                                 <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-600" aria-hidden="true" />
-                                <span>{item}</span>
+                                <span><RichInline text={item} /></span>
                               </li>
                             ))}
                           </ul>
@@ -2199,6 +2317,38 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
             </div>
 
             <aside className="rounded-2xl border border-white/10 bg-surface p-6 lg:sticky lg:top-28">
+              <div className="mb-6 border-b border-white/10 pb-6">
+                <h2 className="text-xl font-bold text-white">Realms</h2>
+                <p className="mt-2 text-sm leading-6 text-muted">
+                  Categories you assign to entries. Create them from the form above, or remove ones you no longer use.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {changelogRealms.length === 0 ? (
+                    <p className="text-sm text-muted-2">No saved realms yet. Create one with the realm picker above.</p>
+                  ) : (
+                    changelogRealms.map((realm) => (
+                      <span
+                        className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-surface-2 py-1.5 pl-3 pr-1.5 text-sm font-semibold text-white"
+                        key={realm}
+                      >
+                        {realm}
+                        <button
+                          className="grid h-6 w-6 place-items-center rounded-full text-muted transition hover:bg-red-500/15 hover:text-red-300 disabled:opacity-50"
+                          type="button"
+                          disabled={isSavingRealms}
+                          onClick={() => handleDeleteRealm(realm)}
+                          title={`Remove ${realm}`}
+                          aria-label={`Remove ${realm}`}
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))
+                  )}
+                </div>
+                {realmMessage && <p className="mt-3 text-sm font-semibold text-brand-2">{realmMessage}</p>}
+              </div>
+
               <h2 className="text-xl font-bold text-white">Changelog Entries</h2>
               <p className="mt-3 text-sm leading-6 text-muted">
                 Entries created here or posted by the Discord bot appear in this list. Deleting a seed entry hides it

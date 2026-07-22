@@ -1,12 +1,12 @@
 [
   {
-    "id": "admin-test-1",
-    "slug": "test-1",
-    "realm": "test",
+    "id": "admin-tycoon-1-2-3",
+    "slug": "tycoon-1-2-3",
+    "realm": "Tycoon",
     "img": "",
-    "version": "1",
-    "title": "sada",
-    "summary": "safafs",
+    "version": "1.2.3",
+    "title": "Test",
+    "summary": "asd",
     "tag": "Update",
     "date": "July 22, 2026",
     "dateValue": "2026-07-22",
@@ -15,13 +15,46 @@
       {
         "type": "added",
         "items": [
-          "idk"
+          "f"
         ]
       },
       {
         "type": "changed",
         "items": [
-          "im bored"
+          "sd",
+          "sad",
+          "asdasd",
+          "asd"
+        ]
+      },
+      {
+        "type": "improved",
+        "items": [
+          "ss"
+        ]
+      },
+      {
+        "type": "fixed",
+        "items": [
+          "sad"
+        ]
+      },
+      {
+        "type": "removed",
+        "items": [
+          "asd"
+        ]
+      },
+      {
+        "type": "deprecated",
+        "items": [
+          "gfaas"
+        ]
+      },
+      {
+        "type": "security",
+        "items": [
+          "das"
         ]
       }
     ],

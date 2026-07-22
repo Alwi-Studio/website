@@ -149,26 +149,6 @@ async function handleChangelog(req, res, slug) {
   }
 }
 
-async function handleChangelogRealms(req, res) {
-  if (req.method !== 'GET' && req.method !== 'POST') {
-    methodNotAllowed(res, ['GET', 'POST'])
-    return
-  }
-
-  try {
-    if (req.method === 'GET') {
-      json(res, 200, { realms: await readChangelogRealms() })
-      return
-    }
-
-    const body = await readJsonBody(req)
-    const realms = await saveChangelogRealms(body.realms)
-    json(res, 200, { realms })
-  } catch (error) {
-    json(res, 500, { error: error.message })
-  }
-}
-
 async function handlePolicies(req, res, key) {
   if (!key && req.method !== 'POST') {
     methodNotAllowed(res, ['POST'])
@@ -267,11 +247,6 @@ export default async function handler(req, res) {
 
   if (resource === 'changelog') {
     await handleChangelog(req, res, id)
-    return
-  }
-
-  if (resource === 'changelog-realms') {
-    await handleChangelogRealms(req, res)
     return
   }
 

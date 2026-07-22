@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import Changelog from './Changelog.jsx'
 import { changeTypeOrder, getChangeTypeLabel } from './changelogData.js'
+import { RichInline } from '../common/RichText.jsx'
 import { getOptimizedImageUrl } from '../common/imageOptimizer.js'
 import { isSafeImageUrl } from '../common/safeUrls.js'
 
@@ -18,7 +19,7 @@ function ChangeGroup({ group }) {
         {group.items.map((item, index) => (
           <li className="flex items-start gap-3 text-base leading-7 text-zinc-300" key={`${group.type}-${index}`}>
             <span className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-600" aria-hidden="true" />
-            <span>{item}</span>
+            <span><RichInline text={item} /></span>
           </li>
         ))}
       </ul>
@@ -97,7 +98,7 @@ function ChangelogDetail({ entry, entries = [] }) {
               ) : null}
             </div>
             {entry.summary ? (
-              <p className="mt-5 max-w-3xl text-lg leading-8 text-zinc-200">{entry.summary}</p>
+              <p className="mt-5 max-w-3xl text-lg leading-8 text-zinc-200"><RichInline text={entry.summary} /></p>
             ) : null}
             <p className="mt-5 text-sm font-semibold text-zinc-300">By {entry.author}</p>
           </div>

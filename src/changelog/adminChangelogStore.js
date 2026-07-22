@@ -63,14 +63,26 @@ export function getAllChangelogEntries() {
   return mergeEntries([])
 }
 
-export async function loadChangelogEntries(options = {}) {
+export async function loadChangelogData(options = {}) {
   try {
     const data = await requestJson('/api/changelog')
 
-    return mergeEntries(Array.isArray(data.items) ? data.items : [], options.includeDeleted)
+    return {
+      entries: mergeEntries(Array.isArray(data.items) ? data.items : [], options.includeDeleted),
+      realms: Array.isArray(data.realms) ? data.realms : [],
+    }
   } catch {
-    return getAllChangelogEntries()
+    return { entries: getAllChangelogEntries(), realms: [] }
   }
+}
+
+export async function saveChangelogRealms(realms) {
+  const data = await requestJson('/api/admin/changelog-realms', {
+    method: 'POST',
+    body: JSON.stringify({ realms }),
+  })
+
+  return Array.isArray(data.realms) ? data.realms : []
 }
 
 export async function saveAdminChangelogEntry(entry) {

@@ -3,6 +3,7 @@ import {
   methodNotAllowed,
   normalizeChangelogEntry,
   readChangelog,
+  readChangelogRealms,
   readJsonBody,
   saveChangelog,
   validateChangelogEntry,
@@ -16,7 +17,11 @@ import {
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
-      json(res, 200, { items: await readChangelog() })
+      const [items, realms] = await Promise.all([
+        readChangelog(),
+        readChangelogRealms().catch(() => []),
+      ])
+      json(res, 200, { items, realms })
     } catch (error) {
       json(res, 500, { error: error.message })
     }

@@ -11,7 +11,7 @@ import NewsList from './news/NewsList.jsx'
 import News from './news/News.jsx'
 import ChangelogList from './changelog/ChangelogList.jsx'
 import ChangelogDetail from './changelog/ChangelogDetail.jsx'
-import { loadChangelogEntries, getChangelogEntryBySlug } from './changelog/adminChangelogStore.js'
+import { loadChangelogData, getChangelogEntryBySlug } from './changelog/adminChangelogStore.js'
 import PolicyPage from './common/PolicyPage.jsx'
 import { getPolicies, loadPolicies } from './content/policyStore.js'
 import StaffPage from './common/StaffPage.jsx'
@@ -603,6 +603,7 @@ function App() {
   const [wiki, setWiki] = useState(getWiki)
   const [isLoadingWiki, setIsLoadingWiki] = useState(true)
   const [changelogEntries, setChangelogEntries] = useState([])
+  const [changelogRealms, setChangelogRealms] = useState([])
   const [isLoadingChangelog, setIsLoadingChangelog] = useState(true)
   const serverStatus = useServerStatus()
   const visibleNewsItems = newsItems.slice(0, newsToShow)
@@ -713,9 +714,10 @@ function App() {
 
     async function loadChangelogContent() {
       setIsLoadingChangelog(true)
-      const loaded = await loadChangelogEntries({ includeDeleted: isAdminPage })
+      const { entries, realms } = await loadChangelogData({ includeDeleted: isAdminPage })
       if (isCurrent) {
-        setChangelogEntries(loaded)
+        setChangelogEntries(entries)
+        setChangelogRealms(realms)
         setIsLoadingChangelog(false)
       }
     }
@@ -826,6 +828,8 @@ function App() {
             onWikiChange={setWiki}
             changelogEntries={changelogEntries}
             onChangelogChange={setChangelogEntries}
+            changelogRealms={changelogRealms}
+            onChangelogRealmsChange={setChangelogRealms}
             initialTab={isAdminDocsPage ? 'docs' : 'news'}
           />
         )}

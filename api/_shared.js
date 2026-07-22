@@ -928,6 +928,74 @@ function fromChangelogRow(row) {
   }
 }
 
+const maxRealms = 60
+const maxRealmLength = 60
+
+export function normalizeRealms(list) {
+  const seen = new Set()
+  const realms = []
+
+  for (const value of Array.isArray(list) ? list : []) {
+    const name = trimText(typeof value === 'object' ? value?.name : value, maxRealmLength)
+    const key = name.toLowerCase()
+
+    if (name && !seen.has(key)) {
+      seen.add(key)
+      realms.push(name)
+    }
+  }
+
+  return realms.slice(0, maxRealms)
+}
+
+export async function readChangelogRealms() {
+  const rows = await supabaseRequest('changelog_realms?key=eq.main&select=realms&limit=1')
+
+  if (!Array.isArray(rows) || !rows[0]?.realms) {
+    return []
+  }
+
+  return normalizeRealms(rows[0].realms)
+}
+
+export async function saveChangelogRealms(list) {
+  const realms = normalizeRealms(list)
+
+  await supabaseRequest('changelog_realms?on_conflict=key', {
+    method: 'POST',
+    body: JSON.stringify({
+      key: 'main',
+      realms,
+      updated_at: new Date().toISOString(),
+    }),
+    headers: {
+      Prefer: 'resolution=merge-duplicates,return=representation',
+    },
+  })
+
+  return realms
+}
+
+// Best-effort: register a realm used by an entry so it appears in the managed list.
+// Never blocks saving an entry if the realms table is missing or the write fails.
+async function ensureChangelogRealm(name) {
+  const realm = trimText(name, maxRealmLength)
+
+  if (!realm) {
+    return
+  }
+
+  try {
+    const existing = await readChangelogRealms()
+
+    if (!existing.some((item) => item.toLowerCase() === realm.toLowerCase())) {
+      await saveChangelogRealms([...existing, realm])
+    }
+  } catch {
+    // Realms table may not exist yet; ignore.
+  }
+}
+
 export async function readChangelog() {
   const rows = await supabaseRequest('changelog_entries?select=*&order=date_value.desc,updated_at.desc')
   return Array.isArray(rows) ? rows.map(fromChangelogRow) : []
@@ -941,6 +1009,10 @@ export async function saveChangelog(entry) {
       Prefer: 'resolution=merge-duplicates,return=representation',
     },
   })
+
+  if (!entry.deleted) {
+    await ensureChangelogRealm(entry.realm)
+  }
 
   return Array.isArray(rows) && rows[0] ? fromChangelogRow(rows[0]) : entry
 }

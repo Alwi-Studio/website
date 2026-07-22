@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { getChangeTypeLabel } from './changelogData.js'
+import { RichInline } from '../common/RichText.jsx'
 import { getOptimizedImageUrl } from '../common/imageOptimizer.js'
 import { isSafeImageUrl } from '../common/safeUrls.js'
 
@@ -58,7 +59,11 @@ function Changelog({ realm, version, title, summary, tag, date, changes, slug, i
       <div className="flex flex-1 flex-col gap-3 p-[22px]">
         <div className="text-[12.5px] font-medium text-muted-2">{date}</div>
         <h3 className="text-xl font-bold leading-tight text-white">{title || version}</h3>
-        {summary ? <p className="flex-1 text-[14.5px] leading-6 text-muted">{summary}</p> : <div className="flex-1" />}
+        {summary ? (
+          <p className="flex-1 text-[14.5px] leading-6 text-muted"><RichInline text={summary} /></p>
+        ) : (
+          <div className="flex-1" />
+        )}
         <a
           className="mt-1 inline-flex w-fit items-center gap-2 text-sm font-semibold text-brand-2 transition"
           href={`/changelog/${slug}`}

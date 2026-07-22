@@ -10,6 +10,7 @@ const distDir = resolve(rootDir, 'dist')
 const dataDir = resolve(rootDir, 'data')
 const newsFile = resolve(dataDir, 'admin-news.json')
 const changelogFile = resolve(dataDir, 'admin-changelog.json')
+const changelogRealmsFile = resolve(dataDir, 'changelog-realms.json')
 const envFile = resolve(rootDir, '.env')
 const port = Number(process.env.PORT ?? 4175)
 
@@ -796,6 +797,94 @@ async function writeLocalChangelog(items) {
   await writeFile(changelogFile, `${JSON.stringify(items, null, 2)}\n`)
 }
 
+const maxRealms = 60
+const maxRealmLength = 60
+
+function normalizeRealms(list) {
+  const seen = new Set()
+  const realms = []
+
+  for (const value of Array.isArray(list) ? list : []) {
+    const name = trimText(typeof value === 'object' ? value?.name : value, maxRealmLength)
+    const key = name.toLowerCase()
+
+    if (name && !seen.has(key)) {
+      seen.add(key)
+      realms.push(name)
+    }
+  }
+
+  return realms.slice(0, maxRealms)
+}
+
+async function readLocalChangelogRealms() {
+  try {
+    const contents = await readFile(changelogRealmsFile, 'utf8')
+    return normalizeRealms(JSON.parse(contents))
+  } catch {
+    return []
+  }
+}
+
+async function writeLocalChangelogRealms(realms) {
+  await mkdir(dataDir, { recursive: true })
+  await writeFile(changelogRealmsFile, `${JSON.stringify(realms, null, 2)}\n`)
+}
+
+async function readChangelogRealms() {
+  if (hasSupabaseStorage) {
+    const rows = await supabaseRequest('changelog_realms?key=eq.main&select=realms&limit=1')
+
+    if (!Array.isArray(rows) || !rows[0]?.realms) {
+      return []
+    }
+
+    return normalizeRealms(rows[0].realms)
+  }
+
+  return readLocalChangelogRealms()
+}
+
+async function saveChangelogRealms(list) {
+  const realms = normalizeRealms(list)
+
+  if (hasSupabaseStorage) {
+    await supabaseRequest('changelog_realms?on_conflict=key', {
+      method: 'POST',
+      body: JSON.stringify({
+        key: 'main',
+        realms,
+        updated_at: new Date().toISOString(),
+      }),
+      headers: {
+        Prefer: 'resolution=merge-duplicates,return=representation',
+      },
+    })
+  } else {
+    await writeLocalChangelogRealms(realms)
+  }
+
+  return realms
+}
+
+async function ensureChangelogRealm(name) {
+  const realm = trimText(name, maxRealmLength)
+
+  if (!realm) {
+    return
+  }
+
+  try {
+    const existing = await readChangelogRealms()
+
+    if (!existing.some((item) => item.toLowerCase() === realm.toLowerCase())) {
+      await saveChangelogRealms([...existing, realm])
+    }
+  } catch {
+    // Realms table may not exist yet; ignore.
+  }
+}
+
 async function readChangelog() {
   if (hasSupabaseStorage) {
     const rows = await supabaseRequest('changelog_entries?select=*&order=date_value.desc,updated_at.desc')
@@ -816,6 +905,10 @@ async function saveChangelog(entry) {
       },
     })
 
+    if (!entry.deleted) {
+      await ensureChangelogRealm(entry.realm)
+    }
+
     return Array.isArray(rows) && rows[0] ? changelogFromRow(rows[0]) : entry
   }
 
@@ -823,6 +916,10 @@ async function saveChangelog(entry) {
   const nextItems = [entry, ...storedItems.filter((storedItem) => storedItem.slug !== entry.slug)]
 
   await writeLocalChangelog(nextItems)
+
+  if (!entry.deleted) {
+    await ensureChangelogRealm(entry.realm)
+  }
 
   return entry
 }
@@ -918,7 +1015,11 @@ async function handleApi(req, res, url) {
   }
 
   if (req.method === 'GET' && pathname === '/api/changelog') {
-    json(res, 200, { items: await readChangelog() })
+    const [items, realms] = await Promise.all([
+      readChangelog(),
+      readChangelogRealms().catch(() => []),
+    ])
+    json(res, 200, { items, realms })
     return
   }
 
@@ -1050,6 +1151,18 @@ async function handleApi(req, res, url) {
 
     await deleteChangelog(slug, { hide: true })
     json(res, 200, { items: await readChangelog() })
+    return
+  }
+
+  if (req.method === 'GET' && pathname === '/api/admin/changelog-realms') {
+    json(res, 200, { realms: await readChangelogRealms() })
+    return
+  }
+
+  if (req.method === 'POST' && pathname === '/api/admin/changelog-realms') {
+    const body = await readJsonBody(req)
+    const realms = await saveChangelogRealms(body.realms)
+    json(res, 200, { realms })
     return
   }
 
