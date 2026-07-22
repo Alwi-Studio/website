@@ -9,6 +9,7 @@ const rootDir = process.cwd()
 const distDir = resolve(rootDir, 'dist')
 const dataDir = resolve(rootDir, 'data')
 const newsFile = resolve(dataDir, 'admin-news.json')
+const changelogFile = resolve(dataDir, 'admin-changelog.json')
 const envFile = resolve(rootDir, '.env')
 const port = Number(process.env.PORT ?? 4175)
 
@@ -59,6 +60,7 @@ const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH ?? ''
 const sessionSecret = process.env.SESSION_SECRET ?? ''
 const supabaseUrl = process.env.SUPABASE_URL ?? ''
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
+const changelogApiKey = process.env.CHANGELOG_API_KEY ?? ''
 const hasSupabaseStorage = Boolean(supabaseUrl && supabaseServiceRoleKey)
 const sessionMaxAgeMs = 1000 * 60 * 60 * 8
 const failedLogins = new Map()
@@ -613,6 +615,274 @@ function validateNewsItem(item) {
   return ''
 }
 
+// -------------------- Changelog --------------------
+
+const changelogChangeTypes = ['added', 'changed', 'improved', 'fixed', 'removed', 'deprecated', 'security']
+const maxChangelogChangesBytes = 64 * 1024
+
+function verifyBotApiKey(req) {
+  if (!changelogApiKey) {
+    return false
+  }
+
+  const headerKey = req.headers['x-api-key']
+  const authHeader = req.headers['authorization'] ?? ''
+  const bearerKey = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+  const provided = String(headerKey || bearerKey).trim()
+
+  return Boolean(provided) && safeEqualText(provided, changelogApiKey)
+}
+
+function slugifyChangelog(value) {
+  return trimText(value, 160)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function formatDisplayDate(isoDate) {
+  const date = isoDate ? new Date(isoDate) : new Date()
+
+  if (Number.isNaN(date.getTime())) {
+    return isoDate || ''
+  }
+
+  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+}
+
+function normalizeChanges(changes) {
+  let groups = []
+
+  if (Array.isArray(changes)) {
+    groups = changes
+  } else if (changes && typeof changes === 'object') {
+    groups = Object.entries(changes).map(([type, items]) => ({ type, items }))
+  }
+
+  return groups
+    .map((group) => {
+      const rawType = String(group?.type ?? '').trim().toLowerCase()
+      const type = changelogChangeTypes.includes(rawType) ? rawType : 'changed'
+      const items = Array.isArray(group?.items)
+        ? group.items.map((item) => trimText(item, 500)).filter(Boolean).slice(0, 40)
+        : []
+
+      return items.length > 0 ? { type, items } : null
+    })
+    .filter(Boolean)
+    .slice(0, 8)
+}
+
+function normalizeChangelogEntry(entry) {
+  const realm = trimText(entry?.realm, 80) || 'General'
+  const version = trimText(entry?.version, 80)
+  const title = trimText(entry?.title, 180)
+  const providedSlug = slugifyChangelog(entry?.slug)
+  const slug = providedSlug || slugifyChangelog(`${realm} ${version || title}`) || slugifyChangelog(title)
+
+  const rawDate = trimText(entry?.date, 120)
+  let dateValue = trimText(entry?.dateValue ?? entry?.date_value, 40)
+
+  if (!dateValue && /^\d{4}-\d{2}-\d{2}/.test(rawDate)) {
+    dateValue = rawDate.slice(0, 10)
+  }
+
+  if (!dateValue) {
+    dateValue = new Date().toISOString().slice(0, 10)
+  }
+
+  const date = rawDate && !/^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : formatDisplayDate(dateValue)
+
+  return {
+    id: trimText(entry?.id, 120) || slug,
+    slug,
+    realm,
+    img: trimText(entry?.img ?? entry?.imageUrl, 1000),
+    version,
+    title,
+    summary: trimText(entry?.summary, 800),
+    tag: trimText(entry?.tag, 40) || 'Update',
+    date,
+    dateValue,
+    author: trimText(entry?.author, 120) || 'AlwiNation Team',
+    changes: normalizeChanges(entry?.changes),
+    source: entry?.source === 'bot' ? 'bot' : 'admin',
+    deleted: Boolean(entry?.deleted),
+  }
+}
+
+function validateChangelogEntry(entry) {
+  if (!entry.slug || !entry.version || !Array.isArray(entry.changes) || entry.changes.length === 0) {
+    return 'Realm, version, and at least one change are required.'
+  }
+
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.slug)) {
+    return 'Slug must contain only lowercase letters, numbers, and hyphens.'
+  }
+
+  if (Buffer.byteLength(JSON.stringify(entry.changes), 'utf8') > maxChangelogChangesBytes) {
+    return 'Changelog entry is too large. Keep it under 64 KB of change text.'
+  }
+
+  return ''
+}
+
+function changelogToRow(entry) {
+  return {
+    id: entry.id,
+    slug: entry.slug,
+    realm: entry.realm,
+    img: entry.img || null,
+    version: entry.version,
+    title: entry.title,
+    summary: entry.summary,
+    tag: entry.tag,
+    date: entry.date,
+    date_value: entry.dateValue || null,
+    author: entry.author,
+    changes: entry.changes,
+    source: entry.source || 'admin',
+    deleted: Boolean(entry.deleted),
+    updated_at: new Date().toISOString(),
+  }
+}
+
+function changelogFromRow(row) {
+  return {
+    id: row.id,
+    slug: row.slug,
+    realm: row.realm ?? 'General',
+    img: row.img ?? '',
+    version: row.version ?? '',
+    title: row.title ?? '',
+    summary: row.summary ?? '',
+    tag: row.tag ?? 'Update',
+    date: row.date ?? '',
+    dateValue: row.date_value ?? '',
+    author: row.author ?? 'AlwiNation Team',
+    changes: Array.isArray(row.changes) ? row.changes : [],
+    source: row.source === 'bot' ? 'bot' : 'admin',
+    deleted: Boolean(row.deleted),
+  }
+}
+
+async function readLocalChangelog() {
+  try {
+    const contents = await readFile(changelogFile, 'utf8')
+    const items = JSON.parse(contents)
+
+    return Array.isArray(items) ? items : []
+  } catch {
+    return []
+  }
+}
+
+async function writeLocalChangelog(items) {
+  await mkdir(dataDir, { recursive: true })
+  await writeFile(changelogFile, `${JSON.stringify(items, null, 2)}\n`)
+}
+
+async function readChangelog() {
+  if (hasSupabaseStorage) {
+    const rows = await supabaseRequest('changelog_entries?select=*&order=date_value.desc,updated_at.desc')
+
+    return Array.isArray(rows) ? rows.map(changelogFromRow) : []
+  }
+
+  return readLocalChangelog()
+}
+
+async function saveChangelog(entry) {
+  if (hasSupabaseStorage) {
+    const rows = await supabaseRequest('changelog_entries?on_conflict=slug', {
+      method: 'POST',
+      body: JSON.stringify(changelogToRow(entry)),
+      headers: {
+        Prefer: 'resolution=merge-duplicates,return=representation',
+      },
+    })
+
+    return Array.isArray(rows) && rows[0] ? changelogFromRow(rows[0]) : entry
+  }
+
+  const storedItems = await readLocalChangelog()
+  const nextItems = [entry, ...storedItems.filter((storedItem) => storedItem.slug !== entry.slug)]
+
+  await writeLocalChangelog(nextItems)
+
+  return entry
+}
+
+async function deleteChangelog(slug, options = {}) {
+  if (hasSupabaseStorage) {
+    if (!options.hide) {
+      await supabaseRequest(`changelog_entries?slug=eq.${encodeURIComponent(slug)}`, {
+        method: 'DELETE',
+        headers: { Prefer: 'return=minimal' },
+      })
+      return
+    }
+
+    const existingRows = await supabaseRequest(
+      `changelog_entries?slug=eq.${encodeURIComponent(slug)}&select=id&limit=1`,
+    )
+    const existingId = Array.isArray(existingRows) ? existingRows[0]?.id : ''
+
+    await supabaseRequest('changelog_entries?on_conflict=slug', {
+      method: 'POST',
+      body: JSON.stringify({
+        id: existingId || `deleted-${slug}`,
+        slug,
+        realm: 'General',
+        version: 'Removed',
+        title: 'Deleted changelog entry',
+        summary: 'This entry has been hidden.',
+        tag: 'Deleted',
+        date: formatDisplayDate(new Date().toISOString().slice(0, 10)),
+        date_value: new Date().toISOString().slice(0, 10),
+        author: 'AlwiNation Team',
+        changes: [],
+        source: 'admin',
+        deleted: true,
+        updated_at: new Date().toISOString(),
+      }),
+      headers: {
+        Prefer: 'resolution=merge-duplicates,return=representation',
+      },
+    })
+    return
+  }
+
+  const storedItems = await readLocalChangelog()
+
+  if (!options.hide) {
+    await writeLocalChangelog(storedItems.filter((item) => item.slug !== slug))
+    return
+  }
+
+  const existingItem = storedItems.find((item) => item.slug === slug)
+  const nextItems = [
+    {
+      id: existingItem?.id || `deleted-${slug}`,
+      slug,
+      realm: 'General',
+      version: 'Removed',
+      title: 'Deleted changelog entry',
+      summary: 'This entry has been hidden.',
+      tag: 'Deleted',
+      date: formatDisplayDate(new Date().toISOString().slice(0, 10)),
+      dateValue: new Date().toISOString().slice(0, 10),
+      author: 'AlwiNation Team',
+      changes: [],
+      source: 'admin',
+      deleted: true,
+    },
+    ...storedItems.filter((item) => item.slug !== slug),
+  ]
+
+  await writeLocalChangelog(nextItems)
+}
+
 async function handleApi(req, res, url) {
   const { pathname } = url
 
@@ -630,6 +900,31 @@ async function handleApi(req, res, url) {
 
   if (req.method === 'GET' && pathname === '/api/news') {
     json(res, 200, { items: await readAdminNews() })
+    return
+  }
+
+  if (req.method === 'GET' && pathname === '/api/changelog') {
+    json(res, 200, { items: await readChangelog() })
+    return
+  }
+
+  // Discord bot changelog creation, authenticated with CHANGELOG_API_KEY (not the admin cookie).
+  if (req.method === 'POST' && pathname === '/api/changelog') {
+    if (!verifyBotApiKey(req)) {
+      json(res, 401, { error: 'A valid changelog API key is required.' })
+      return
+    }
+
+    const entry = normalizeChangelogEntry({ ...(await readJsonBody(req)), source: 'bot' })
+    const validationError = validateChangelogEntry(entry)
+
+    if (validationError) {
+      json(res, 400, { error: validationError })
+      return
+    }
+
+    const saved = await saveChangelog(entry)
+    json(res, 201, { ok: true, entry: saved })
     return
   }
 
@@ -708,6 +1003,42 @@ async function handleApi(req, res, url) {
     return
   }
 
+  if (req.method === 'POST' && pathname === '/api/admin/changelog') {
+    const entry = normalizeChangelogEntry(await readJsonBody(req))
+    const validationError = validateChangelogEntry(entry)
+
+    if (validationError) {
+      json(res, 400, { error: validationError })
+      return
+    }
+
+    await saveChangelog(entry)
+    json(res, 200, { items: await readChangelog() })
+    return
+  }
+
+  if (req.method === 'DELETE' && pathname === '/api/admin/changelog') {
+    const slug = url.searchParams.get('slug')?.trim() ?? ''
+    const shouldHide = url.searchParams.get('hide') === 'true'
+
+    if (!slug) {
+      json(res, 400, { error: 'Changelog slug is required.' })
+      return
+    }
+
+    await deleteChangelog(slug, { hide: shouldHide })
+    json(res, 200, { items: await readChangelog() })
+    return
+  }
+
+  if (req.method === 'DELETE' && pathname.startsWith('/api/admin/changelog/')) {
+    const slug = decodeURIComponent(pathname.replace('/api/admin/changelog/', ''))
+
+    await deleteChangelog(slug, { hide: true })
+    json(res, 200, { items: await readChangelog() })
+    return
+  }
+
   json(res, 404, { error: 'Not found.' })
 }
 
@@ -719,11 +1050,13 @@ function serveFile(req, res, pathname) {
   const isKnownSpaRoute =
     pathname === '/' ||
     pathname === '/news' ||
+    pathname === '/changelog' ||
     pathname === '/admin' ||
     pathname === '/admin/docs' ||
     pathname === '/rules' ||
     pathname === '/terms' ||
-    /^\/news\/[^/]+\/?$/.test(pathname)
+    /^\/news\/[^/]+\/?$/.test(pathname) ||
+    /^\/changelog\/[^/]+\/?$/.test(pathname)
   const safeFilePath = hasStaticFile ? filePath : resolvedIndex
   const extension = extname(safeFilePath)
 

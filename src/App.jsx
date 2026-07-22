@@ -9,6 +9,9 @@ import Navbar from './common/Navbar.jsx'
 import NewsDetail from './news/NewsDetail.jsx'
 import NewsList from './news/NewsList.jsx'
 import News from './news/News.jsx'
+import ChangelogList from './changelog/ChangelogList.jsx'
+import ChangelogDetail from './changelog/ChangelogDetail.jsx'
+import { loadChangelogEntries, getChangelogEntryBySlug } from './changelog/adminChangelogStore.js'
 import PolicyPage from './common/PolicyPage.jsx'
 import { getPolicies, loadPolicies } from './content/policyStore.js'
 import StaffPage from './common/StaffPage.jsx'
@@ -599,6 +602,8 @@ function App() {
   const [isLoadingStaff, setIsLoadingStaff] = useState(true)
   const [wiki, setWiki] = useState(getWiki)
   const [isLoadingWiki, setIsLoadingWiki] = useState(true)
+  const [changelogEntries, setChangelogEntries] = useState([])
+  const [isLoadingChangelog, setIsLoadingChangelog] = useState(true)
   const serverStatus = useServerStatus()
   const visibleNewsItems = newsItems.slice(0, newsToShow)
   const isAdminPage = window.location.pathname === '/admin' || window.location.pathname === '/admin/docs'
@@ -608,6 +613,11 @@ function App() {
   const isTermsPage = window.location.pathname === '/terms'
   const isStaffPage = window.location.pathname === '/staff'
   const isWikiListPage = window.location.pathname === '/wiki'
+  const isChangelogPage = window.location.pathname === '/changelog'
+  const changelogSlug = window.location.pathname.match(/^\/changelog\/([^/]+)\/?$/)?.[1]
+  const selectedChangelogEntry = changelogSlug
+    ? getChangelogEntryBySlug(changelogEntries, decodeURIComponent(changelogSlug))
+    : null
   const isHomePage = window.location.pathname === '/'
   const newsSlug = window.location.pathname.match(/^\/news\/([^/]+)\/?$/)?.[1]
   const selectedNewsItem = newsSlug ? getNewsItemBySlug(newsItems, decodeURIComponent(newsSlug)) : null
@@ -621,6 +631,8 @@ function App() {
     isTermsPage ||
     isStaffPage ||
     isWikiListPage ||
+    isChangelogPage ||
+    Boolean(changelogSlug) ||
     Boolean(newsSlug) ||
     Boolean(wikiSlug)
 
@@ -696,6 +708,24 @@ function App() {
     }
   }, [isWikiListPage, wikiSlug, isAdminPage])
 
+  useEffect(() => {
+    let isCurrent = true
+
+    async function loadChangelogContent() {
+      setIsLoadingChangelog(true)
+      const loaded = await loadChangelogEntries({ includeDeleted: isAdminPage })
+      if (isCurrent) {
+        setChangelogEntries(loaded)
+        setIsLoadingChangelog(false)
+      }
+    }
+
+    loadChangelogContent()
+    return () => {
+      isCurrent = false
+    }
+  }, [isChangelogPage, changelogSlug, isAdminPage])
+
   useLayoutEffect(() => {
     if (
       newsSlug ||
@@ -705,6 +735,8 @@ function App() {
       isTermsPage ||
       isStaffPage ||
       isWikiListPage ||
+      isChangelogPage ||
+      changelogSlug ||
       wikiSlug ||
       !isKnownPath
     ) {
@@ -764,7 +796,7 @@ function App() {
       window.removeEventListener('scroll', updateActiveSection)
       window.removeEventListener('resize', updateActiveSection)
     }
-  }, [newsSlug, isNewsListPage, isAdminPage, isRulesPage, isTermsPage, isStaffPage, isWikiListPage, wikiSlug, isKnownPath])
+  }, [newsSlug, isNewsListPage, isAdminPage, isRulesPage, isTermsPage, isStaffPage, isWikiListPage, isChangelogPage, changelogSlug, wikiSlug, isKnownPath])
 
   if (!isKnownPath) {
     return (
@@ -780,7 +812,7 @@ function App() {
     return (
       <div className="min-h-svh overflow-x-hidden bg-bg">
         <Navbar activeSection="admin" />
-        {isLoadingNews || isLoadingPolicies || isLoadingStaff || isLoadingWiki ? (
+        {isLoadingNews || isLoadingPolicies || isLoadingStaff || isLoadingWiki || isLoadingChangelog ? (
           <AdminPageLoading />
         ) : (
           <AdminPanel
@@ -792,6 +824,8 @@ function App() {
             onStaffChange={setStaff}
             wiki={wiki}
             onWikiChange={setWiki}
+            changelogEntries={changelogEntries}
+            onChangelogChange={setChangelogEntries}
             initialTab={isAdminDocsPage ? 'docs' : 'news'}
           />
         )}
@@ -830,6 +864,41 @@ function App() {
       <div className="min-h-svh overflow-x-hidden bg-bg">
         <Navbar activeSection="news" />
         <NewsList newsItems={newsItems} isLoading={isLoadingNews} />
+        <Footer />
+      </div>
+    )
+  }
+
+  if (changelogSlug) {
+    return (
+      <div className="min-h-svh overflow-x-hidden bg-bg">
+        <Navbar activeSection="changelog" />
+        {isLoadingChangelog ? (
+          <NewsPageLoading />
+        ) : selectedChangelogEntry ? (
+          <ChangelogDetail entry={selectedChangelogEntry} entries={changelogEntries} />
+        ) : (
+          <ErrorPage
+            code="404"
+            eyebrow="Entry not found"
+            title="This changelog entry does not exist."
+            description="The entry may have been deleted, hidden, or moved to another URL."
+            primaryHref="/changelog"
+            primaryLabel="View all changes"
+            secondaryHref="/"
+            secondaryLabel="Go home"
+          />
+        )}
+        <Footer />
+      </div>
+    )
+  }
+
+  if (isChangelogPage) {
+    return (
+      <div className="min-h-svh overflow-x-hidden bg-bg">
+        <Navbar activeSection="changelog" />
+        <ChangelogList entries={changelogEntries} isLoading={isLoadingChangelog} />
         <Footer />
       </div>
     )

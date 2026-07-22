@@ -6,6 +6,11 @@ import {
   logoutAdmin,
   saveAdminNewsItem,
 } from '../news/adminNewsStore.js'
+import {
+  deleteAdminChangelogEntry,
+  saveAdminChangelogEntry,
+} from '../changelog/adminChangelogStore.js'
+import { changeTypeOrder, getChangeTypeMeta } from '../changelog/changelogData.js'
 import CollapsibleItems from '../common/CollapsibleItems.jsx'
 import MarkdownBody from '../common/MarkdownBody.jsx'
 import { RichInline, parseMarkdownBlocks } from '../common/RichText.jsx'
@@ -26,6 +31,59 @@ const defaultForm = {
   imageUrl: '',
   bodyText: '',
   highlightsText: '',
+}
+
+const defaultChangelogForm = {
+  realm: '',
+  version: '',
+  title: '',
+  summary: '',
+  tag: 'Update',
+  date: '',
+  author: 'AlwiNation Team',
+  imageUrl: '',
+  slug: '',
+  added: '',
+  changed: '',
+  improved: '',
+  fixed: '',
+  removed: '',
+  deprecated: '',
+  security: '',
+}
+
+function buildChangelogChanges(form) {
+  return changeTypeOrder
+    .map((type) => ({
+      type,
+      items: String(form[type] || '')
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    }))
+    .filter((group) => group.items.length > 0)
+}
+
+function changelogToForm(entry) {
+  const byType = {}
+
+  for (const group of entry.changes ?? []) {
+    byType[group.type] = (group.items ?? []).join('\n')
+  }
+
+  return {
+    ...defaultChangelogForm,
+    realm: entry.realm ?? '',
+    version: entry.version ?? '',
+    title: entry.title ?? '',
+    summary: entry.summary ?? '',
+    tag: entry.tag ?? 'Update',
+    date: entry.dateValue ?? '',
+    author: entry.author ?? 'AlwiNation Team',
+    imageUrl: typeof entry.img === 'string' && entry.img.startsWith('http') ? entry.img : '',
+    slug: entry.slug ?? '',
+    ...Object.fromEntries(changeTypeOrder.map((type) => [type, byType[type] ?? ''])),
+  }
 }
 
 const emptyPolicyForm = { eyebrow: '', title: '', updated: '', intro: '', sectionsText: '' }
@@ -220,6 +278,10 @@ function slugify(value) {
 
 function getEffectiveSlug(form) {
   return slugify(form.slug || form.title)
+}
+
+function getEffectiveChangelogSlug(form) {
+  return slugify(form.slug || `${form.realm} ${form.version}`)
 }
 
 function createBodyBlocks(bodyText) {
@@ -1193,7 +1255,7 @@ function FormattingDocs() {
   )
 }
 
-function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff, onStaffChange, wiki, onWikiChange, initialTab = 'news' }) {
+function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff, onStaffChange, wiki, onWikiChange, changelogEntries = [], onChangelogChange = () => {}, initialTab = 'news' }) {
   const [isCheckingSession, setIsCheckingSession] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [loginForm, setLoginForm] = useState({ username: '', password: '' })
@@ -1212,8 +1274,15 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
   const [staffMessage, setStaffMessage] = useState('')
   const [isSavingStaff, setIsSavingStaff] = useState(false)
   const [staffSaveState, setStaffSaveState] = useState('idle')
+  const [changelogForm, setChangelogForm] = useState(defaultChangelogForm)
+  const [changelogMessage, setChangelogMessage] = useState('')
+  const [isSavingChangelog, setIsSavingChangelog] = useState(false)
+  const [changelogSaveState, setChangelogSaveState] = useState('idle')
+  const [editingChangelogSlug, setEditingChangelogSlug] = useState('')
 
   const editablePosts = useMemo(() => newsItems, [newsItems])
+  const editableChangelog = useMemo(() => changelogEntries, [changelogEntries])
+  const changelogPreviewGroups = useMemo(() => buildChangelogChanges(changelogForm), [changelogForm])
   const isPolicyTab = activeTab === 'rules' || activeTab === 'terms'
   const parsedSectionCount = useMemo(
     () => (isPolicyTab ? parseSections(policyForm.sectionsText).length : 0),
@@ -1437,6 +1506,99 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
     }
   }
 
+  function updateChangelogField(field, value) {
+    setChangelogForm((currentForm) => ({ ...currentForm, [field]: value }))
+  }
+
+  async function handleChangelogSubmit(event) {
+    event.preventDefault()
+
+    const slug = getEffectiveChangelogSlug(changelogForm)
+    const changes = buildChangelogChanges(changelogForm)
+
+    if (!changelogForm.realm.trim() || !changelogForm.version.trim() || changes.length === 0) {
+      setChangelogMessage('Realm, version, and at least one change are required.')
+      return
+    }
+
+    if (!slug) {
+      setChangelogMessage('Could not build a slug. Add a realm and version, or set the slug manually.')
+      return
+    }
+
+    const imageUrlError = getImageUrlError(changelogForm.imageUrl)
+
+    if (imageUrlError) {
+      setChangelogMessage(imageUrlError)
+      return
+    }
+
+    const entry = {
+      id: `admin-${slug}`,
+      slug,
+      realm: changelogForm.realm.trim(),
+      img: changelogForm.imageUrl.trim(),
+      version: changelogForm.version.trim(),
+      title: changelogForm.title.trim(),
+      summary: changelogForm.summary.trim(),
+      tag: changelogForm.tag.trim() || 'Update',
+      dateValue: changelogForm.date,
+      author: changelogForm.author.trim() || 'AlwiNation Team',
+      changes,
+      source: 'admin',
+    }
+
+    try {
+      setIsSavingChangelog(true)
+      setChangelogSaveState('saving')
+      let nextEntries = await saveAdminChangelogEntry(entry)
+      if (editingChangelogSlug && editingChangelogSlug !== slug) {
+        nextEntries = await deleteAdminChangelogEntry(editingChangelogSlug)
+      }
+      onChangelogChange(nextEntries)
+      setChangelogForm(defaultChangelogForm)
+      setEditingChangelogSlug('')
+      setChangelogMessage(`Saved "${entry.realm} ${entry.version}".`)
+      setChangelogSaveState('saved')
+      window.setTimeout(() => setChangelogSaveState('idle'), 1800)
+    } catch (error) {
+      setChangelogMessage(error.message)
+      setChangelogSaveState('idle')
+    } finally {
+      setIsSavingChangelog(false)
+    }
+  }
+
+  function handleChangelogEdit(entry) {
+    if (entry.deleted) {
+      setChangelogMessage('Deleted entries cannot be edited. Create a new entry instead.')
+      return
+    }
+
+    setChangelogForm(changelogToForm(entry))
+    setEditingChangelogSlug(entry.slug)
+    setChangelogMessage(`Editing "${entry.realm} ${entry.version}". Saving creates a local override.`)
+  }
+
+  function handleChangelogCancelEdit() {
+    setChangelogForm(defaultChangelogForm)
+    setEditingChangelogSlug('')
+    setChangelogMessage('')
+  }
+
+  async function handleChangelogDelete(slug) {
+    try {
+      const nextEntries = await deleteAdminChangelogEntry(slug)
+      onChangelogChange(nextEntries)
+      if (editingChangelogSlug === slug) {
+        handleChangelogCancelEdit()
+      }
+      setChangelogMessage('Deleted or hidden changelog entry.')
+    } catch (error) {
+      setChangelogMessage(error.message)
+    }
+  }
+
   async function handlePolicySubmit(event) {
     event.preventDefault()
 
@@ -1585,6 +1747,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
 
   const tabs = [
     { id: 'news', label: 'News' },
+    { id: 'changelog', label: 'Changelog' },
     { id: 'staff', label: 'Staff' },
     { id: 'wiki', label: 'Wiki' },
     { id: 'rules', label: 'Rules' },
@@ -1598,6 +1761,10 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
       ? editingSlug
         ? 'Edit News'
         : 'Create News'
+      : activeTab === 'changelog'
+      ? editingChangelogSlug
+        ? 'Edit Changelog'
+        : 'Create Changelog'
       : activeTab === 'staff'
         ? 'Edit Staff'
         : activeTab === 'wiki'
@@ -1622,6 +1789,13 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
     : staffSaveState === 'saved'
       ? 'Saved'
       : 'Save Staff page'
+  const changelogSaveButtonLabel = changelogSaveState === 'saving'
+    ? 'Saving...'
+    : changelogSaveState === 'saved'
+      ? 'Saved'
+      : editingChangelogSlug
+        ? 'Save changes'
+        : 'Save changelog entry'
 
   return (
     <main className="min-h-svh bg-bg px-5 pb-16 pt-36 text-white sm:px-8 lg:px-12">
@@ -1806,6 +1980,273 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                         )}
                         <button className="inline-flex min-h-9 items-center rounded-lg border border-red-400/40 px-3 text-sm font-semibold text-red-300 transition hover:bg-red-500/10" type="button" onClick={() => handleDelete(item.slug)}>
                           {item.deleted ? 'Keep hidden' : 'Delete'}
+                        </button>
+                      </div>
+                    </article>
+                  ))
+                )}
+              </div>
+            </aside>
+          </div>
+        )}
+
+        {/* Changelog manager */}
+        {activeTab === 'changelog' && (
+          <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
+            <div className="rounded-2xl border border-white/10 bg-surface p-6">
+              <form className="grid gap-5" onSubmit={handleChangelogSubmit}>
+                <div className="grid gap-5 md:grid-cols-2">
+                  <label className={labelClass}>
+                    Realm
+                    <input
+                      className={inputClass}
+                      placeholder="Skyblock, Survival, Lobby..."
+                      value={changelogForm.realm}
+                      onChange={(event) => updateChangelogField('realm', event.target.value)}
+                    />
+                    <span className="text-xs font-medium leading-5 text-muted">
+                      The backend server / gamemode this update is for. Type any name you like.
+                    </span>
+                  </label>
+                  <label className={labelClass}>
+                    Version
+                    <input
+                      className={inputClass}
+                      placeholder="v1.4.0"
+                      value={changelogForm.version}
+                      onChange={(event) => updateChangelogField('version', event.target.value)}
+                    />
+                  </label>
+                </div>
+
+                <div className="grid gap-5 md:grid-cols-2">
+                  <label className={labelClass}>
+                    Headline <span className="font-normal text-muted-2">(optional)</span>
+                    <input
+                      className={inputClass}
+                      placeholder="Season 3 balance pass"
+                      value={changelogForm.title}
+                      onChange={(event) => updateChangelogField('title', event.target.value)}
+                    />
+                  </label>
+                  <label className={labelClass}>
+                    Tag
+                    <input
+                      className={inputClass}
+                      placeholder="Release, Hotfix, Beta..."
+                      value={changelogForm.tag}
+                      onChange={(event) => updateChangelogField('tag', event.target.value)}
+                    />
+                  </label>
+                </div>
+
+                <label className={labelClass}>
+                  Summary <span className="font-normal text-muted-2">(optional)</span>
+                  <textarea
+                    className={`${textareaClass} min-h-20`}
+                    placeholder="A short sentence describing this update."
+                    value={changelogForm.summary}
+                    onChange={(event) => updateChangelogField('summary', event.target.value)}
+                  />
+                </label>
+
+                <div className="grid gap-5 md:grid-cols-2">
+                  <label className={labelClass}>
+                    Date
+                    <input
+                      type="date"
+                      className={inputClass}
+                      value={changelogForm.date}
+                      onChange={(event) => updateChangelogField('date', event.target.value)}
+                    />
+                    <span className="text-xs font-medium leading-5 text-muted">Leave empty to use today.</span>
+                  </label>
+                  <label className={labelClass}>
+                    Author
+                    <input
+                      className={inputClass}
+                      value={changelogForm.author}
+                      onChange={(event) => updateChangelogField('author', event.target.value)}
+                    />
+                  </label>
+                </div>
+
+                <label className={labelClass}>
+                  Image URL <span className="font-normal text-muted-2">(optional)</span>
+                  <input
+                    className={inputClass}
+                    placeholder="https://example.com/skyblock-banner.png"
+                    value={changelogForm.imageUrl}
+                    onChange={(event) => updateChangelogField('imageUrl', event.target.value)}
+                  />
+                  <span className="text-xs font-medium leading-5 text-muted">
+                    Shown on the card and as the detail-page banner. PNG, JPG, and WebP are optimized to WebP.
+                  </span>
+                </label>
+
+                <label className={labelClass}>
+                  Slug <span className="font-normal text-muted-2">(optional)</span>
+                  <input
+                    className={inputClass}
+                    maxLength={maxSlugLength}
+                    placeholder={getEffectiveChangelogSlug(changelogForm) || 'skyblock-v1-4-0'}
+                    value={changelogForm.slug}
+                    onChange={(event) => updateChangelogField('slug', slugify(event.target.value))}
+                  />
+                  <span className="text-xs font-medium leading-5 text-muted">
+                    Leave empty to build it from the realm and version. Used to update the same entry later.
+                  </span>
+                </label>
+
+                <div className="grid gap-4 rounded-xl border border-white/10 bg-surface-2 p-4">
+                  <p className="text-sm font-bold text-white">Changes</p>
+                  <p className="-mt-2 text-xs font-medium leading-5 text-muted">
+                    One change per line. Fill only the groups you need — empty groups are skipped.
+                  </p>
+                  {changeTypeOrder.map((type) => {
+                    const meta = getChangeTypeMeta(type)
+                    return (
+                      <label className={labelClass} key={type}>
+                        <span className="flex items-center gap-2">
+                          <span
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.08em] ${meta.badge}`}
+                          >
+                            <span aria-hidden="true">{meta.symbol}</span>
+                            {meta.label}
+                          </span>
+                        </span>
+                        <textarea
+                          className={`${textareaClass} min-h-20`}
+                          placeholder={`One ${meta.label.toLowerCase()} item per line.`}
+                          value={changelogForm[type]}
+                          onChange={(event) => updateChangelogField(type, event.target.value)}
+                        />
+                      </label>
+                    )
+                  })}
+                </div>
+
+                {/* Live preview */}
+                <div className="rounded-xl border border-white/10 bg-surface-2 p-5">
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-2">Live preview</p>
+                  {changelogForm.imageUrl.trim().startsWith('http') ? (
+                    <img
+                      className="mt-3 aspect-[16/9] w-full rounded-lg border border-white/10 object-cover"
+                      src={changelogForm.imageUrl.trim()}
+                      alt=""
+                      onError={(event) => {
+                        event.currentTarget.style.display = 'none'
+                      }}
+                    />
+                  ) : null}
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-brand-2">
+                      {changelogForm.realm.trim() || 'Realm'}
+                    </span>
+                    {changelogForm.tag.trim() ? (
+                      <span className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+                        {changelogForm.tag.trim()}
+                      </span>
+                    ) : null}
+                    {changelogForm.version.trim() ? (
+                      <span className="font-mono text-sm font-semibold text-white">{changelogForm.version.trim()}</span>
+                    ) : null}
+                  </div>
+                  {changelogForm.title.trim() ? (
+                    <h3 className="mt-2 text-lg font-bold leading-tight text-white">{changelogForm.title.trim()}</h3>
+                  ) : null}
+                  {changelogForm.summary.trim() ? (
+                    <p className="mt-1 text-sm leading-6 text-muted">{changelogForm.summary.trim()}</p>
+                  ) : null}
+                  {changelogPreviewGroups.length > 0 ? (
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      {changelogPreviewGroups.map((group) => {
+                        const meta = getChangeTypeMeta(group.type)
+                        return (
+                          <div className="space-y-2" key={group.type}>
+                            <span
+                              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.08em] ${meta.badge}`}
+                            >
+                              <span aria-hidden="true">{meta.symbol}</span>
+                              {meta.label}
+                            </span>
+                            <ul className="space-y-1.5">
+                              {group.items.map((item, index) => (
+                                <li className="flex gap-2 text-[13.5px] leading-6 text-muted" key={`${group.type}-${index}`}>
+                                  <span className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${meta.dot}`} aria-hidden="true" />
+                                  <span>{item}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <p className="mt-4 text-sm text-muted-2">Add at least one change to see the preview.</p>
+                  )}
+                </div>
+
+                {changelogMessage && <p className="text-sm font-semibold text-brand-2">{changelogMessage}</p>}
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    className={`${primaryButtonClass} min-h-12 min-w-[170px] ${
+                      changelogSaveState === 'saved' ? 'from-positive to-positive text-[#062412]' : ''
+                    } active:translate-y-0.5 active:scale-[0.98] disabled:cursor-wait disabled:opacity-80`}
+                    type="submit"
+                    disabled={isSavingChangelog}
+                  >
+                    {changelogSaveButtonLabel}
+                  </button>
+                  {editingChangelogSlug && (
+                    <button className={`${secondaryButtonClass} min-h-12`} type="button" onClick={handleChangelogCancelEdit}>
+                      Cancel edit
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+
+            <aside className="rounded-2xl border border-white/10 bg-surface p-6 lg:sticky lg:top-28">
+              <h2 className="text-xl font-bold text-white">Changelog Entries</h2>
+              <p className="mt-3 text-sm leading-6 text-muted">
+                Entries created here or posted by the Discord bot appear in this list. Deleting a seed entry hides it
+                through a stored override.
+              </p>
+
+              <div className="mt-6 grid gap-4">
+                {editableChangelog.length === 0 ? (
+                  <p className="rounded-xl border border-white/10 bg-surface-2 p-4 text-sm text-muted">
+                    No changelog entries yet.
+                  </p>
+                ) : (
+                  editableChangelog.map((entry) => (
+                    <article className="rounded-xl border border-white/10 bg-surface-2 p-4" key={entry.id || entry.slug}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="font-bold text-white">
+                            {entry.realm} <span className="font-mono text-sm text-muted">{entry.version}</span>
+                          </h3>
+                          <p className="mt-1 truncate text-sm text-muted">{entry.title || entry.summary || `/changelog`}</p>
+                        </div>
+                        <span className="shrink-0 rounded-md border border-white/10 px-2 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-muted">
+                          {entry.deleted ? 'Hidden' : entry.source === 'bot' ? 'Bot' : entry.source === 'admin' ? 'Local' : 'Seed'}
+                        </span>
+                      </div>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {!entry.deleted && (
+                          <>
+                            <button className="inline-flex min-h-9 items-center rounded-lg bg-gradient-to-b from-brand-2 to-brand px-3 text-sm font-semibold text-[#1a0d07] transition hover:brightness-105" type="button" onClick={() => handleChangelogEdit(entry)}>
+                              Edit
+                            </button>
+                            <a className="inline-flex min-h-9 items-center rounded-lg border border-white/15 px-3 text-sm font-semibold text-zinc-200 no-underline transition hover:border-white/25 hover:text-white" href="/changelog">
+                              View
+                            </a>
+                          </>
+                        )}
+                        <button className="inline-flex min-h-9 items-center rounded-lg border border-red-400/40 px-3 text-sm font-semibold text-red-300 transition hover:bg-red-500/10" type="button" onClick={() => handleChangelogDelete(entry.slug)}>
+                          {entry.deleted ? 'Keep hidden' : 'Delete'}
                         </button>
                       </div>
                     </article>

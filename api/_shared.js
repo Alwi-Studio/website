@@ -6,6 +6,7 @@ const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH ?? ''
 const sessionSecret = process.env.SESSION_SECRET ?? ''
 const supabaseUrl = process.env.SUPABASE_URL ?? ''
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
+const changelogApiKey = process.env.CHANGELOG_API_KEY ?? ''
 const sessionMaxAgeMs = 1000 * 60 * 60 * 8
 const maxNewsBodyBytes = 64 * 1024
 const maxHighlights = 12
@@ -162,8 +163,10 @@ async function supabaseRequest(path, options = {}) {
       parsedData?.code === 'PGRST205' ||
       parsedData?.message?.includes(`Could not find the table 'public.${tableName}'`)
     ) {
+      const sqlFile = tableName === 'changelog_entries' ? 'database/supabase-changelog.sql' : 'database/supabase-news.sql'
+
       throw new Error(
-        `Supabase is configured, but public.${tableName} does not exist yet. Run database/supabase-news.sql in the Supabase SQL editor, then retry.`,
+        `Supabase is configured, but public.${tableName} does not exist yet. Run ${sqlFile} in the Supabase SQL editor, then retry.`,
       )
     }
 
@@ -752,4 +755,209 @@ export function validateNewsItem(item) {
   }
 
   return ''
+}
+
+// -------------------- Changelog --------------------
+
+export const changelogChangeTypes = ['added', 'changed', 'improved', 'fixed', 'removed', 'deprecated', 'security']
+const maxChangelogChangesBytes = 64 * 1024
+const maxChangeGroups = 8
+const maxChangeItems = 40
+const maxChangeItemLength = 500
+
+export function verifyBotApiKey(req) {
+  if (!changelogApiKey) {
+    return false
+  }
+
+  const headerKey = req.headers['x-api-key']
+  const authHeader = req.headers['authorization'] ?? ''
+  const bearerKey = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+  const provided = String(headerKey || bearerKey).trim()
+
+  return Boolean(provided) && safeEqualText(provided, changelogApiKey)
+}
+
+function formatDisplayDate(isoDate) {
+  const date = isoDate ? new Date(isoDate) : new Date()
+
+  if (Number.isNaN(date.getTime())) {
+    return isoDate || ''
+  }
+
+  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+}
+
+function normalizeChanges(changes) {
+  let groups = []
+
+  if (Array.isArray(changes)) {
+    groups = changes
+  } else if (changes && typeof changes === 'object') {
+    // Allow a bot-friendly object form: { added: [...], fixed: [...] }
+    groups = Object.entries(changes).map(([type, items]) => ({ type, items }))
+  }
+
+  return groups
+    .map((group) => {
+      const rawType = String(group?.type ?? '').trim().toLowerCase()
+      const type = changelogChangeTypes.includes(rawType) ? rawType : 'changed'
+      const items = Array.isArray(group?.items)
+        ? group.items.map((item) => trimText(item, maxChangeItemLength)).filter(Boolean).slice(0, maxChangeItems)
+        : []
+
+      return items.length > 0 ? { type, items } : null
+    })
+    .filter(Boolean)
+    .slice(0, maxChangeGroups)
+}
+
+export function normalizeChangelogEntry(entry) {
+  const realm = trimText(entry?.realm, 80) || 'General'
+  const version = trimText(entry?.version, 80)
+  const title = trimText(entry?.title, 180)
+  const providedSlug = slugifyText(entry?.slug)
+  const slug = providedSlug || slugifyText(`${realm} ${version || title}`) || slugifyText(title)
+
+  const rawDate = trimText(entry?.date, 120)
+  let dateValue = trimText(entry?.dateValue ?? entry?.date_value, 40)
+
+  if (!dateValue && /^\d{4}-\d{2}-\d{2}/.test(rawDate)) {
+    dateValue = rawDate.slice(0, 10)
+  }
+
+  if (!dateValue) {
+    dateValue = new Date().toISOString().slice(0, 10)
+  }
+
+  const date = rawDate && !/^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : formatDisplayDate(dateValue)
+
+  return {
+    id: trimText(entry?.id, 120) || slug,
+    slug,
+    realm,
+    img: trimText(entry?.img ?? entry?.imageUrl, 1000),
+    version,
+    title,
+    summary: trimText(entry?.summary, 800),
+    tag: trimText(entry?.tag, 40) || 'Update',
+    date,
+    dateValue,
+    author: trimText(entry?.author, 120) || 'AlwiNation Team',
+    changes: normalizeChanges(entry?.changes),
+    source: entry?.source === 'bot' ? 'bot' : 'admin',
+    deleted: Boolean(entry?.deleted),
+  }
+}
+
+export function validateChangelogEntry(entry) {
+  if (!entry.slug || !entry.version || !Array.isArray(entry.changes) || entry.changes.length === 0) {
+    return 'Realm, version, and at least one change are required.'
+  }
+
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.slug)) {
+    return 'Slug must contain only lowercase letters, numbers, and hyphens.'
+  }
+
+  if (Buffer.byteLength(JSON.stringify(entry.changes), 'utf8') > maxChangelogChangesBytes) {
+    return 'Changelog entry is too large. Keep it under 64 KB of change text.'
+  }
+
+  return ''
+}
+
+function toChangelogRow(entry) {
+  return {
+    id: entry.id,
+    slug: entry.slug,
+    realm: entry.realm,
+    img: entry.img || null,
+    version: entry.version,
+    title: entry.title,
+    summary: entry.summary,
+    tag: entry.tag,
+    date: entry.date,
+    date_value: entry.dateValue || null,
+    author: entry.author,
+    changes: entry.changes,
+    source: entry.source || 'admin',
+    deleted: Boolean(entry.deleted),
+    updated_at: new Date().toISOString(),
+  }
+}
+
+function fromChangelogRow(row) {
+  return {
+    id: row.id,
+    slug: row.slug,
+    realm: row.realm ?? 'General',
+    img: row.img ?? '',
+    version: row.version ?? '',
+    title: row.title ?? '',
+    summary: row.summary ?? '',
+    tag: row.tag ?? 'Update',
+    date: row.date ?? '',
+    dateValue: row.date_value ?? '',
+    author: row.author ?? 'AlwiNation Team',
+    changes: Array.isArray(row.changes) ? row.changes : [],
+    source: row.source === 'bot' ? 'bot' : 'admin',
+    deleted: Boolean(row.deleted),
+  }
+}
+
+export async function readChangelog() {
+  const rows = await supabaseRequest('changelog_entries?select=*&order=date_value.desc,updated_at.desc')
+  return Array.isArray(rows) ? rows.map(fromChangelogRow) : []
+}
+
+export async function saveChangelog(entry) {
+  const rows = await supabaseRequest('changelog_entries?on_conflict=slug', {
+    method: 'POST',
+    body: JSON.stringify(toChangelogRow(entry)),
+    headers: {
+      Prefer: 'resolution=merge-duplicates,return=representation',
+    },
+  })
+
+  return Array.isArray(rows) && rows[0] ? fromChangelogRow(rows[0]) : entry
+}
+
+export async function deleteChangelog(slug, options = {}) {
+  if (!options.hide) {
+    await supabaseRequest(`changelog_entries?slug=eq.${encodeURIComponent(slug)}`, {
+      method: 'DELETE',
+      headers: {
+        Prefer: 'return=minimal',
+      },
+    })
+    return
+  }
+
+  const existingRows = await supabaseRequest(
+    `changelog_entries?slug=eq.${encodeURIComponent(slug)}&select=id&limit=1`,
+  )
+  const existingId = Array.isArray(existingRows) ? existingRows[0]?.id : ''
+
+  await supabaseRequest('changelog_entries?on_conflict=slug', {
+    method: 'POST',
+    body: JSON.stringify({
+      id: existingId || `deleted-${slug}`,
+      slug,
+      realm: 'General',
+      version: 'Removed',
+      title: 'Deleted changelog entry',
+      summary: 'This entry has been hidden.',
+      tag: 'Deleted',
+      date: formatDisplayDate(new Date().toISOString().slice(0, 10)),
+      date_value: new Date().toISOString().slice(0, 10),
+      author: 'AlwiNation Team',
+      changes: [],
+      source: 'admin',
+      deleted: true,
+      updated_at: new Date().toISOString(),
+    }),
+    headers: {
+      Prefer: 'resolution=merge-duplicates,return=representation',
+    },
+  })
 }

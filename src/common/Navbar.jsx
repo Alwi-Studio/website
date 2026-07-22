@@ -16,6 +16,7 @@ const sectionLinks = [
 ]
 
 const pageLinks = [
+  { label: 'Changelog', href: '/changelog' },
   { label: 'Wiki', href: '/wiki' },
   { label: 'Staff', href: '/staff' },
   { label: 'Rules', href: '/rules' },

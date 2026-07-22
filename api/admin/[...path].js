@@ -2,6 +2,7 @@ import {
   clearSessionCookie,
   createSessionCookie,
   deleteAdminNews,
+  deleteChangelog,
   deletePolicy,
   deleteStaff,
   deleteWiki,
@@ -9,16 +10,20 @@ import {
   isAuthenticated,
   json,
   methodNotAllowed,
+  normalizeChangelogEntry,
   normalizeNewsItem,
   readAdminNews,
+  readChangelog,
   readJsonBody,
   readPolicies,
   readStaff,
   readWiki,
   saveAdminNews,
+  saveChangelog,
   savePolicy,
   saveStaff,
   saveWiki,
+  validateChangelogEntry,
   validateNewsItem,
   verifyPassword,
 } from '../_shared.js'
@@ -104,6 +109,39 @@ async function handleNews(req, res, slug) {
 
     await saveAdminNews(item)
     json(res, 200, { items: await readAdminNews() })
+  } catch (error) {
+    json(res, 500, { error: error.message })
+  }
+}
+
+async function handleChangelog(req, res, slug) {
+  if (!slug && req.method !== 'POST') {
+    methodNotAllowed(res, ['POST'])
+    return
+  }
+
+  if (slug && req.method !== 'DELETE') {
+    methodNotAllowed(res, ['DELETE'])
+    return
+  }
+
+  try {
+    if (slug) {
+      await deleteChangelog(slug, { hide: true })
+      json(res, 200, { items: await readChangelog() })
+      return
+    }
+
+    const entry = normalizeChangelogEntry(await readJsonBody(req))
+    const validationError = validateChangelogEntry(entry)
+
+    if (validationError) {
+      json(res, 400, { error: validationError })
+      return
+    }
+
+    await saveChangelog(entry)
+    json(res, 200, { items: await readChangelog() })
   } catch (error) {
     json(res, 500, { error: error.message })
   }
@@ -202,6 +240,11 @@ export default async function handler(req, res) {
 
   if (resource === 'news') {
     await handleNews(req, res, id)
+    return
+  }
+
+  if (resource === 'changelog') {
+    await handleChangelog(req, res, id)
     return
   }
 
