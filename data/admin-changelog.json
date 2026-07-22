@@ -1,0 +1,31 @@
+[
+  {
+    "id": "admin-test-1",
+    "slug": "test-1",
+    "realm": "test",
+    "img": "",
+    "version": "1",
+    "title": "sada",
+    "summary": "safafs",
+    "tag": "Update",
+    "date": "July 22, 2026",
+    "dateValue": "2026-07-22",
+    "author": "AlwiNation Team",
+    "changes": [
+      {
+        "type": "added",
+        "items": [
+          "idk"
+        ]
+      },
+      {
+        "type": "changed",
+        "items": [
+          "im bored"
+        ]
+      }
+    ],
+    "source": "admin",
+    "deleted": false
+  }
+]

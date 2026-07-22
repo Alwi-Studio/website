@@ -712,8 +712,22 @@ function normalizeChangelogEntry(entry) {
 }
 
 function validateChangelogEntry(entry) {
-  if (!entry.slug || !entry.version || !Array.isArray(entry.changes) || entry.changes.length === 0) {
-    return 'Realm, version, and at least one change are required.'
+  const missing = []
+
+  if (!entry.version) {
+    missing.push('version')
+  }
+
+  if (!Array.isArray(entry.changes) || entry.changes.length === 0) {
+    missing.push('changes')
+  }
+
+  if (missing.length > 0) {
+    return `Missing or empty field(s): ${missing.join(', ')}. Send JSON with a "version" and at least one change group, e.g. {"realm":"Skyblock","version":"v1.0.0","changes":{"added":["..."]}}.`
+  }
+
+  if (!entry.slug) {
+    return 'Could not build a slug from the realm and version. Provide a "version", or set "slug" explicitly.'
   }
 
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.slug)) {

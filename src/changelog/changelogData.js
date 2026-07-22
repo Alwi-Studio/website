@@ -12,52 +12,21 @@ export const showSeedChangelog = import.meta.env.PROD
 export const changeTypeOrder = ['added', 'changed', 'improved', 'fixed', 'removed', 'deprecated', 'security']
 
 export const changeTypeMeta = {
-  added: {
-    label: 'Added',
-    symbol: '+',
-    badge: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300',
-    dot: 'bg-emerald-400',
-  },
-  changed: {
-    label: 'Changed',
-    symbol: '~',
-    badge: 'border-sky-400/30 bg-sky-400/10 text-sky-300',
-    dot: 'bg-sky-400',
-  },
-  improved: {
-    label: 'Improved',
-    symbol: '↑',
-    badge: 'border-violet-400/30 bg-violet-400/10 text-violet-300',
-    dot: 'bg-violet-400',
-  },
-  fixed: {
-    label: 'Fixed',
-    symbol: '✓',
-    badge: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
-    dot: 'bg-amber-400',
-  },
-  removed: {
-    label: 'Removed',
-    symbol: '−',
-    badge: 'border-rose-400/30 bg-rose-400/10 text-rose-300',
-    dot: 'bg-rose-400',
-  },
-  deprecated: {
-    label: 'Deprecated',
-    symbol: '!',
-    badge: 'border-orange-400/30 bg-orange-400/10 text-orange-300',
-    dot: 'bg-orange-400',
-  },
-  security: {
-    label: 'Security',
-    symbol: '⚠',
-    badge: 'border-red-400/30 bg-red-400/10 text-red-300',
-    dot: 'bg-red-400',
-  },
+  added: { label: 'Added' },
+  changed: { label: 'Changed' },
+  improved: { label: 'Improved' },
+  fixed: { label: 'Fixed' },
+  removed: { label: 'Removed' },
+  deprecated: { label: 'Deprecated' },
+  security: { label: 'Security' },
 }
 
 export function getChangeTypeMeta(type) {
   return changeTypeMeta[type] ?? changeTypeMeta.changed
+}
+
+export function getChangeTypeLabel(type) {
+  return (changeTypeMeta[type] ?? changeTypeMeta.changed).label
 }
 
 export const changelogEntries = [

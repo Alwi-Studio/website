@@ -10,7 +10,7 @@ import {
   deleteAdminChangelogEntry,
   saveAdminChangelogEntry,
 } from '../changelog/adminChangelogStore.js'
-import { changeTypeOrder, getChangeTypeMeta } from '../changelog/changelogData.js'
+import { changeTypeOrder, getChangeTypeLabel } from '../changelog/changelogData.js'
 import CollapsibleItems from '../common/CollapsibleItems.jsx'
 import MarkdownBody from '../common/MarkdownBody.jsx'
 import { RichInline, parseMarkdownBlocks } from '../common/RichText.jsx'
@@ -2104,20 +2104,13 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                     One change per line. Fill only the groups you need — empty groups are skipped.
                   </p>
                   {changeTypeOrder.map((type) => {
-                    const meta = getChangeTypeMeta(type)
+                    const label = getChangeTypeLabel(type)
                     return (
                       <label className={labelClass} key={type}>
-                        <span className="flex items-center gap-2">
-                          <span
-                            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.08em] ${meta.badge}`}
-                          >
-                            <span aria-hidden="true">{meta.symbol}</span>
-                            {meta.label}
-                          </span>
-                        </span>
+                        <span className="text-xs font-bold uppercase tracking-[0.18em] text-muted-2">{label}</span>
                         <textarea
                           className={`${textareaClass} min-h-20`}
-                          placeholder={`One ${meta.label.toLowerCase()} item per line.`}
+                          placeholder={`One ${label.toLowerCase()} item per line.`}
                           value={changelogForm[type]}
                           onChange={(event) => updateChangelogField(type, event.target.value)}
                         />
@@ -2159,28 +2152,25 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                     <p className="mt-1 text-sm leading-6 text-muted">{changelogForm.summary.trim()}</p>
                   ) : null}
                   {changelogPreviewGroups.length > 0 ? (
-                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                      {changelogPreviewGroups.map((group) => {
-                        const meta = getChangeTypeMeta(group.type)
-                        return (
-                          <div className="space-y-2" key={group.type}>
-                            <span
-                              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.08em] ${meta.badge}`}
-                            >
-                              <span aria-hidden="true">{meta.symbol}</span>
-                              {meta.label}
+                    <div className="mt-5 grid gap-5">
+                      {changelogPreviewGroups.map((group) => (
+                        <div key={group.type}>
+                          <div className="flex items-center gap-3">
+                            <span className="whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.2em] text-brand-2">
+                              {getChangeTypeLabel(group.type)}
                             </span>
-                            <ul className="space-y-1.5">
-                              {group.items.map((item, index) => (
-                                <li className="flex gap-2 text-[13.5px] leading-6 text-muted" key={`${group.type}-${index}`}>
-                                  <span className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${meta.dot}`} aria-hidden="true" />
-                                  <span>{item}</span>
-                                </li>
-                              ))}
-                            </ul>
+                            <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
                           </div>
-                        )
-                      })}
+                          <ul className="mt-2.5 space-y-1.5">
+                            {group.items.map((item, index) => (
+                              <li className="flex gap-2.5 text-[13.5px] leading-6 text-muted" key={`${group.type}-${index}`}>
+                                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-600" aria-hidden="true" />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
                     </div>
                   ) : (
                     <p className="mt-4 text-sm text-muted-2">Add at least one change to see the preview.</p>

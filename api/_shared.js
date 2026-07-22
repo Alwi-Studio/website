@@ -28,12 +28,21 @@ export function json(res, status, body, extraHeaders = {}) {
 }
 
 export async function readJsonBody(req) {
-  if (req.body && typeof req.body === 'object') {
-    return req.body
+  // Vercel hands the body to the function as a Buffer when the request's
+  // Content-Type is not application/json (common for bots / non-browser clients).
+  // A Buffer is `typeof === 'object'`, so it must be checked and parsed first.
+  if (Buffer.isBuffer(req.body)) {
+    const text = req.body.toString('utf8').trim()
+    return text ? JSON.parse(text) : {}
   }
 
   if (typeof req.body === 'string') {
-    return req.body ? JSON.parse(req.body) : {}
+    const text = req.body.trim()
+    return text ? JSON.parse(text) : {}
+  }
+
+  if (req.body && typeof req.body === 'object') {
+    return req.body
   }
 
   const chunks = []
@@ -851,8 +860,22 @@ export function normalizeChangelogEntry(entry) {
 }
 
 export function validateChangelogEntry(entry) {
-  if (!entry.slug || !entry.version || !Array.isArray(entry.changes) || entry.changes.length === 0) {
-    return 'Realm, version, and at least one change are required.'
+  const missing = []
+
+  if (!entry.version) {
+    missing.push('version')
+  }
+
+  if (!Array.isArray(entry.changes) || entry.changes.length === 0) {
+    missing.push('changes')
+  }
+
+  if (missing.length > 0) {
+    return `Missing or empty field(s): ${missing.join(', ')}. Send JSON with a "version" and at least one change group, e.g. {"realm":"Skyblock","version":"v1.0.0","changes":{"added":["..."]}}.`
+  }
+
+  if (!entry.slug) {
+    return 'Could not build a slug from the realm and version. Provide a "version", or set "slug" explicitly.'
   }
 
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.slug)) {

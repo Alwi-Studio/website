@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { getChangeTypeMeta } from './changelogData.js'
+import { getChangeTypeLabel } from './changelogData.js'
 import { getOptimizedImageUrl } from '../common/imageOptimizer.js'
 import { isSafeImageUrl } from '../common/safeUrls.js'
 
@@ -48,21 +48,9 @@ function Changelog({ realm, version, title, summary, tag, date, changes, slug, i
             {version}
           </p>
           {counts.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {counts.map((group) => {
-                const meta = getChangeTypeMeta(group.type)
-                return (
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11.5px] font-bold ${meta.badge}`}
-                    key={group.type}
-                    title={meta.label}
-                  >
-                    <span aria-hidden="true">{meta.symbol}</span>
-                    {group.count}
-                  </span>
-                )
-              })}
-            </div>
+            <p className="mt-2.5 text-[12.5px] font-medium text-white/75">
+              {counts.map((group) => `${group.count} ${getChangeTypeLabel(group.type).toLowerCase()}`).join('  ·  ')}
+            </p>
           ) : null}
         </div>
       </div>

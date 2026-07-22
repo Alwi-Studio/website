@@ -1,24 +1,23 @@
 import { useMemo } from 'react'
 import Changelog from './Changelog.jsx'
-import { changeTypeOrder, getChangeTypeMeta } from './changelogData.js'
+import { changeTypeOrder, getChangeTypeLabel } from './changelogData.js'
 import { getOptimizedImageUrl } from '../common/imageOptimizer.js'
 import { isSafeImageUrl } from '../common/safeUrls.js'
 
 function ChangeGroup({ group }) {
-  const meta = getChangeTypeMeta(group.type)
-
   return (
-    <section className="border-t border-white/10 pt-6 first:border-t-0 first:pt-0">
-      <span
-        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-bold uppercase tracking-[0.08em] ${meta.badge}`}
-      >
-        <span aria-hidden="true">{meta.symbol}</span>
-        {meta.label}
-      </span>
-      <ul className="mt-4 grid gap-3 p-0">
+    <section>
+      <div className="flex items-center gap-4">
+        <h3 className="whitespace-nowrap text-xs font-bold uppercase tracking-[0.2em] text-[#ff7a59]">
+          {getChangeTypeLabel(group.type)}
+        </h3>
+        <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
+        <span className="text-xs font-semibold tabular-nums text-zinc-500">{group.items.length}</span>
+      </div>
+      <ul className="mt-4 grid gap-2.5 p-0">
         {group.items.map((item, index) => (
           <li className="flex items-start gap-3 text-base leading-7 text-zinc-300" key={`${group.type}-${index}`}>
-            <span className={`mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full ${meta.dot}`} aria-hidden="true" />
+            <span className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-600" aria-hidden="true" />
             <span>{item}</span>
           </li>
         ))}
