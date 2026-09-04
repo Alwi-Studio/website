@@ -683,7 +683,7 @@ const inputClass =
   'min-h-11 rounded-xl border border-white/10 bg-surface-2 px-3 text-white outline-none transition focus:border-brand'
 const textareaClass =
   'w-full resize-y rounded-xl border border-white/10 bg-surface-2 px-3 py-3 text-white outline-none transition focus:border-brand'
-const labelClass = 'grid gap-2 text-sm font-semibold text-zinc-300'
+const labelClass = 'grid min-w-0 gap-2 text-sm font-semibold text-zinc-300'
 const primaryButtonClass =
   'inline-flex items-center justify-center rounded-xl bg-gradient-to-b from-brand-2 to-brand px-5 text-sm font-bold text-[#1a0d07] transition hover:brightness-105'
 const secondaryButtonClass =
