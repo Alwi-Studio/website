@@ -106,7 +106,7 @@ function ChangelogDetail({ entry, entries = [] }) {
 
         <section className="px-5 pb-16 sm:px-8 lg:px-12">
           <div className="mx-auto grid max-w-5xl gap-10 lg:grid-cols-[1fr_280px] lg:items-start">
-            <div className="grid gap-6">
+            <div className="grid min-w-0 gap-6 wrap-anywhere">
               {orderedGroups.length > 0 ? (
                 orderedGroups.map((group, index) => <ChangeGroup group={group} key={`${group.type}-${index}`} />)
               ) : (

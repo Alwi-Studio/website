@@ -382,7 +382,7 @@ function NewsDetail({ item, newsItems = [] }) {
 
         <section className="px-5 pb-16 sm:px-8 lg:px-12">
           <div className="mx-auto grid max-w-5xl gap-10 lg:grid-cols-[1fr_280px] lg:items-start">
-            <div className="min-w-0 space-y-4 text-base leading-7 text-zinc-300">
+            <div className="min-w-0 space-y-4 wrap-anywhere text-base leading-7 text-zinc-300">
               {item.body.map((block, index) => (
                 <ArticleBlock block={block} key={`${typeof block === 'string' ? block : block.type}-${index}`} />
               ))}

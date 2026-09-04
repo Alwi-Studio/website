@@ -691,7 +691,7 @@ const secondaryButtonClass =
 
 function PreviewShell({ children }) {
   return (
-    <div className="mt-6 rounded-xl border border-white/10 bg-bg-2/50 p-5">
+    <div className="mt-6 min-w-0 wrap-anywhere rounded-xl border border-white/10 bg-bg-2/50 p-5">
       <p className="mb-4 text-xs font-bold uppercase tracking-[0.14em] text-muted-2">Live preview</p>
       {children}
     </div>
@@ -2238,7 +2238,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                 </div>
 
                 {/* Live preview */}
-                <div className="rounded-xl border border-white/10 bg-surface-2 p-5">
+                <div className="min-w-0 wrap-anywhere rounded-xl border border-white/10 bg-surface-2 p-5">
                   <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-2">Live preview</p>
                   {changelogForm.imageUrl.trim().startsWith('http') ? (
                     <img

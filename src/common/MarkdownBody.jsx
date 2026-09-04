@@ -69,7 +69,7 @@ export function MarkdownBody({ text, className = '' }) {
   }
 
   return (
-    <div className={`grid gap-2.5 ${className}`}>
+    <div className={`grid min-w-0 gap-2.5 wrap-anywhere ${className}`}>
       {blocks.map((block, index) => {
         const key = `${block.type}-${index}`
 
