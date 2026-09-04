@@ -1917,7 +1917,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
         {/* News manager */}
         {activeTab === 'news' && (
           <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
-            <div className="rounded-2xl border border-white/10 bg-surface p-6">
+            <div className="min-w-0 rounded-2xl border border-white/10 bg-surface p-6">
               <form className="grid gap-5" onSubmit={handleSubmit}>
                 <div className="grid gap-5 md:grid-cols-2">
                   <label className={labelClass}>
