@@ -101,6 +101,20 @@ function RealmForm({ realm, realms, index, update, onDuplicate, onDelete }) {
   )
 }
 
+// Particles over the hero and the Season band; hidden for visitors who ask for reduced motion.
+function EffectField({ value, onChange }) {
+  return (
+    <label className="adm-label">
+      Particles
+      <select className="adm-input" value={value} onChange={(event) => onChange(event.target.value)}>
+        <option value="snow">Snow</option>
+        <option value="embers">Embers</option>
+        <option value="none">None</option>
+      </select>
+    </label>
+  )
+}
+
 function SectionFields({ section, update, settings, modes }) {
   const placeholders = (
     <>Placeholders: <code>{'{serverAddress}'}</code> = {settings.serverAddress}, <code>{'{bedrockPort}'}</code> = {settings.bedrockPort}, <code>{'{javaVersion}'}</code> = {settings.javaVersion}.</>
@@ -133,14 +147,7 @@ function SectionFields({ section, update, settings, modes }) {
         <>
           <ImageField label="Background image" value={section.image} onChange={(image) => update({ image })} />
           <div className="adm-grid2">
-            <label className="adm-label">
-              Effect
-              <select className="adm-input" value={section.effect} onChange={(event) => update({ effect: event.target.value })}>
-                <option value="snow">Snow</option>
-                <option value="embers">Embers</option>
-                <option value="none">None</option>
-              </select>
-            </label>
+            <EffectField value={section.effect} onChange={(effect) => update({ effect })} />
             <TextField label="Button label" value={section.buttonLabel} maxLength={40} onChange={(buttonLabel) => update({ buttonLabel })} />
             <TextField
               label="Button link"
@@ -328,6 +335,7 @@ function HomeEditor({ ready, onStatus }) {
           <h2 id="home-hero-title" className="mb-4">Hero</h2>
           <div className="grid gap-4">
             <ImageField label="Background image" value={home.hero.image} onChange={(image) => setHome((current) => ({ ...current, hero: { ...current.hero, image } }))} />
+            <EffectField value={home.hero.effect} onChange={(effect) => setHome((current) => ({ ...current, hero: { ...current.hero, effect } }))} />
             <TextField label="Subtitle" multiline value={home.hero.subtitle} maxLength={400} hint="Type the realm count yourself; it is not counted automatically." onChange={(subtitle) => setHome((current) => ({ ...current, hero: { ...current.hero, subtitle } }))} />
             <div className="adm-grid2">
               <TextField label="Primary button" value={home.hero.primaryLabel} maxLength={40} hint="Copies the server address." onChange={(primaryLabel) => setHome((current) => ({ ...current, hero: { ...current.hero, primaryLabel } }))} />

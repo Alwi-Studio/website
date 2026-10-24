@@ -492,6 +492,11 @@ function getImageUrlError(value) {
     return 'Album/gallery links cannot be used as images. Use a direct image file URL instead.'
   }
 
+  // Discord signs attachment links for about a day; after that the picture 404s on the site.
+  if ((host === 'cdn.discordapp.com' || host === 'media.discordapp.net') && /^\/(ephemeral-)?attachments\//.test(path)) {
+    return 'Discord attachment links stop working about a day after they are copied. Upload the image somewhere permanent (for example a public Supabase Storage bucket) and use that link.'
+  }
+
   return ''
 }
 

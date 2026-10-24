@@ -10,7 +10,8 @@
   --ink-2: #d4d6dd;
   --muted: #a8a8b3;
   --dim: #868692;
-  --edge: #000;
+  /* Outline of panels, cards and buttons: black disappears on the near-black background. */
+  --edge: #3a3a44;
   --bevel-hi: rgba(255, 255, 255, 0.06);
   --bevel-lo: rgba(0, 0, 0, 0.45);
   --nav-solid: #0c0c0f;

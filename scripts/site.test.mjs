@@ -101,6 +101,10 @@ test('site rejects all numeric and collection boundaries without clamping', () =
   assert.throws(() => checked(changeSection('feature', { tooltip: { lines: Array(13).fill({}) } })), /Tooltip lines/)
   assert.equal(checked(changeSection('feature', { tooltip: { lines: [] } })).home.sections[0].tooltip.lines.length, 0)
   assert.throws(() => checked(changeSection('feature', { effect: 'rain' })), /effect/)
+  assert.throws(() => checked({ home: { hero: { effect: 'rain' } } }), /Hero effect/)
+  assert.equal(checked({ home: { hero: { effect: 'snow' } } }).home.hero.effect, 'snow')
+  // Documents saved before the hero had an effect keep the embers.
+  assert.equal(checked({ home: { hero: { subtitle: 'Hi' } } }).home.hero.effect, 'embers')
   for (const steps of [[], Array(7).fill({})]) assert.throws(() => checked(changeSection('join', { steps })), /Join steps/)
   for (const boards of [[], Array(4).fill({}), [{ mode: 'bad_mode' }], [{ mode: 'a'.repeat(33) }]]) assert.throws(() => checked(changeSection('players', { boards })), SiteValidationError)
   for (const serverAddress of ['ab', 'x'.repeat(101), 'a:25565']) assert.throws(() => checked({ settings: { serverAddress } }), /serverAddress/)

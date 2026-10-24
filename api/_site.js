@@ -14,6 +14,8 @@ function object(value, field) {
   return value
 }
 
+const particleEffects = ['snow', 'embers', 'none']
+
 function text(value, fallback = '', max = Infinity) {
   const input = value === undefined ? fallback : value
   if (!['string', 'number', 'boolean'].includes(typeof input) || String(input).includes('\0')) {
@@ -155,6 +157,7 @@ export function normalizeSite(input = {}) {
         subtitle: text(hero.subtitle, defaultSite.home.hero.subtitle, 400),
         primaryLabel: text(hero.primaryLabel, defaultSite.home.hero.primaryLabel, 40),
         secondaryLabel: text(hero.secondaryLabel, defaultSite.home.hero.secondaryLabel, 40),
+        effect: text(hero.effect, defaultSite.home.hero.effect),
       },
       sections,
       // Never merge arrays with the seed: removed realms must stay removed.
@@ -189,6 +192,7 @@ export function validateSite(site) {
   integer(settings.bedrockPort, 1, 65535, 'bedrockPort')
   for (const key of ['discordUrl', 'storeUrl', 'statusUrl', 'youtubeUrl', 'tiktokUrl']) url(settings[key], key)
   url(site.home.hero.image, 'Hero image')
+  if (!particleEffects.includes(site.home.hero.effect)) throw new SiteValidationError('Hero effect must be snow, embers or none.')
   const ids = new Set()
   list(site.home.realms, [], 'Realms', 1, 30)
   for (const realm of site.home.realms) {
@@ -206,7 +210,7 @@ export function validateSite(site) {
         if (section.autoplaySeconds !== 0) integer(section.autoplaySeconds, 3, 20, 'autoplaySeconds')
         break
       case 'feature':
-        if (!['snow', 'embers', 'none'].includes(section.effect)) throw new SiteValidationError('Feature effect must be snow, embers or none.')
+        if (!particleEffects.includes(section.effect)) throw new SiteValidationError('Feature effect must be snow, embers or none.')
         url(section.image, 'Feature image')
         url(section.buttonHref, 'Feature buttonHref')
         list(section.tooltip.lines, [], 'Tooltip lines', 0, 12)

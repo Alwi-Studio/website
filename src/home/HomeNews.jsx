@@ -1,22 +1,17 @@
-import { getOptimizedImageUrl } from '../common/imageOptimizer.js'
+import { useState } from 'react'
 import { revealRef } from '../common/reveal.js'
-
-const tagClass = { Update: 'tag-update', Announcement: 'tag-news', Community: 'tag-community', Preview: 'tag-preview' }
-const fallbackImages = ['/img/hub-center.webp', '/img/hub-left.webp', '/img/street-right.webp', '/img/street-center.webp', '/img/hub-right.webp', '/img/street-left.webp']
-
-// Remote news images go through the existing /api/image optimizer; local paths are used as is.
-function postImage(item, index, width) {
-  if (typeof item.img !== 'string' || !item.img) return fallbackImages[index % fallbackImages.length]
-  return getOptimizedImageUrl(item.img, width) || item.img
-}
+import { fallbackImage, postImage, tagClass } from '../news/postInfo.js'
 
 function Post({ item, index, big }) {
+  // A dead remote image (an expired Discord link, say) swaps once to one of the server's screenshots.
+  const [failed, setFailed] = useState(false)
+  const src = failed ? fallbackImage(index) : postImage(item, big ? 1400 : 700, index)
   return (
     <a className={`post ${big ? 'post-big' : 'post-small'} panel`} href={`/news/${encodeURIComponent(item.slug)}`} data-reveal data-delay={big ? undefined : String(index)} ref={revealRef}>
-      <div className="pic"><img src={postImage(item, index, big ? 1400 : 700)} width="1400" height="788" alt="" loading="lazy" /></div>
+      <div className="pic"><img src={src} width="1400" height="788" alt="" loading="lazy" onError={() => setFailed(true)} /></div>
       <div className="post-body">
         <p className="post-meta">
-          {item.category && <span className={`tag ${tagClass[item.category] ?? 'tag-news'}`}>{item.category}</span>}
+          {item.category && <span className={`tag ${tagClass(item.category)}`}>{item.category}</span>}
           {item.date}
         </p>
         <h3>{item.title}</h3>

@@ -19,7 +19,7 @@ function Hero() {
       <div className="hero-bg">
         <img src={hero.image} srcSet={srcSet} sizes="100vw" width="2400" height="1352" alt="" fetchPriority="high" />
       </div>
-      <Particles kind="embers" />
+      {hero.effect !== 'none' && <Particles kind={hero.effect} />}
       <div className="container hero-in">
         <h1 className="hero-logo" data-reveal ref={revealRef}>
           <img src="/img/logo-long.webp" width="1200" height="91" alt="AlwiNation" />

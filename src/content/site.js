@@ -19,6 +19,7 @@ export const defaultSite = {
       subtitle: 'The official Minecraft server of Alwisusilo. Ten realms on one IP, from Arena PvP to Tycoon, on PC, phone or console.',
       primaryLabel: 'Play now',
       secondaryLabel: 'Join Discord',
+      effect: 'embers', // 'snow' | 'embers' | 'none'
     },
     sections: [
       // Rendered in this order. `enabled` hides a section without deleting its content.
