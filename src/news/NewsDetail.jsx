@@ -1,445 +1,234 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Icon } from '../common/Icons.jsx'
+import { RichBlocks } from '../common/MarkdownBody.jsx'
+import Particles from '../common/Particles.jsx'
+import { RichInline } from '../common/RichText.jsx'
+import { revealRef } from '../common/reveal.js'
+import { useSite } from '../common/siteContext.js'
+import { copyText, showToast } from '../common/toastBus.js'
+import CommunityBand from '../home/CommunityBand.jsx'
 import News from './News.jsx'
-import CollapsibleItems from '../common/CollapsibleItems.jsx'
-import { RichInline, parseMarkdownBlocks } from '../common/RichText.jsx'
-import { isSafeImageUrl } from '../common/safeUrls.js'
-import { getOptimizedImageUrl } from '../common/imageOptimizer.js'
+import { isSeasonPost, newsDiscordBand, plainText, postHighlights, postImage, seasonNumber, tagClass } from './postInfo.js'
+import './news.css'
 
-function HeroImage({ src, avifSrc = '' }) {
-  const imageRef = useRef(null)
-  const optimizedSrc = useMemo(() => avifSrc || getOptimizedImageUrl(src, 1920), [avifSrc, src])
-  const primarySrc = optimizedSrc || src
-  const [currentSrc, setCurrentSrc] = useState(primarySrc)
-  const [status, setStatus] = useState('loading')
+const comparable = (text) => plainText(text).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 
-  useLayoutEffect(() => {
-    const image = imageRef.current
+// Contents entries for the two shallowest heading levels, with unique ids. RichBlocks
+// maps the shallowest level to h2 the same way, so entry.sub marks the h3s.
+function buildContents(blocks) {
+  const top = Math.min(3, ...blocks.filter((block) => block?.type === 'heading').map((block) => block.level ?? 2))
+  const used = new Set()
+  const ids = []
+  const entries = []
+  blocks.forEach((block, index) => {
+    const depth = block?.type === 'heading' ? (block.level ?? 2) - top : 2
+    if (depth > 1) return
+    const label = plainText(block.text)
+    let id = `s-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'section'}`
+    while (used.has(id)) id += '-2'
+    used.add(id)
+    ids[index] = id
+    entries.push({ id, label, sub: depth === 1 })
+  })
+  return { ids, entries }
+}
 
-    if (image?.complete) {
-      setStatus(image.naturalWidth > 0 ? 'loaded' : 'error')
-      return
-    }
-
-    setStatus(currentSrc ? 'loading' : 'error')
-  }, [currentSrc])
+// Marks the contents entry whose section is under the line 150px from the top.
+function useScrollSpy(targetIds) {
+  const [current, setCurrent] = useState(0)
 
   useEffect(() => {
-    setCurrentSrc(primarySrc)
-    setStatus(primarySrc ? 'loading' : 'error')
-  }, [primarySrc])
-
-  function handleError() {
-    setStatus('error')
-  }
-
-  return (
-    <>
-      {status === 'loading' && (
-        <div className="absolute inset-0 grid place-items-center bg-[#202020]">
-          <div className="h-14 w-14 animate-spin rounded-full border-2 border-white/15 border-t-[#ff7a59]" />
-        </div>
-      )}
-      {status === 'error' && (
-        <div className="absolute inset-0 grid place-items-center bg-[#202020] px-5 text-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-500">Image unavailable</p>
-        </div>
-      )}
-      {currentSrc && (
-        <img
-          ref={imageRef}
-          className={`pointer-events-none absolute inset-0 h-full w-full object-cover object-center blur-[4px] transition duration-500 ${
-            status === 'loaded' ? 'opacity-100' : 'opacity-0'
-          }`}
-          key={currentSrc}
-          src={currentSrc}
-          alt=""
-          width="1920"
-          height="1080"
-          loading="eager"
-          fetchPriority="high"
-          decoding="async"
-          onLoad={() => setStatus('loaded')}
-          onError={handleError}
-        />
-      )}
-    </>
-  )
-}
-
-function columnClass(columns = 2) {
-  if (columns >= 4) {
-    return 'md:grid-cols-2 xl:grid-cols-4'
-  }
-  if (columns === 3) {
-    return 'md:grid-cols-3'
-  }
-  return 'md:grid-cols-2'
-}
-
-function TitledItemsGrid({ block, card = false }) {
-  return (
-    <div className={`grid gap-3 ${columnClass(block.columns)}`}>
-      {block.items.map((item, index) => (
-        <div
-          className={`${card ? 'rounded-lg border border-white/10 bg-[#202020] p-4' : 'border-l border-white/10 pl-4'}`}
-          key={`${item.title}-${index}`}
-        >
-          <h3 className="font-bold text-white"><RichInline text={item.title} /></h3>
-          {item.text && <p className="mt-2 text-sm leading-6 text-zinc-400"><RichInline text={item.text} /></p>}
-          {item.meta && <p className="mt-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#ff7a59]"><RichInline text={item.meta} /></p>}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function ArticleTabs({ items }) {
-  const [activeIndex, setActiveIndex] = useState(0)
-  const activeItem = items[activeIndex] ?? items[0]
-
-  return (
-    <div className="rounded-lg border border-white/10 bg-[#202020]">
-      <div className="flex gap-1 overflow-x-auto border-b border-white/10 p-2">
-        {items.map((item, index) => (
-          <button
-            className={`min-h-9 shrink-0 rounded-md px-3 text-sm font-semibold transition ${
-              index === activeIndex ? 'bg-[#ff5732] text-[#1a0d07]' : 'text-zinc-400 hover:bg-white/[0.06] hover:text-white'
-            }`}
-            key={`${item.title}-${index}`}
-            type="button"
-            onClick={() => setActiveIndex(index)}
-          >
-            <RichInline text={item.title} />
-          </button>
-        ))}
-      </div>
-      <div className="p-4 text-sm leading-7 text-zinc-300">
-        <RichInline text={activeItem?.text ?? ''} />
-      </div>
-    </div>
-  )
-}
-
-function ArticleBlock({ block }) {
-  if (typeof block === 'string') {
-    return <p className="whitespace-pre-line"><RichInline text={block} /></p>
-  }
-
-  if (block.type === 'lead') {
-    return <p className="whitespace-pre-line text-xl font-semibold leading-8 text-zinc-100"><RichInline text={block.text} /></p>
-  }
-
-  if (block.type === 'heading') {
-    const HeadingTag = block.level === 3 ? 'h3' : block.level === 1 ? 'h1' : 'h2'
-    const className =
-      block.level === 1
-        ? 'pt-4 text-3xl font-bold leading-tight text-white'
-        : block.level === 3
-          ? 'pt-3 text-xl font-bold leading-tight text-white'
-          : 'pt-4 text-2xl font-bold leading-tight text-white'
-    return <HeadingTag className={className}><RichInline text={block.text} /></HeadingTag>
-  }
-
-  if (block.type === 'list') {
-    return (
-      <ul className="grid gap-3 p-0">
-        {block.items.map((item) => (
-          <li className="flex items-start gap-3" key={item}>
-            <span className="mt-3 h-1.5 w-1.5 shrink-0 rounded-full bg-[#ff5732]" />
-            <span><RichInline text={item} /></span>
-          </li>
-        ))}
-      </ul>
-    )
-  }
-
-  if (block.type === 'ordered-list') {
-    return (
-      <ol className="list-decimal space-y-2 pl-5">
-        {block.items.map((item, index) => (
-          <li className="pl-1" key={index}>
-            <RichInline text={item} />
-          </li>
-        ))}
-      </ol>
-    )
-  }
-
-  if (block.type === 'divider') {
-    return <hr className="my-2 border-0 border-t border-white/10" />
-  }
-
-  if (block.type === 'checklist') {
-    return (
-      <ul className="grid gap-3 p-0">
-        {block.items.map((item, index) => (
-          <li className="flex items-start gap-3" key={index}>
-            <span
-              className={`mt-1.5 grid h-5 w-5 shrink-0 place-items-center rounded border text-[11px] font-bold ${
-                item.checked ? 'border-[#ff7a59] bg-[#ff5732] text-[#1a0d07]' : 'border-white/20 bg-[#202020] text-transparent'
-              }`}
-            >
-              x
-            </span>
-            <span><RichInline text={item.text} /></span>
-          </li>
-        ))}
-      </ul>
-    )
-  }
-
-  if (block.type === 'table') {
-    return (
-      <div className="overflow-x-auto rounded-lg border border-white/10 bg-[#202020]">
-        <table className="min-w-full border-collapse text-left text-sm">
-          <thead className="bg-white/[0.04] text-xs font-bold uppercase text-zinc-300">
-            <tr>
-              {block.headers.map((header, headerIndex) => (
-                <th
-                  className="border-b border-white/10 px-4 py-3"
-                  key={`${header}-${headerIndex}`}
-                  style={{ textAlign: block.alignments?.[headerIndex] ?? 'left' }}
-                >
-                  <RichInline text={header} />
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {block.rows.map((row, rowIndex) => (
-              <tr className="border-b border-white/5 last:border-b-0" key={rowIndex}>
-                {block.headers.map((header, cellIndex) => (
-                  <td
-                    className="px-4 py-3 text-zinc-300"
-                    key={`${header}-${cellIndex}`}
-                    style={{ textAlign: block.alignments?.[cellIndex] ?? 'left' }}
-                  >
-                    <RichInline text={row[cellIndex] ?? ''} />
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    )
-  }
-
-  if (block.type === 'columns' || block.type === 'grid') {
-    return <TitledItemsGrid block={block} />
-  }
-
-  if (block.type === 'cards') {
-    return <TitledItemsGrid block={{ ...block, columns: 3 }} card />
-  }
-
-  if (block.type === 'tabs') {
-    return <ArticleTabs items={block.items} />
-  }
-
-  if (block.type === 'accordion') {
-    return (
-      <CollapsibleItems
-        items={block.items}
-        renderContent={(content) => (
-          <div className="grid gap-4">
-            {parseMarkdownBlocks(content).map((contentBlock, index) => (
-              <ArticleBlock block={contentBlock} key={`${contentBlock.type}-${index}`} />
-            ))}
-          </div>
-        )}
-      />
-    )
-  }
-
-  if (block.type === 'section' || block.type === 'container') {
-    const isContainer = block.type === 'container'
-    return (
-      <section className={`${isContainer ? 'rounded-lg border border-white/10 bg-[#202020] p-5' : 'border-t border-white/10 pt-5'}`}>
-        {block.title && <h2 className="text-xl font-bold text-white"><RichInline text={block.title} /></h2>}
-        {block.text && <p className="mt-2 text-sm leading-7 text-zinc-300"><RichInline text={block.text} /></p>}
-      </section>
-    )
-  }
-
-  if (block.type === 'sidebar') {
-    return (
-      <aside className="grid gap-4 rounded-lg border border-white/10 bg-[#202020] p-5 md:grid-cols-[1fr_240px]">
-        <div>
-          {block.title && <h2 className="text-xl font-bold text-white"><RichInline text={block.title} /></h2>}
-          {block.text && <p className="mt-2 text-sm leading-7 text-zinc-300"><RichInline text={block.text} /></p>}
-        </div>
-        {block.sidebar && (
-          <div className="rounded-md border border-[#ff5732]/40 bg-[#2a1d19] p-4 text-sm leading-6 text-zinc-200">
-            <RichInline text={block.sidebar} />
-          </div>
-        )}
-      </aside>
-    )
-  }
-
-  if (block.type === 'quote') {
-    return (
-      <figure className="border-l-4 border-[#ff5732] bg-[#202020] px-5 py-4">
-        <blockquote className="whitespace-pre-line text-lg font-semibold leading-8 text-white">
-          <RichInline text={block.text} />
-        </blockquote>
-        {block.cite && <figcaption className="mt-3 text-sm text-zinc-400">{block.cite}</figcaption>}
-      </figure>
-    )
-  }
-
-  if (block.type === 'code') {
-    return (
-      <pre className="overflow-x-auto rounded-lg border border-white/10 bg-black/35 p-4 text-sm leading-6 text-zinc-200">
-        <code>{block.text}</code>
-      </pre>
-    )
-  }
-
-  if (block.type === 'stats') {
-    return (
-      <div className="grid gap-3 sm:grid-cols-3">
-        {block.items.map((item) => (
-          <div className="rounded-lg border border-white/10 bg-[#202020] p-4" key={item.label}>
-            <p className="text-2xl font-bold leading-tight text-white">{item.value}</p>
-            <p className="mt-2 text-sm font-semibold text-zinc-400">{item.label}</p>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  if (block.type === 'callout') {
-    return (
-      <div className="rounded-lg border border-[#ff5732]/60 bg-[#2a1d19] p-5">
-        <h3 className="text-lg font-bold text-white"><RichInline text={block.title} /></h3>
-        <p className="mt-3 text-sm leading-7 text-zinc-200"><RichInline text={block.text} /></p>
-      </div>
-    )
-  }
-
-  if (block.type === 'image') {
-    if (!isSafeImageUrl(block.src)) {
-      return null
+    if (targetIds.length < 2) return undefined
+    const targets = targetIds.map((id) => document.getElementById(id))
+    let frame = 0
+    const spy = () => {
+      frame = 0
+      let next = 0
+      targets.forEach((target, index) => {
+        if (target && target.getBoundingClientRect().top < 150) next = index
+      })
+      setCurrent(next)
     }
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(spy)
+    }
+    spy()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      cancelAnimationFrame(frame)
+    }
+  }, [targetIds])
 
-    const imageSrc = getOptimizedImageUrl(block.src, 1400) || block.src
+  return current
+}
 
-    return (
-      <figure className="overflow-hidden rounded-lg border border-white/10 bg-[#202020]">
-        <img
-          className="h-auto max-h-[620px] w-full object-cover"
-          src={imageSrc}
-          alt={block.alt}
-          loading="lazy"
-          decoding="async"
-        />
-        {block.caption && (
-          <figcaption className="border-t border-white/10 px-4 py-3 text-sm leading-6 text-zinc-400">
-            <RichInline text={block.caption} />
-          </figcaption>
-        )}
-      </figure>
-    )
+async function copyPageLink() {
+  try {
+    await navigator.clipboard.writeText(window.location.href)
+    showToast('Link copied')
+  } catch {
+    showToast('Copy the address bar to share this post')
   }
+}
 
-  return <p className="whitespace-pre-line"><RichInline text={block.text} /></p>
+// The dark band keeps the clear navbar readable while the post loads.
+export function NewsDetailLoading() {
+  return (
+    <main className="news-article art-loading" aria-busy="true">
+      <section className="page-hero art-hero">
+        <img src="/img/news-hero.webp" width="2000" height="1061" alt="" style={{ '--pos': '50% 30%' }} />
+        <div className="container">
+          <nav className="crumbs" aria-label="Breadcrumb">
+            <a href="/">Home</a><span aria-hidden="true">/</span><a href="/news">News</a>
+          </nav>
+          <p className="label" role="status">Loading post…</p>
+        </div>
+      </section>
+      <section className="page">
+        <div className="container" aria-hidden="true">
+          {[0, 1, 2, 3, 4, 5].map((index) => <div className="skeleton" key={index} />)}
+        </div>
+      </section>
+    </main>
+  )
 }
 
 function NewsDetail({ item, newsItems = [] }) {
-  const relatedNews = newsItems.filter((newsItem) => newsItem.slug !== item.slug).slice(0, 2)
+  const { settings } = useSite()
+  const [heroFailed, setHeroFailed] = useState(false)
+  const cold = isSeasonPost(item)
+  const season = seasonNumber(item)
+  const { items: highlights, changes } = postHighlights(item)
+  const related = newsItems.filter((newsItem) => newsItem.slug !== item.slug).slice(0, 3)
+
+  // Patch notes often open with the post title as a "#" heading; the hero already shows it.
+  const blocks = useMemo(() => {
+    const body = Array.isArray(item.body) ? item.body : []
+    return body[0]?.type === 'heading' && comparable(body[0].text) === comparable(item.title) ? body.slice(1) : body
+  }, [item])
+  const { ids, entries } = useMemo(() => buildContents(blocks), [blocks])
+  const spyTargets = useMemo(() => ['art-body', ...entries.map((entry) => entry.id)], [entries])
+  const current = useScrollSpy(spyTargets)
+
+  useEffect(() => {
+    document.title = `${item.title} — AlwiNation`
+  }, [item.title])
+
+  // The post renders after the news request, too late for the browser's own jump to a shared
+  // "#section" link (the contents links and "Copy link" produce those).
+  useEffect(() => {
+    if (window.location.hash) document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ block: 'start' })
+  }, [])
 
   return (
-    <main className="bg-[#171717] text-white">
+    <main className="news-article">
       <article>
-        <section className="relative min-h-[620px] overflow-hidden px-5 pb-16 pt-32 sm:px-8 lg:px-12">
-          <HeroImage src={item.img} avifSrc={item.imgAvif} />
-          <div className="absolute inset-0 bg-black/65 shadow-[inset_0_0_140px_80px_rgba(0,0,0,0.88)]" />
-          <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-b from-transparent to-[#171717]" />
-
-          <div className="relative z-10 mx-auto flex min-h-[460px] max-w-5xl flex-col justify-end">
-            <a
-              className="mb-8 inline-flex w-fit min-h-10 items-center rounded-md border border-white/15 px-4 text-sm font-semibold text-zinc-200 no-underline transition hover:border-[#ff7a59] hover:bg-white/8 hover:text-white"
-              href="/#news"
-            >
-              Back to news
-            </a>
-            <div className="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-[0.14em] text-[#ff7a59]">
-              <span>{item.category}</span>
-              <span className="h-1 w-1 rounded-full bg-zinc-500" />
-              <time>{item.date}</time>
-              <span className="h-1 w-1 rounded-full bg-zinc-500" />
-              <span>{item.readingTime}</span>
+        <section className={`page-hero art-hero${cold ? ' is-cold' : ''}`}>
+          <img
+            src={heroFailed ? '/img/hub-wide.webp' : postImage(item, 1920)}
+            width="1920"
+            height="1080"
+            alt=""
+            style={{ '--pos': '50% 40%' }}
+            fetchPriority="high"
+            onError={() => setHeroFailed(true)}
+          />
+          {cold && <Particles kind="snow" />}
+          <div className="container art-hero-in">
+            <div>
+              <nav className="crumbs" aria-label="Breadcrumb">
+                <a href="/">Home</a><span aria-hidden="true">/</span>
+                <a href="/news">News</a><span aria-hidden="true">/</span>
+                <span aria-current="page">{item.title}</span>
+              </nav>
+              {(item.category || season) && (
+                <p className="art-kicker">
+                  {item.category && <span className={`tag ${tagClass(item.category)}`}>{item.category}</span>}
+                  {season && <span className="label">Season {season}</span>}
+                </p>
+              )}
+              <h1>{item.title}</h1>
+              {item.description && <p className="lead"><RichInline text={item.description} /></p>}
+              <ul className="art-meta">
+                <li>
+                  <img src="/img/logo-mark.webp" width="34" height="34" alt="" />
+                  <span><span className="label">Author</span><b>{item.author || 'AlwiNation Team'}</b></span>
+                </li>
+                {item.date && <li><span><span className="label">Date</span><b>{item.date}</b></span></li>}
+                {item.readingTime && <li><span><span className="label">Read time</span><b>{item.readingTime}</b></span></li>}
+              </ul>
+              <div className="art-actions">
+                <button className="btn btn-primary" type="button" onClick={() => copyText(settings.serverAddress)}>Play now</button>
+                <button className="btn btn-dark" type="button" onClick={copyPageLink}><Icon name="copy" />Copy link</button>
+              </div>
             </div>
-            <h1 className="mt-5 max-w-4xl text-4xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
-              {item.title}
-            </h1>
-            <p className="mt-5 max-w-3xl text-lg leading-8 text-zinc-200"><RichInline text={item.description} /></p>
-            <p className="mt-5 text-sm font-semibold text-zinc-300">By {item.author}</p>
+            {highlights.length > 0 && (
+              <div className="mc-tooltip art-tip" role="note" aria-label={`${item.title} highlights`}>
+                <p className="t-title">{item.title}</p>
+                <p className="t-sub">{changes ? `${highlights.length} changes` : `${item.category || 'News'} · highlights`}</p>
+                <ul className={highlights.length > 6 ? undefined : 'one'}>
+                  {highlights.slice(0, 12).map((text, index) => <li key={`${text}-${index}`}><b>{text}</b></li>)}
+                </ul>
+                {changes && <p className="t-foot">Every change, explained below</p>}
+              </div>
+            )}
           </div>
         </section>
 
-        <section className="px-5 pb-16 sm:px-8 lg:px-12">
-          <div className="mx-auto grid max-w-5xl gap-10 lg:grid-cols-[1fr_280px] lg:items-start">
-            <div className="min-w-0 space-y-4 wrap-anywhere text-base leading-7 text-zinc-300">
-              {item.body.map((block, index) => (
-                <ArticleBlock block={block} key={`${typeof block === 'string' ? block : block.type}-${index}`} />
-              ))}
-            </div>
-
-            <aside className="rounded-lg border border-[#ff5732]/50 bg-[#202020] p-5">
-              <h2 className="text-lg font-bold text-white">Post details</h2>
-              <dl className="mt-5 grid gap-4 text-sm">
-                <div>
-                  <dt className="font-semibold text-zinc-500">Category</dt>
-                  <dd className="mt-1 text-white">{item.category}</dd>
-                </div>
-                <div>
-                  <dt className="font-semibold text-zinc-500">Date</dt>
-                  <dd className="mt-1 text-white">{item.date}</dd>
-                </div>
-                <div>
-                  <dt className="font-semibold text-zinc-500">Author</dt>
-                  <dd className="mt-1 text-white">{item.author}</dd>
-                </div>
-              </dl>
-
-              <div className="mt-6 border-t border-white/10 pt-5">
-                <h3 className="text-sm font-bold uppercase tracking-[0.14em] text-[#ff7a59]">
-                  Highlights
-                </h3>
-                <ul className="mt-4 grid gap-3 p-0">
-                  {item.highlights.map((highlight) => (
-                    <li className="flex items-start gap-3 text-sm text-zinc-300" key={highlight}>
-                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#ff5732]" />
-                      <span><RichInline text={highlight} /></span>
-                    </li>
+        <section className="page">
+          <div className={`container with-side art-layout${entries.length ? '' : ' no-toc'}`}>
+            {entries.length > 0 && (
+              <aside className="side">
+                <nav className="toc panel" aria-label="Contents">
+                  <p className="label">Contents</p>
+                  {[{ id: 'art-body', label: 'Overview' }, ...entries].map((entry, index) => (
+                    <a
+                      key={entry.id}
+                      className={entry.sub ? 'sub' : undefined}
+                      href={`#${entry.id}`}
+                      aria-current={index === current ? 'location' : undefined}
+                    >
+                      {entry.label}
+                    </a>
                   ))}
-                </ul>
+                </nav>
+              </aside>
+            )}
+            <div>
+              <div className="art-body prose rich" id="art-body">
+                <RichBlocks blocks={blocks} anchors={ids} />
               </div>
-            </aside>
+              <div className="art-end">
+                <p className="label">Share this post</p>
+                <div>
+                  <a className="btn btn-stone" href="/news">All news</a>
+                  <button className="btn btn-primary" type="button" onClick={copyPageLink}><Icon name="copy" />Copy link</button>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       </article>
 
-      {relatedNews.length > 0 && (
-        <section className="border-t border-white/10 bg-[#141414] px-5 py-16 sm:px-8 lg:px-12">
-          <div className="mx-auto max-w-6xl">
-            <div className="mb-8">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#ff7a59]">
-                More News
-              </p>
-              <h2 className="mt-3 text-3xl font-bold text-white">Related updates</h2>
-            </div>
-            <div className="grid gap-6 md:grid-cols-2">
-              {relatedNews.map((relatedItem) => (
-                <News key={relatedItem.id} {...relatedItem} />
+      {related.length > 0 && (
+        <section className="section more" aria-labelledby="more-title">
+          <div className="container">
+            <header className="sec-head" data-reveal ref={revealRef}>
+              <p className="label">From the team</p>
+              <h2 className="head" id="more-title">More news</h2>
+            </header>
+            <div className="more-grid">
+              {related.map((post, index) => (
+                <News key={post.slug} item={post} index={index + 1} delay={index ? String(index) : undefined} />
               ))}
             </div>
+            <div className="sec-foot"><a className="btn btn-stone" href="/news">All news</a></div>
           </div>
         </section>
       )}
+
+      <CommunityBand section={newsDiscordBand} />
     </main>
   )
 }

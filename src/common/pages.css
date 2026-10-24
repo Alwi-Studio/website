@@ -1,0 +1,312 @@
+/* Staff, Rules & Terms, the 404 death screen and the shared accordion, ported from
+   .taste-skill/example-v2/{staff,rules,404}.html. Every rule is scoped to its page root:
+   names like .group would otherwise hit Tailwind's `group` marker class elsewhere. */
+
+/* ---------- Accordion (CollapsibleItems) ---------- */
+.acc { display: grid; gap: 8px; }
+.acc-item summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 52px; padding: 10px 12px 10px 18px; font-weight: 700; color: var(--ink); }
+.acc-item summary::-webkit-details-marker { display: none; }
+.acc-item summary:focus-visible { outline-offset: -4px; }
+.acc-title { min-width: 0; overflow-wrap: anywhere; }
+.acc-chev {
+  flex: none; display: grid; place-items: center; width: 34px; height: 34px;
+  border: 2px solid var(--edge); border-radius: var(--radius); background: var(--stone); color: var(--stone-ink);
+  box-shadow: inset 0 -3px 0 var(--stone-lo), inset 0 2px 0 var(--bevel-hi); transition: background-color 150ms ease;
+}
+.acc-item summary:hover .acc-chev { background: var(--stone-hover); }
+.acc-chev svg { width: 16px; height: 16px; transition: transform 220ms ease; }
+.acc-item[open] .acc-chev svg { transform: rotate(180deg); }
+.acc-item[open] { border-color: color-mix(in srgb, var(--brand) 55%, var(--edge)); }
+.acc-body { min-width: 0; margin: 0 18px; padding: 14px 0 18px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: 15.5px; line-height: 1.65; overflow-wrap: anywhere; }
+
+/* ---------- Staff ---------- */
+/* Rank colours are Minecraft's own chat colours. Chat tags keep the game colour on a black chip in
+   both themes; plain text tinted by rank is darkened on light pages so it stays readable. */
+:root { --rank-tint: 100%; }
+:root[data-theme="light"] { --rank-tint: 50%; }
+@media (prefers-color-scheme: light) { :root:not([data-theme]) { --rank-tint: 50%; } }
+.staff-page .r-owner { --rank: #ff5555; }
+.staff-page .r-admin { --rank: #ff55ff; }
+.staff-page .r-mod { --rank: #55ffff; }
+.staff-page .r-builder { --rank: #55ff55; }
+.staff-page .r-staff { --rank: #aaaaaa; }
+
+/* A rank prefix as it appears in chat: [MOD] on the chat's black backing, with the game's hard shadow. */
+.staff-page .rank-tag {
+  display: inline-flex; align-items: center; padding: 4px 8px 3px; border-radius: 2px;
+  background: #0e0e11; color: var(--rank);
+  font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: 0.06em; line-height: 1.3;
+  text-shadow: 2px 2px 0 color-mix(in srgb, var(--rank) 25%, #000);
+}
+
+/* Hero: rank legend doubles as jump links to each group. */
+.staff-page .hero-meta { margin-top: 26px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; }
+.staff-page .rank-legend { display: flex; flex-wrap: wrap; gap: 8px; }
+.staff-page .rank-legend a { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.14); transition: box-shadow 150ms ease, transform 100ms ease; }
+.staff-page .rank-legend a:hover { box-shadow: 0 0 0 1px var(--rank); }
+.staff-page .rank-legend a:active { transform: translateY(1px); }
+.staff-page .hero-stats { font-family: var(--mono); font-size: 13px; letter-spacing: 0.04em; color: rgba(255, 255, 255, 0.72); }
+.staff-page .hero-stats b { color: #fff; }
+
+/* Rank groups. The nav is 76px tall. */
+.staff-page .group { scroll-margin-top: 96px; }
+.staff-page .group + .group { margin-top: 76px; }
+/* Centred between two rules in the rank colour, like the home page's section heads. */
+.staff-page .group-head { display: flex; align-items: center; justify-content: center; gap: 14px; margin-bottom: 30px; }
+.staff-page .group-head h2 { font-size: clamp(26px, 2.6vw, 34px); overflow-wrap: anywhere; }
+.staff-page .group-head .count { color: var(--dim); white-space: nowrap; }
+.staff-page .group-head::before, .staff-page .group-head::after { content: ""; flex: 1; min-width: 24px; height: 2px; }
+.staff-page .group-head::before { background: linear-gradient(270deg, color-mix(in srgb, var(--rank) 55%, transparent), transparent); }
+.staff-page .group-head::after { background: linear-gradient(90deg, color-mix(in srgb, var(--rank) 55%, transparent), transparent); }
+
+/* The block every staff member stands on: stone, with a carpet in the rank colour on top. */
+.staff-page .plinth {
+  display: block; width: 136px; height: 30px; background: #767676; border: 2px solid #000;
+  box-shadow: inset 0 6px 0 var(--rank), inset 0 -5px 0 #474747, inset 5px 0 0 #939393, inset -5px 0 0 #5a5a5a;
+}
+.staff-page .figure { position: relative; display: flex; flex-direction: column; align-items: center; }
+.staff-page .skin {
+  position: relative; z-index: 1; width: 100px; height: 240px; margin-bottom: -5px;
+  object-fit: contain; object-position: bottom; image-rendering: pixelated;
+  filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.5));
+  transition: translate 200ms cubic-bezier(.2, .7, .2, 1);
+}
+
+/* Founder: the one featured card, always dark like the other picture cards. */
+.staff-page .founder {
+  position: relative; isolation: isolate; overflow: hidden;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 380px); align-items: end; gap: 32px;
+  min-height: 480px; padding: 0 64px; color: #f4f4f6; background: #0a0a0e;
+  border: 3px solid var(--edge); border-radius: var(--radius);
+}
+.staff-page .founder > .bg { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; }
+.staff-page .founder::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background:
+    linear-gradient(90deg, rgba(10, 10, 14, 0.95) 0%, rgba(10, 10, 14, 0.84) 38%, rgba(10, 10, 14, 0.25) 72%, rgba(10, 10, 14, 0.1) 100%),
+    radial-gradient(closest-side at 78% 72%, color-mix(in srgb, var(--rank) 26%, transparent), transparent);
+}
+.staff-page .founder::after { content: ""; position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--rank) 55%, transparent); transition: box-shadow 220ms ease; }
+.staff-page .founder:hover::after { box-shadow: inset 0 0 0 3px var(--rank); }
+.staff-page .founder-copy { align-self: center; padding: 56px 0; min-width: 0; }
+.staff-page .founder-name { margin-top: 18px; font-size: clamp(64px, 8.4vw, 116px); font-weight: 800; letter-spacing: -0.04em; line-height: 0.9; text-transform: uppercase; color: var(--rank); text-shadow: 0 4px 0 rgba(0, 0, 0, 0.55); overflow-wrap: anywhere; }
+.staff-page .founder .role { margin-top: 16px; font-size: 22px; font-weight: 700; color: #fff; }
+.staff-page .founder .note { margin-top: 8px; max-width: 40ch; font-size: 18px; color: #d6d8e0; }
+.staff-page .founder .figure { justify-self: center; padding-top: 48px; }
+.staff-page .founder .skin { width: 150px; height: 360px; margin-bottom: -7px; }
+/* The founder's block runs off the bottom edge of the card, so the card reads as the ground. */
+.staff-page .founder .plinth { width: 212px; height: 50px; border-bottom: 0; box-shadow: inset 0 9px 0 var(--rank), inset 7px 0 0 #939393, inset -7px 0 0 #5a5a5a; }
+.staff-page .founder + .roster { margin-top: 22px; }
+
+/* Member cards: a dark stage with the skin on its block, then name, role and note.
+   Centred rows, so a rank with two people does not leave a hole on the right. */
+.staff-page .roster { display: flex; flex-wrap: wrap; justify-content: center; gap: 22px; }
+.staff-page .member { position: relative; display: flex; flex-direction: column; flex: 0 1 360px; min-width: 0; overflow: hidden; transition: translate 200ms cubic-bezier(.2, .7, .2, 1); }
+.staff-page .member::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit; box-shadow: inset 0 0 0 2px transparent; transition: box-shadow 200ms ease; }
+.staff-page .member:hover::after { box-shadow: inset 0 0 0 2px var(--rank); }
+.staff-page .stage {
+  position: relative; isolation: isolate; overflow: hidden; padding: 30px 0 26px;
+  display: flex; justify-content: center; align-items: flex-end;
+  background: #0d0d10; border-bottom: 2px solid var(--edge);
+}
+.staff-page .stage > .bg { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; filter: brightness(0.5) saturate(0.95); transition: transform 600ms ease; }
+.staff-page .stage::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  background:
+    radial-gradient(closest-side at 50% 64%, color-mix(in srgb, var(--rank) 30%, transparent), transparent),
+    linear-gradient(0deg, rgba(8, 8, 10, 0.9) 0%, rgba(8, 8, 10, 0) 50%);
+}
+.staff-page .member-body { padding: 18px 22px 24px; }
+.staff-page .member h3 { margin-top: 12px; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; overflow-wrap: anywhere; }
+.staff-page .member .role { margin-top: 4px; font-size: 15px; font-weight: 700; color: color-mix(in srgb, var(--rank) var(--rank-tint), #000); }
+.staff-page .member .note { margin-top: 8px; font-size: 15px; line-height: 1.55; color: var(--muted); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .staff-page .member:hover { translate: 0 -6px; }
+  .staff-page .member:hover .stage > .bg { transform: scale(1.05); }
+  /* A little hop, like a player jumping. */
+  .staff-page .member:hover .skin, .staff-page .founder:hover .skin { translate: 0 -6px; }
+}
+
+.staff-page .staff-loading { display: grid; gap: 22px; }
+.staff-page .staff-loading .skeleton { height: 220px; border: 2px solid var(--edge); }
+
+/* Join band: the shared Discord band, with room above it. */
+.staff-page .join-team { margin-top: 96px; }
+
+@media (max-width: 1060px) {
+  .staff-page .founder { grid-template-columns: minmax(0, 1fr) minmax(0, 260px); padding: 0 36px; }
+  .staff-page .founder .skin { width: 130px; height: 312px; }
+  .staff-page .founder .plinth { width: 184px; height: 44px; }
+}
+@media (max-width: 640px) {
+  .staff-page .hero-meta { gap: 14px; }
+  /* The plain-text stats go above the chips here: the chips carry their own black backing, the stats would land in the light fade. */
+  .staff-page .hero-stats { order: -1; }
+  .staff-page .group + .group { margin-top: 60px; }
+  .staff-page .group-head { flex-wrap: wrap; gap: 8px 12px; margin-bottom: 20px; }
+  .staff-page .group-head::before, .staff-page .group-head::after { display: none; }
+  /* Founder stacks: words first, then the figure standing on the card's bottom edge. */
+  .staff-page .founder { grid-template-columns: 1fr; gap: 0; min-height: 0; padding: 0 22px; }
+  .staff-page .founder::before { background: linear-gradient(180deg, rgba(10, 10, 14, 0.94) 0%, rgba(10, 10, 14, 0.8) 52%, rgba(10, 10, 14, 0.3) 100%), radial-gradient(closest-side at 50% 82%, color-mix(in srgb, var(--rank) 28%, transparent), transparent); }
+  .staff-page .founder-copy { padding: 34px 0 8px; }
+  .staff-page .founder .note { font-size: 16.5px; }
+  .staff-page .founder .figure { padding-top: 8px; }
+  .staff-page .founder .skin { width: 120px; height: 288px; }
+  .staff-page .founder .plinth { width: 170px; height: 40px; }
+  .staff-page .roster { gap: 12px; }
+  .staff-page .member { flex: 0 1 calc(50% - 6px); }
+  .staff-page .stage { padding: 22px 0 18px; }
+  .staff-page .stage .skin { width: 76px; height: 182px; margin-bottom: -4px; }
+  .staff-page .stage .plinth { width: 104px; height: 24px; box-shadow: inset 0 5px 0 var(--rank), inset 0 -4px 0 #474747, inset 4px 0 0 #939393, inset -4px 0 0 #5a5a5a; }
+  .staff-page .member-body { padding: 14px 14px 18px; }
+  .staff-page .member .rank-tag { font-size: 11px; padding: 3px 6px 2px; }
+  .staff-page .member h3 { margin-top: 10px; font-size: 18px; }
+  .staff-page .member .role { font-size: 14px; }
+  .staff-page .member .note { font-size: 14px; }
+  .staff-page .join-team { margin-top: 72px; }
+}
+
+/* ---------- Rules & Terms ---------- */
+.policy-page .rules-bar { margin-top: 30px; display: flex; flex-wrap: wrap; align-items: center; gap: 14px 24px; }
+/* The tabs sit on the dark picture, so they keep the dark stone in both themes (like .btn-dark). */
+.policy-page .rules-tabs { --stone: #3a3a42; --stone-hover: #46464f; --stone-lo: #222227; --stone-ink: #fff; --edge: #000; --bevel-hi: rgba(255, 255, 255, 0.08); }
+/* A dark plaque, so the date stays readable where the picture fades into a light page. */
+.policy-page .rules-updated {
+  display: inline-flex; align-items: center; gap: 9px; padding: 9px 12px; border-radius: 6px;
+  background: rgba(0, 0, 0, 0.66); border: 1px solid rgba(255, 255, 255, 0.16);
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255, 255, 255, 0.78);
+}
+.policy-page .rules-updated svg { width: 16px; height: 16px; flex: none; }
+.policy-page .rules-updated b { color: #fff; font-weight: 700; }
+
+.policy-page .toc ol { display: grid; gap: 2px; }
+.policy-page .toc a { display: grid; grid-template-columns: 26px 1fr; gap: 8px; line-height: 1.4; }
+.policy-page .toc .n { font-family: var(--mono); font-size: 12px; font-weight: 700; padding-top: 1px; color: var(--brand-ink); }
+.policy-page .toc .toc-sub { margin: 2px 0 4px 34px; }
+.policy-page .toc .toc-sub a { display: block; padding: 5px 10px; font-size: 13px; }
+.policy-page .side-report { margin-top: 16px; padding: 18px; }
+.policy-page .side-report .label { color: var(--dim); }
+.policy-page .side-report p:not(.label) { margin-top: 8px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.policy-page .side-report .btn { margin-top: 14px; width: 100%; }
+.policy-page .btn-sm svg { width: 16px; height: 16px; }
+
+.policy-page .rule-list { display: grid; gap: 18px; min-width: 0; }
+.policy-page .rule-sec { padding: 26px 30px 12px; scroll-margin-top: 100px; }
+.policy-page .rule-head { display: flex; align-items: center; gap: 18px; padding-bottom: 18px; border-bottom: 2px solid var(--line); }
+.policy-page .rule-num {
+  flex: none; display: grid; place-items: center; width: 54px; height: 54px; border-radius: var(--radius);
+  background: var(--brand); color: #160904; border: 2px solid #000;
+  box-shadow: inset 0 -4px 0 var(--brand-dark), inset 0 3px 0 rgba(255, 255, 255, 0.3);
+  font-size: 20px; font-weight: 800; letter-spacing: -0.02em;
+}
+.policy-page .rule-head h2 { min-width: 0; font-size: clamp(22px, 2.3vw, 28px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; overflow-wrap: anywhere; }
+.policy-page .rule-sec .prose { max-width: none; overflow-wrap: anywhere; }
+.policy-page .rule-sec .prose > :first-child { margin-top: 18px; }
+.policy-page .pol-desc { white-space: pre-line; }
+.policy-page .prose .rule-items { list-style: none; padding: 0; }
+.policy-page .rule-items li { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; padding: 16px 0; }
+.policy-page .rule-items li + li { margin-top: 0; border-top: 1px solid var(--line); }
+.policy-page .rule-items .rule-break { display: block; padding: 0; border-top-width: 2px; }
+.policy-page .rule-items .rn { font-family: var(--mono); font-size: 14px; font-weight: 700; line-height: 1.75; color: var(--brand-ink); }
+.policy-page .rule-sub { margin-top: 10px; padding-top: 18px; border-top: 2px solid var(--line); scroll-margin-top: 100px; }
+.policy-page .prose .rule-sub h3 { margin-top: 0; font-size: 19px; }
+.policy-page .rule-sub .rule-items li { grid-template-columns: 54px minmax(0, 1fr); }
+.policy-page .pol-skel { height: 220px; border: 2px solid var(--edge); }
+
+/* Report band: the home page's Discord card, at full container width below the two columns. */
+.policy-page .report { margin-top: 64px; }
+.policy-page .report .lead { max-width: 50ch; }
+.policy-page .report-actions { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 12px; }
+.policy-page .report .report-actions .btn { margin-top: 0; }
+
+@media (max-width: 1060px) {
+  .policy-page .side-report { display: none; }
+}
+@media (max-width: 640px) {
+  .policy-page .rules-tabs { flex: 1 1 100%; }
+  .policy-page .rules-tabs a { flex: 1; justify-content: center; padding: 0 12px; }
+  .policy-page .rule-sec { padding: 20px 18px 6px; }
+  .policy-page .rule-head { gap: 14px; }
+  .policy-page .rule-num { width: 46px; height: 46px; font-size: 17px; }
+  .policy-page .rule-items li { grid-template-columns: 36px minmax(0, 1fr); gap: 10px; }
+  .policy-page .rule-sub .rule-items li { grid-template-columns: 46px minmax(0, 1fr); }
+  .policy-page .report { margin-top: 48px; }
+  .policy-page .report-actions .btn { flex: 1 1 100%; }
+}
+
+/* Print: the active document only, black on white, no chrome. */
+@media print {
+  :root:has(.policy-page) { --bg: #fff; --surface: #fff; --surface-2: #f2f2f2; --ink: #000; --ink-2: #111; --muted: #333; --dim: #555; --line: #ccc; --edge: #999; --bevel-hi: transparent; --bevel-lo: transparent; --brand-ink: #000; }
+  body:has(.policy-page) { background: #fff; color: #000; font-size: 12pt; transition: none; }
+  body:has(.policy-page) :is(.nav, .footer, .toast) { display: none !important; }
+  .policy-page :is(.side, .crumbs, .rules-tabs, .report, .page-hero > img) { display: none !important; }
+  .policy-page .page-hero::before { display: none; }
+  .policy-page .page-hero { padding: 0 0 12pt; color: #000; }
+  .policy-page .page-hero h1 { font-size: 26pt; }
+  .policy-page .page-hero .lead, .policy-page .rules-updated, .policy-page .rules-updated b { color: #000; }
+  .policy-page .rules-updated { padding: 0; background: none; border: 0; }
+  .policy-page .page-hero .label { margin-top: 0; }
+  .policy-page .page { padding: 0; }
+  .policy-page .container { width: 100%; }
+  .policy-page .with-side { display: block; }
+  .policy-page .rule-sec { box-shadow: none; border: 1px solid #999; break-inside: avoid; }
+  .policy-page .rule-num { background: none; color: #000; border: 1px solid #000; box-shadow: none; }
+  .policy-page [data-reveal] { opacity: 1 !important; transform: none !important; }
+}
+
+/* ---------- 404: the Minecraft death screen ---------- */
+/* A dimmed, tilted screenshot under the game's red wash. It stays dark in both themes and fades into the page colour at the bottom. */
+.death {
+  position: relative; overflow: hidden; isolation: isolate;
+  min-height: max(100svh, 680px); display: grid; place-items: center;
+  padding: 132px 0 176px; color: #fff; text-align: center;
+  /* Under the picture: on ultra-wide windows the tilted image leaves its corners bare; keep them dark, not page cream. */
+  background: #160707;
+}
+.death-bg { position: absolute; inset: 0; z-index: -3; }
+.death-bg img {
+  width: 100%; height: 100%; object-fit: cover; object-position: 50% 60%;
+  filter: brightness(0.62) saturate(0.85);
+  /* The camera has rolled over, as it does when you die. 1.2 keeps the corners covered at a 4° tilt down to phone shape. */
+  transform: rotate(-4deg) scale(1.2);
+}
+/* Vanilla fills 0x60500000 → 0xA0803030; a touch heavier here so the text reads. Top band keeps the clear nav legible. */
+.death::before {
+  content: ""; position: absolute; inset: 0; z-index: -2;
+  background:
+    linear-gradient(180deg, rgba(12, 4, 4, 0.72) 0%, rgba(12, 4, 4, 0) 22%),
+    linear-gradient(180deg, rgba(80, 0, 0, 0.5) 0%, rgba(128, 40, 40, 0.74) 100%);
+}
+.death::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; z-index: -1; height: 200px; background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, var(--bg) 100%); }
+.death-in { display: flex; flex-direction: column; align-items: center; }
+.death .label { color: #ffc2b3; }
+.death h1 { margin-top: 14px; font-size: clamp(58px, 12vw, 164px); font-weight: 800; letter-spacing: -0.035em; line-height: 0.95; text-shadow: 0 5px 0 rgba(48, 0, 0, 0.6), 0 0 48px rgba(0, 0, 0, 0.35); }
+.death-msg { margin-top: 24px; font-size: clamp(19px, 1.8vw, 24px); font-weight: 700; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5); }
+.death-sub { margin-top: 8px; max-width: 46ch; color: #f2dcd8; font-size: 17px; }
+/* The score line is part of the in-game replica, so it uses the game's face; grey and white, never yellow. */
+.death-score { margin-top: 26px; font-family: var(--pix); font-size: 21px; color: #cfcfcf; text-shadow: 2px 2px 0 #3a0e0e; }
+.death-score b { font-weight: 400; color: #fff; }
+.death-btns { margin-top: 30px; display: grid; gap: 10px; width: min(340px, 100%); }
+.death-btns .mc-btn { min-width: 0; padding: 12px 14px; font-size: 18px; }
+.death-btns .mc-btn:hover { border-color: #fff; }
+.death :focus-visible { outline-color: #fff; }
+
+@media (max-width: 640px) {
+  .death { padding: 108px 0 150px; }
+  .death-sub { font-size: 16px; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .death-bg img { animation: death-fall 1.6s cubic-bezier(.2, .7, .2, 1) both; }
+  @keyframes death-fall { from { transform: rotate(0deg) scale(1.08); filter: brightness(0.9) saturate(1); } }
+  .death::before { animation: death-wash 900ms ease-out both; }
+  @keyframes death-wash { from { opacity: 0; } }
+  .death-in > * { animation: death-rise 700ms cubic-bezier(.2, .7, .2, 1) 450ms both; }
+  .death h1 { animation-name: death-title; animation-delay: 250ms; }
+  .death-score { animation-delay: 650ms; }
+  /* Vanilla keeps the buttons locked for a second after death; here they simply arrive then. */
+  .death-btns { animation-delay: 1000ms; }
+  @keyframes death-rise { from { opacity: 0; transform: translateY(14px); } }
+  @keyframes death-title { from { opacity: 0; transform: scale(1.12); } }
+}

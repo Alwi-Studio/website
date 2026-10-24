@@ -1,14 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import backgroundAvif from './assets/background.avif'
-import backgroundImg from './assets/2026-07-08T23_36_31.webp'
-import backgroundImg2 from './assets/2026-07-08T23_39_10.webp'
-import AdminPanel from './admin/AdminPanel.jsx'
+import { useEffect, useLayoutEffect, useState } from 'react'
+import AdminPanel, { AdminLoading } from './admin/AdminPanel.jsx'
 import ErrorPage from './common/ErrorPage.jsx'
 import Footer from './common/Footer.jsx'
 import Navbar from './common/Navbar.jsx'
-import NewsDetail from './news/NewsDetail.jsx'
+import NewsDetail, { NewsDetailLoading } from './news/NewsDetail.jsx'
 import NewsList from './news/NewsList.jsx'
-import News from './news/News.jsx'
 import ChangelogList from './changelog/ChangelogList.jsx'
 import ChangelogDetail from './changelog/ChangelogDetail.jsx'
 import { loadChangelogData, getChangelogEntryBySlug } from './changelog/adminChangelogStore.js'
@@ -17,128 +13,14 @@ import { getPolicies, loadPolicies } from './content/policyStore.js'
 import StaffPage from './common/StaffPage.jsx'
 import { getStaff, loadStaff } from './content/staffStore.js'
 import { getNewsItemBySlug, loadNewsItems } from './news/adminNewsStore.js'
-import WikiPage from './common/WikiPage.jsx'
+import WikiPage, { WikiLoading } from './common/WikiPage.jsx'
 import WikiArticle from './common/WikiArticle.jsx'
 import { getWiki, loadWiki, getWikiArticle } from './content/wikiStore.js'
+import LeaderboardPage from './leaderboard/LeaderboardPage.jsx'
+import HomePage from './home/HomePage.jsx'
 
-const SERVER_ADDRESS = 'play.alwination.id'
-const BEDROCK_PORT = '19132'
-
-const workItems = [
-  {
-    title: 'Realms',
-    description: 'Embark on unforgettable journeys across a variety of unique realms, each offering its own challenges, progression systems, and gameplay experiences.',
-    list: [
-        'Multiple Game Modes',
-        'Custom Features',
-        'Long-Term Progression',
-    ],
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3" /><path d="M3 9h18M9 21V9" /></svg>
-    ),
-  },
-  {
-    title: 'Events',
-    description: 'Compete in tournaments, building contests, seasonal activities, and exclusive challenges for valuable rewards.',
-    list: [
-      'Seasonal Activities',
-      'Exclusive Rewards',
-      'Competitive Events',
-    ],
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 21h8M12 17v4M6 4h12v5a6 6 0 0 1-12 0z" /></svg>
-    ),
-  },
-  {
-    title: 'Content',
-    description: 'Regular updates, new features, balancing changes, and community-driven improvements keep the server fresh and exciting.',
-    list: [
-      'Frequent Updates',
-      'New Features',
-      'Community Feedback',
-    ],
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 10l4.5-2.5v9L15 14M3 6h12v12H3z" /></svg>
-    ),
-  },
-  {
-    title: 'Development',
-    description: 'Built with custom systems, optimized performance, and unique mechanics designed specifically for the AlwiNation network.',
-    list: [
-      'Custom Plugins',
-      'Optimized performance',
-      'Unique Gameplay Systems',
-    ],
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 3v18M3 12h18" /></svg>
-    ),
-  },
-]
-
-const aboutFeatures = [
-  {
-    title: 'Unique Game Modes',
-    description: 'Explore Survival, Prison, Oneblock, Tycoon, Earth, Creative, and many more!',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z" /></svg>
-    ),
-  },
-  {
-    title: 'Community Events',
-    description: 'Participate in Community-Hosted Events and AlwiNation Official Events. Tournaments, Building Contest, Seasonal Events, and Exclusive Rewards.',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 21h8M12 17v4M6 4h12v5a6 6 0 0 1-12 0z" /></svg>
-    ),
-  },
-  {
-    title: 'Java & Bedrock Support',
-    description: 'Join from PC, Mobile, Console, or Tablet and play together seamlessly.',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18" /></svg>
-    ),
-  },
-]
-
-const contactItems = [
-  {
-    label: 'Java IP',
-    value: 'play.alwination.id',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M6 9h6M6 13h3" /></svg>
-    ),
-  },
-  {
-    label: 'Bedrock IP',
-    value: 'play.alwination.id : 19132',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="7" y="2" width="10" height="20" rx="2" /><path d="M11 18h2" /></svg>
-    ),
-  },
-  {
-    label: 'Discord',
-    value: 'discord.alwination.id',
-    icon: (
-      <svg width="18" height="18" viewBox="-1 -1 26 26" fill="currentColor" aria-hidden="true"><path d="M19.3 5.3A16 16 0 0 0 15.4 4l-.2.4c1.4.4 2 .9 2 1s-.7-.4-1.9-.8a13 13 0 0 0-6.6 0c-1.2.4-1.9.8-1.9.8s.6-.6 2-1L8.6 4c-1.4.3-2.7.7-3.9 1.3C2.2 9 1.5 12.6 1.8 16.1A15.8 15.8 0 0 0 6.7 18.6l.9-1.4c-.5-.2-1-.4-1.4-.7l.3-.2c2.7 1.3 5.5 1.3 8.2 0l.3.2c-.4.3-.9.5-1.4.7l.9 1.4c1.7-.5 3.3-1.3 4.9-2.5.4-4.1-.6-7.6-2.1-10.8ZM8.5 14.1c-.8 0-1.5-.8-1.5-1.8s.7-1.8 1.5-1.8 1.5.8 1.5 1.8-.7 1.8-1.5 1.8Zm7 0c-.8 0-1.5-.8-1.5-1.8s.7-1.8 1.5-1.8 1.5.8 1.5 1.8-.7 1.8-1.5 1.8Z" /></svg>
-    ),
-  },
-  {
-    label: 'Store',
-    value: 'store.alwination.id',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2h12l2 5H4z" /><path d="M5 7v13h14V7" /></svg>
-    ),
-  },
-  {
-    label: 'Support',
-    value: 'Contact staff in-game',
-    icon: (
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 4-6 8-6s8 2 8 6" /></svg>
-    ),
-  },
-]
-
-const newsToShow = 3
-const pageSectionIds = ['home', 'news', 'about', 'work', 'contact']
+// Home sections the navbar links to; the scrollspy marks the one in view.
+const pageSectionIds = ['home', 'realms']
 
 function getInitialActiveSection() {
   const requestedSection = window.location.hash.slice(1)
@@ -146,449 +28,17 @@ function getInitialActiveSection() {
   return pageSectionIds.includes(requestedSection) ? requestedSection : 'home'
 }
 
-function StableImage({ src, avifSrc = '', alt = '', className = '', eager = false }) {
-  const imageRef = useRef(null)
-  const [isLoaded, setIsLoaded] = useState(false)
-
-  useLayoutEffect(() => {
-    const image = imageRef.current
-
-    if (image?.complete && image.naturalWidth > 0) {
-      setIsLoaded(true)
-      return
-    }
-
-    setIsLoaded(false)
-  }, [src])
-
+// Every public route: the site navbar, the page, and the footer with the same link marked.
+// Each page starts with a dark picture band, so the navbar stays clear over it.
+// overflow-x-clip, not hidden: hidden makes this div a scroll box, which stops the sticky
+// side panels on the news, wiki, changelog and rules pages from sticking.
+function SitePage({ section, children }) {
   return (
-    <>
-      {!isLoaded && <div className="absolute inset-0 bg-surface-2" />}
-      <picture className="contents">
-        {avifSrc && <source srcSet={avifSrc} type="image/avif" />}
-        <img
-          ref={imageRef}
-          src={src}
-          alt={alt}
-          width="1920"
-          height="1080"
-          loading={eager ? 'eager' : 'lazy'}
-          fetchPriority={eager ? 'high' : 'auto'}
-          decoding="async"
-          className={`${className} transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
-          onLoad={() => setIsLoaded(true)}
-          onError={() => setIsLoaded(false)}
-        />
-      </picture>
-    </>
-  )
-}
-
-function useServerStatus() {
-  const [serverStatus, setServerStatus] = useState({
-    loading: true,
-    online: false,
-    players: 0,
-    maxPlayers: 0,
-  })
-
-  useEffect(() => {
-    const controller = new AbortController()
-
-    async function loadServerStatus() {
-      try {
-        const response = await fetch(`https://api.mcsrvstat.us/3/${SERVER_ADDRESS}`, {
-          signal: controller.signal,
-        })
-        const data = await response.json()
-
-        setServerStatus({
-          loading: false,
-          online: Boolean(data.online),
-          players: data.players?.online ?? 0,
-          maxPlayers: data.players?.max ?? 0,
-        })
-      } catch {
-        if (!controller.signal.aborted) {
-          setServerStatus({ loading: false, online: false, players: 0, maxPlayers: 0 })
-        }
-      }
-    }
-
-    loadServerStatus()
-    return () => controller.abort()
-  }, [])
-
-  return serverStatus
-}
-
-function StatusPill({ serverStatus }) {
-  const online = serverStatus.online && !serverStatus.loading
-  const statusText = serverStatus.loading ? 'Checking…' : online ? 'Online' : 'Offline'
-  const players = serverStatus.loading ? '…' : online ? serverStatus.players : '…'
-  const maxPlayers = serverStatus.loading ? '…' : serverStatus.maxPlayers || '…'
-
-  const accent = serverStatus.loading
-      ? { border: 'border-white/15', text: 'text-zinc-300', iconBg: 'bg-white/[0.06]', fill: 'bg-zinc-300' }
-      : online
-          ? { border: 'border-positive/40', text: 'text-positive', iconBg: 'bg-positive/12', fill: 'bg-positive' }
-          : { border: 'border-[#e56458]/40', text: 'text-[#e56458]', iconBg: 'bg-[#e56458]/40', fill: 'bg-[#e56458]' }
-
-  return (
-      <div
-          aria-live="polite"
-          className={`flex w-full max-w-[190px] self-stretch overflow-hidden rounded-2xl border backdrop-blur ${accent.border}`}
-      >
-        <div className="flex flex-1 flex-col">
-        {/* Status row */}
-        <div className="flex flex-1 items-center gap-3 px-4 py-3">
-        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${accent.iconBg} ${accent.text}`}>
-          <span
-              className={`h-2.5 w-2.5 rounded-full ${accent.fill} shadow-[0_0_12px_currentColor] ${
-                  serverStatus.loading ? 'animate-pulse' : ''
-              }`}
-          />
-        </span>
-          <div className="min-w-0 flex-1">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-2">Server Status</div>
-            <div className={`truncate text-[15px] font-bold tracking-tight ${accent.text}`}>{statusText}</div>
-          </div>
-        </div>
-
-        <div className="h-px bg-white/10" />
-
-        {/* Players row */}
-        <div className="flex flex-1 items-center gap-3 px-4 py-3">
-          <div className="min-w-0">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-2">Players Online</div>
-            <div className="mt-0.5 truncate text-[15px] font-bold tracking-tight text-white">
-              {players} <span className="text-muted-2">/ {maxPlayers}</span>
-            </div>
-          </div>
-          <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${accent.iconBg} ${accent.text}`}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="9" cy="8" r="3.2" /><path d="M15.2 5.3a3 3 0 0 1 0 5.4M3.5 20c0-3 2.7-4.6 5.5-4.6s5.5 1.6 5.5 4.6M16 15.6c2.3.4 4 1.9 4 4.4" />
-          </svg>
-        </span>
-        </div>
-        </div>
-      </div>
-  )
-}
-
-function CopyButton({ value, label = 'Copy', copiedLabel = 'Copied!', className = '', showIcon = true }) {
-  const [copied, setCopied] = useState(false)
-  const timeoutRef = useRef(null)
-
-  useEffect(() => () => window.clearTimeout(timeoutRef.current), [])
-
-  async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(value)
-      setCopied(true)
-      window.clearTimeout(timeoutRef.current)
-      timeoutRef.current = window.setTimeout(() => setCopied(false), 1600)
-    } catch {
-      /* clipboard unavailable */
-    }
-  }
-
-  return (
-    <button type="button" onClick={handleCopy} aria-label={`Copy ${value}`} className={className}>
-      {showIcon ? (
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h10" />
-        </svg>
-      ) : null}
-      {copied ? copiedLabel : label}
-    </button>
-  )
-}
-
-const primaryCopyClass =
-  'inline-flex min-h-[40px] items-center gap-2 rounded-[10px] bg-gradient-to-b from-brand-2 to-brand px-3.5 py-2 text-[13px] font-semibold text-[#1a0d07] transition hover:brightness-105 focus:outline-none focus:ring-2 focus:ring-brand/70'
-
-function CopyIpCard() {
-  return (
-    <div className="w-full max-w-[360px] overflow-hidden rounded-2xl border border-white/15 bg-white/[0.04] backdrop-blur">
-      <div className="flex items-center gap-3 px-4 py-3">
-        <div className="min-w-0 flex-1">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-2">Java Edition</div>
-          <div className="truncate text-[15px] font-bold tracking-tight text-white">{SERVER_ADDRESS}</div>
-        </div>
-        <CopyButton value={SERVER_ADDRESS} label="Copy" copiedLabel="Copied!" className={primaryCopyClass} />
-      </div>
-
-      <div className="h-px bg-white/10" />
-
-      <div className="flex items-center gap-3 px-4 py-3">
-        <div className="min-w-0 flex-1">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-2">Bedrock Edition</div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-2">
-            <span className="truncate text-[15px] font-bold tracking-tight text-white">{SERVER_ADDRESS}</span>
-            <CopyButton
-              value={BEDROCK_PORT}
-              label={`Port ${BEDROCK_PORT}`}
-              copiedLabel="Copied!"
-              showIcon={false}
-              className="inline-flex items-center rounded-md border border-white/15 bg-white/[0.05] px-2 py-0.5 text-[12px] font-semibold text-muted transition hover:border-white/25 hover:text-white focus:outline-none focus:ring-2 focus:ring-brand/60"
-            />
-          </div>
-        </div>
-        <CopyButton value={SERVER_ADDRESS} label="Copy" copiedLabel="Copied!" className={primaryCopyClass} />
-      </div>
+    <div className="min-h-svh overflow-x-clip bg-bg">
+      <Navbar activeSection={section} overHero />
+      {children}
+      <Footer activeSection={section} />
     </div>
-  )
-}
-
-function Hero({ serverStatus }) {
-  const stats = [
-    {
-      value: serverStatus.loading ? '—' : serverStatus.online ? String(serverStatus.players) : '0',
-      label: 'Players online',
-    },
-    { value: '100k+', label: 'Members' },
-    { value: '10+', label: 'Unique Realms' },
-    { value: '1.21.11', label: 'Recommended Version' },
-  ]
-
-  return (
-    <section id="home" className="relative flex min-h-[92svh] scroll-mt-24 items-center overflow-hidden pb-24 pt-36">
-      <div className="absolute inset-0 z-0">
-        <StableImage
-          src={backgroundImg}
-          alt=""
-          className="h-full w-full object-cover object-[center_42%]"
-          eager
-        />
-        <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_20%_30%,rgba(11,11,14,0.55),rgba(11,11,14,0.86)_60%,var(--color-bg)_100%)]" />
-      </div>
-      <div className="pointer-events-none absolute -left-40 -top-28 z-[1] h-[620px] w-[620px] rounded-full bg-[radial-gradient(circle,rgba(255,90,48,0.28),transparent_62%)] blur-2xl" />
-      <div className="hero-grid-overlay pointer-events-none absolute inset-0 z-[1] opacity-50" />
-
-      <div className="relative z-[2] mx-auto w-full max-w-[1180px] px-6">
-        <div className="max-w-[700px]">
-          <span className="mb-6 inline-flex items-center gap-2.5 rounded-full border border-white/15 bg-white/[0.05] px-3.5 py-[7px] text-[13px] text-muted">
-            <span className="h-2 w-2 rounded-full bg-positive shadow-[0_0_0_4px_rgba(63,208,127,0.18)]" />
-            Java &amp; Bedrock · Indonesian Community
-          </span>
-          <h1 className="text-[clamp(40px,6.4vw,74px)] font-bold leading-[1.03] tracking-[-0.03em] text-white">
-            <span className="text-gradient">More Than a Server. A Community</span>
-          </h1>
-          <p className="mt-5 max-w-[52ch] text-[18.5px] text-muted">
-            AlwiNation is Indonesia's largest Minecraft Network, hosting a wide range of unique game modes designed for every playstyle.
-            Whether you're looking to build, compete, explore, or simply have fun with friends, your adventure begins here.
-          </p>
-
-          <div className="mt-8 flex flex-wrap items-stretch gap-3.5">
-            <CopyIpCard />
-            <StatusPill serverStatus={serverStatus} />
-          </div>
-
-          <div className="mt-16 grid max-w-[640px] grid-cols-2 gap-4 sm:grid-cols-4">
-            {stats.map((stat) => (
-              <div
-                key={stat.label}
-                className="rounded-2xl border border-white/10 bg-gradient-to-b from-surface to-bg-2 px-6 py-[22px]"
-              >
-                <div className="text-[30px] font-extrabold tracking-tight">
-                  <span className="text-gradient">{stat.value}</span>
-                </div>
-                <div className="mt-1 text-sm text-muted">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function HeroSection({ title }) {
-  return (
-      <div className="flex items-center gap-3 rounded-lg border border-white/[0.07] bg-white/[0.035] px-3 py-2">
-        <div className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-brand/50 bg-brand/10 text-brand-2">
-          <svg
-              viewBox="0 0 24 24"
-              className="block h-3.5 w-3.5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.7"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-          >
-            <path d="M6 12.5l4 4L18 8" />
-          </svg>
-        </div>
-
-        <span className="text-[13.5px] font-medium leading-5 text-muted">{title}</span>
-      </div>
-  )
-}
-
-function SectionHeading({ eyebrow, title, subtitle, className = '' }) {
-  return (
-    <div className={`max-w-[640px] ${className}`}>
-      <span className="eyebrow">{eyebrow}</span>
-      <h2 className="text-gradient mt-3.5 text-[clamp(28px,4vw,42px)] font-bold leading-[1.18] tracking-[-0.02em] text-white">
-        {title}
-      </h2>
-      {subtitle ? <p className="mt-4 max-w-[56ch] text-[16.5px] text-muted">{subtitle}</p> : null}
-    </div>
-  )
-}
-
-function NewsLoadingCards({ count = 3 }) {
-  return Array.from({ length: count }, (_, index) => (
-    <article
-      className="min-h-[390px] overflow-hidden rounded-2xl border border-white/10 bg-surface"
-      key={`news-loading-${index}`}
-    >
-      <div className="grid aspect-[16/10] place-items-center bg-surface-2">
-        <div className="h-11 w-11 animate-spin rounded-full border-2 border-white/15 border-t-brand-2" />
-      </div>
-      <div className="space-y-4 p-[22px]">
-        <div className="h-3 w-28 animate-pulse rounded-full bg-white/10" />
-        <div className="h-6 w-4/5 animate-pulse rounded-full bg-white/10" />
-        <div className="h-4 w-full animate-pulse rounded-full bg-white/10" />
-        <div className="h-4 w-2/3 animate-pulse rounded-full bg-white/10" />
-      </div>
-    </article>
-  ))
-}
-
-function NewsPageLoading() {
-  return (
-    <main className="min-h-svh bg-bg px-6 pb-24 pt-36">
-      <section className="mx-auto max-w-[1180px]">
-        <div className="grid min-h-[360px] place-items-center rounded-2xl border border-white/10 bg-surface">
-          <div className="h-12 w-12 animate-spin rounded-full border-2 border-white/15 border-t-brand-2" />
-        </div>
-      </section>
-    </main>
-  )
-}
-
-function PolicyPageLoading() {
-  return (
-    <main className="min-h-svh bg-bg pb-24 pt-32 text-white">
-      <section className="mx-auto max-w-[1080px] px-6">
-        <div className="rounded-[24px] border border-white/10 bg-surface p-7 sm:p-10">
-          <div className="h-4 w-36 animate-pulse rounded-full bg-white/10" />
-          <div className="mt-5 h-12 max-w-[620px] animate-pulse rounded-full bg-white/10" />
-          <div className="mt-6 space-y-3">
-            <div className="h-4 max-w-[720px] animate-pulse rounded-full bg-white/10" />
-            <div className="h-4 max-w-[560px] animate-pulse rounded-full bg-white/10" />
-          </div>
-          <div className="mt-7 h-10 w-48 animate-pulse rounded-xl bg-white/10" />
-        </div>
-      </section>
-
-      <section className="mx-auto mt-8 max-w-[1080px] px-6">
-        <div className="grid gap-6 lg:grid-cols-[260px_1fr] lg:items-start">
-          <aside className="hidden lg:block">
-            <div className="rounded-[18px] border border-white/10 bg-surface p-5">
-              <div className="h-3 w-24 animate-pulse rounded-full bg-white/10" />
-              <div className="mt-5 grid gap-3">
-                {Array.from({ length: 6 }, (_, index) => (
-                  <div className="h-8 animate-pulse rounded-lg bg-white/10" key={`policy-toc-${index}`} />
-                ))}
-              </div>
-            </div>
-          </aside>
-          <div className="grid gap-5">
-            {Array.from({ length: 4 }, (_, index) => (
-              <article
-                className="rounded-[18px] border border-white/10 bg-surface p-6 sm:p-7"
-                key={`policy-loading-${index}`}
-              >
-                <div className="flex gap-4">
-                  <div className="h-9 w-9 shrink-0 animate-pulse rounded-xl bg-white/10" />
-                  <div className="min-w-0 flex-1 space-y-3">
-                    <div className="h-5 w-1/2 animate-pulse rounded-full bg-white/10" />
-                    <div className="h-4 w-full animate-pulse rounded-full bg-white/10" />
-                    <div className="h-4 w-4/5 animate-pulse rounded-full bg-white/10" />
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-    </main>
-  )
-}
-
-function AdminPageLoading() {
-  return (
-    <main className="min-h-svh bg-bg px-5 pb-16 pt-36 text-white sm:px-8 lg:px-12">
-      <section className="mx-auto max-w-6xl">
-        <div className="rounded-2xl border border-white/10 bg-surface p-6">
-          <div className="h-4 w-24 animate-pulse rounded-full bg-white/10" />
-          <div className="mt-4 h-9 w-56 animate-pulse rounded-full bg-white/10" />
-          <div className="mt-6 h-12 max-w-md animate-pulse rounded-xl bg-white/10" />
-        </div>
-        <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
-          <div className="rounded-2xl border border-white/10 bg-surface p-6">
-            <div className="grid gap-5">
-              {Array.from({ length: 7 }, (_, index) => (
-                <div className="h-12 animate-pulse rounded-xl bg-white/10" key={`admin-form-${index}`} />
-              ))}
-            </div>
-          </div>
-          <aside className="rounded-2xl border border-white/10 bg-surface p-6">
-            <div className="h-6 w-36 animate-pulse rounded-full bg-white/10" />
-            <div className="mt-6 grid gap-4">
-              {Array.from({ length: 3 }, (_, index) => (
-                <div className="h-28 animate-pulse rounded-xl bg-white/10" key={`admin-list-${index}`} />
-              ))}
-            </div>
-          </aside>
-        </div>
-      </section>
-    </main>
-  )
-}
-
-function StaffPageLoading() {
-  return (
-    <main className="min-h-svh bg-bg pb-24 pt-32 text-white">
-      <section className="mx-auto max-w-[1080px] px-6">
-        <div className="rounded-[24px] border border-white/10 bg-surface p-7 sm:p-10">
-          <div className="h-4 w-36 animate-pulse rounded-full bg-white/10" />
-          <div className="mt-5 h-12 max-w-[520px] animate-pulse rounded-full bg-white/10" />
-          <div className="mt-6 h-4 max-w-[680px] animate-pulse rounded-full bg-white/10" />
-        </div>
-      </section>
-      <section className="mx-auto mt-8 max-w-[1080px] px-6">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }, (_, index) => (
-            <div className="h-28 animate-pulse rounded-[18px] border border-white/10 bg-surface" key={`staff-loading-${index}`} />
-          ))}
-        </div>
-      </section>
-    </main>
-  )
-}
-
-function WikiPageLoading() {
-  return (
-    <main className="min-h-svh bg-bg pb-24 pt-32 text-white">
-      <section className="mx-auto max-w-[1080px] px-6">
-        <div className="rounded-[24px] border border-white/10 bg-surface p-7 sm:p-10">
-          <div className="h-4 w-36 animate-pulse rounded-full bg-white/10" />
-          <div className="mt-5 h-12 max-w-[520px] animate-pulse rounded-full bg-white/10" />
-          <div className="mt-6 h-11 max-w-[640px] animate-pulse rounded-xl bg-white/10" />
-        </div>
-      </section>
-      <section className="mx-auto mt-8 max-w-[1080px] px-6">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }, (_, index) => (
-            <div className="h-36 animate-pulse rounded-[18px] border border-white/10 bg-surface" key={`wiki-loading-${index}`} />
-          ))}
-        </div>
-      </section>
-    </main>
   )
 }
 
@@ -605,8 +55,6 @@ function App() {
   const [changelogEntries, setChangelogEntries] = useState([])
   const [changelogRealms, setChangelogRealms] = useState([])
   const [isLoadingChangelog, setIsLoadingChangelog] = useState(true)
-  const serverStatus = useServerStatus()
-  const visibleNewsItems = newsItems.slice(0, newsToShow)
   const isAdminPage = window.location.pathname === '/admin' || window.location.pathname === '/admin/docs'
   const isAdminDocsPage = window.location.pathname === '/admin/docs'
   const isNewsListPage = window.location.pathname === '/news'
@@ -615,6 +63,7 @@ function App() {
   const isStaffPage = window.location.pathname === '/staff'
   const isWikiListPage = window.location.pathname === '/wiki'
   const isChangelogPage = window.location.pathname === '/changelog'
+  const isLeaderboardPage = window.location.pathname === '/leaderboard'
   const changelogSlug = window.location.pathname.match(/^\/changelog\/([^/]+)\/?$/)?.[1]
   const selectedChangelogEntry = changelogSlug
     ? getChangelogEntryBySlug(changelogEntries, decodeURIComponent(changelogSlug))
@@ -633,6 +82,7 @@ function App() {
     isStaffPage ||
     isWikiListPage ||
     isChangelogPage ||
+    isLeaderboardPage ||
     Boolean(changelogSlug) ||
     Boolean(newsSlug) ||
     Boolean(wikiSlug)
@@ -738,6 +188,7 @@ function App() {
       isStaffPage ||
       isWikiListPage ||
       isChangelogPage ||
+      isLeaderboardPage ||
       changelogSlug ||
       wikiSlug ||
       !isKnownPath
@@ -746,35 +197,24 @@ function App() {
       return undefined
     }
 
+    // Only the hero and the gameplay section have nav links: highlight the one
+    // under the activation line, and nothing once the page is past both.
     function updateActiveSection() {
-      const bottomOffset = 12
-      const isAtPageBottom =
-        window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - bottomOffset
+      const activationLine = window.innerHeight * 0.38
+      let currentSection = ''
 
-      let currentSection = 'home'
-
-      if (isAtPageBottom) {
-        currentSection = pageSectionIds.at(-1) ?? 'home'
-      } else {
-        const activationLine = window.innerHeight * 0.38
-
-        for (const sectionId of pageSectionIds) {
-          const section = document.getElementById(sectionId)
-          if (!section) {
-            continue
-          }
-          const sectionTop = section.getBoundingClientRect().top
-          if (sectionTop <= activationLine) {
-            currentSection = sectionId
-          }
+      for (const sectionId of pageSectionIds) {
+        const box = document.getElementById(sectionId)?.getBoundingClientRect()
+        if (box && box.top <= activationLine && box.bottom > activationLine) {
+          currentSection = sectionId
         }
       }
 
       setActiveSection(currentSection)
 
-      const nextHash = `#${currentSection}`
+      const nextHash = currentSection ? `#${currentSection}` : ''
       if (window.location.hash !== nextHash) {
-        window.history.replaceState(null, '', nextHash)
+        window.history.replaceState(null, '', nextHash || window.location.pathname)
       }
     }
 
@@ -798,52 +238,45 @@ function App() {
       window.removeEventListener('scroll', updateActiveSection)
       window.removeEventListener('resize', updateActiveSection)
     }
-  }, [newsSlug, isNewsListPage, isAdminPage, isRulesPage, isTermsPage, isStaffPage, isWikiListPage, isChangelogPage, changelogSlug, wikiSlug, isKnownPath])
+  }, [newsSlug, isNewsListPage, isAdminPage, isRulesPage, isTermsPage, isStaffPage, isWikiListPage, isChangelogPage, isLeaderboardPage, changelogSlug, wikiSlug, isKnownPath])
 
   if (!isKnownPath) {
     return (
-      <div className="min-h-svh overflow-x-hidden bg-bg">
-        <Navbar activeSection="" />
+      <SitePage section="">
         <ErrorPage />
-        <Footer />
-      </div>
+      </SitePage>
     )
   }
 
+  // The admin has its own shell (sidebar, top bar, theme toggle), so no site navbar or
+  // footer, and no wrapper that would stop its sticky bars.
   if (isAdminPage) {
-    return (
-      <div className="min-h-svh overflow-x-hidden bg-bg">
-        <Navbar activeSection="admin" />
-        {isLoadingNews || isLoadingPolicies || isLoadingStaff || isLoadingWiki || isLoadingChangelog ? (
-          <AdminPageLoading />
-        ) : (
-          <AdminPanel
-            newsItems={newsItems}
-            onNewsChange={setNewsItems}
-            policies={policies}
-            onPoliciesChange={setPolicies}
-            staff={staff}
-            onStaffChange={setStaff}
-            wiki={wiki}
-            onWikiChange={setWiki}
-            changelogEntries={changelogEntries}
-            onChangelogChange={setChangelogEntries}
-            changelogRealms={changelogRealms}
-            onChangelogRealmsChange={setChangelogRealms}
-            initialTab={isAdminDocsPage ? 'docs' : 'news'}
-          />
-        )}
-        <Footer />
-      </div>
+    return isLoadingNews || isLoadingPolicies || isLoadingStaff || isLoadingWiki || isLoadingChangelog ? (
+      <AdminLoading />
+    ) : (
+      <AdminPanel
+        newsItems={newsItems}
+        onNewsChange={setNewsItems}
+        policies={policies}
+        onPoliciesChange={setPolicies}
+        staff={staff}
+        onStaffChange={setStaff}
+        wiki={wiki}
+        onWikiChange={setWiki}
+        changelogEntries={changelogEntries}
+        onChangelogChange={setChangelogEntries}
+        changelogRealms={changelogRealms}
+        onChangelogRealmsChange={setChangelogRealms}
+        initialTab={isAdminDocsPage ? 'docs' : 'overview'}
+      />
     )
   }
 
   if (newsSlug) {
     return (
-      <div className="min-h-svh overflow-x-hidden bg-bg">
-        <Navbar activeSection="news" />
+      <SitePage section="news">
         {isLoadingNews ? (
-          <NewsPageLoading />
+          <NewsDetailLoading />
         ) : selectedNewsItem ? (
           <NewsDetail item={selectedNewsItem} newsItems={newsItems} />
         ) : (
@@ -858,27 +291,24 @@ function App() {
             secondaryLabel="Go home"
           />
         )}
-        <Footer />
-      </div>
+      </SitePage>
     )
   }
 
   if (isNewsListPage) {
     return (
-      <div className="min-h-svh overflow-x-hidden bg-bg">
-        <Navbar activeSection="news" />
+      <SitePage section="news">
         <NewsList newsItems={newsItems} isLoading={isLoadingNews} />
-        <Footer />
-      </div>
+      </SitePage>
     )
   }
 
   if (changelogSlug) {
     return (
-      <div className="min-h-svh overflow-x-hidden bg-bg">
-        <Navbar activeSection="changelog" />
+      <SitePage section="changelog">
         {isLoadingChangelog ? (
-          <NewsPageLoading />
+          // Entries load with the list, so a cold load shows the list's loading state.
+          <ChangelogList isLoading />
         ) : selectedChangelogEntry ? (
           <ChangelogDetail entry={selectedChangelogEntry} entries={changelogEntries} />
         ) : (
@@ -893,47 +323,47 @@ function App() {
             secondaryLabel="Go home"
           />
         )}
-        <Footer />
-      </div>
+      </SitePage>
     )
   }
 
   if (isChangelogPage) {
     return (
-      <div className="min-h-svh overflow-x-hidden bg-bg">
-        <Navbar activeSection="changelog" />
+      <SitePage section="changelog">
         <ChangelogList entries={changelogEntries} isLoading={isLoadingChangelog} />
-        <Footer />
-      </div>
+      </SitePage>
+    )
+  }
+
+  if (isLeaderboardPage) {
+    return (
+      <SitePage section="leaderboard">
+        <LeaderboardPage />
+      </SitePage>
     )
   }
 
   if (isStaffPage) {
     return (
-      <div className="min-h-svh bg-bg">
-        <Navbar activeSection="staff" />
-        {isLoadingStaff ? <StaffPageLoading /> : <StaffPage {...staff} />}
-        <Footer />
-      </div>
+      <SitePage section="staff">
+        <StaffPage {...staff} isLoading={isLoadingStaff} />
+      </SitePage>
     )
   }
 
   if (isWikiListPage) {
     return (
-      <div className="min-h-svh bg-bg">
-        <Navbar activeSection="wiki" />
-        {isLoadingWiki ? <WikiPageLoading /> : <WikiPage {...wiki} />}
-        <Footer />
-      </div>
+      <SitePage section="wiki">
+        {isLoadingWiki ? <WikiLoading /> : <WikiPage {...wiki} />}
+      </SitePage>
     )
   }
 
   if (wikiSlug) {
     return (
-      <div className="min-h-svh bg-bg">
-        <Navbar activeSection="wiki" />
+      <SitePage section="wiki">
         {isLoadingWiki ? (
-          <WikiPageLoading />
+          <WikiLoading />
         ) : selectedWikiArticle ? (
           <WikiArticle
             article={selectedWikiArticle.article}
@@ -952,200 +382,28 @@ function App() {
             secondaryLabel="Go home"
           />
         )}
-        <Footer />
-      </div>
+      </SitePage>
     )
   }
 
   if (isRulesPage || isTermsPage) {
+    const policyKey = isRulesPage ? 'rules' : 'terms'
     return (
-      <div className="min-h-svh bg-bg">
-        <Navbar activeSection={isRulesPage ? 'rules' : 'terms'} />
-        {isLoadingPolicies ? (
-          <PolicyPageLoading />
-        ) : (
-          <PolicyPage
-            {...(isRulesPage ? policies.rules : policies.terms)}
-            activeKey={isRulesPage ? 'rules' : 'terms'}
-          />
-        )}
-        <Footer />
-      </div>
+      <SitePage section={policyKey}>
+        <PolicyPage
+          {...policies[policyKey]}
+          activeKey={policyKey}
+          counts={{ rules: policies.rules?.sections?.length ?? 0, terms: policies.terms?.sections?.length ?? 0 }}
+          isLoading={isLoadingPolicies}
+        />
+      </SitePage>
     )
   }
 
   return (
-    <div className="min-h-svh overflow-x-hidden bg-bg">
-      <Navbar activeSection={activeSection} />
-
-      <main>
-        <Hero serverStatus={serverStatus} />
-
-        {/* NEWS */}
-        <section id="news" className="scroll-mt-24 py-24">
-          <div className="mx-auto max-w-[1180px] px-6">
-            <div className="flex flex-wrap items-end justify-between gap-6">
-              <SectionHeading
-                eyebrow="Latest News"
-                title="Updates from AlwiNation"
-                subtitle="Announcements, development notes, and community highlights — all in one place."
-              />
-              <a
-                href="/news"
-                className="inline-flex min-h-[46px] items-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-[22px] text-[15px] font-semibold text-white transition hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.08]"
-              >
-                View all news
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
-              </a>
-            </div>
-
-            <div className="mt-11 grid gap-[22px] md:grid-cols-2 xl:grid-cols-3">
-              {isLoadingNews ? (
-                <NewsLoadingCards count={newsToShow} />
-              ) : (
-                visibleNewsItems.map((item) => (
-                  <News key={item.id} {...item} />
-                ))
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* ABOUT */}
-        <section id="about" className="scroll-mt-24 border-t border-white/10 bg-bg-2 py-24">
-          <div className="mx-auto grid max-w-[1180px] items-center gap-14 px-6 lg:grid-cols-[0.9fr_1.1fr]">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-[20px] border border-white/10">
-              <StableImage src={backgroundImg2} alt="" className="h-full w-full object-cover" />
-              <div className="absolute inset-x-[18px] bottom-[18px] flex gap-[18px] rounded-2xl border border-white/15 bg-bg/60 px-[18px] py-4 backdrop-blur-md">
-                <div>
-                  <b className="text-lg text-white">12,000+</b>
-                  <small className="block text-xs text-muted">Players joined</small>
-                </div>
-                <div>
-                  <b className="text-lg text-white">10+</b>
-                  <small className="block text-xs text-muted">Unique Realms</small>
-                </div>
-                <div>
-                  <b className="text-lg text-white"> Cross-Platforms</b>
-                  <small className="block text-xs text-muted">Support</small>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <SectionHeading
-                eyebrow="About"
-                title="One Network. Endless Possibilities"
-                subtitle="Home to thousands of players, AlwiNation offers a variety of unique gameplay experiences, community-driven events, and cross-platform support for both Java and Bedrock Edition."
-              />
-              <div className="mt-7 grid gap-3.5">
-                {aboutFeatures.map((feature) => (
-                  <div key={feature.title} className="flex items-start gap-3.5 rounded-2xl border border-white/10 bg-surface px-[18px] py-4">
-                    <span className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-brand/12 text-brand-2 shadow-[inset_0_0_0_1px_rgba(255,90,48,0.3)]">
-                      {feature.icon}
-                    </span>
-                    <div>
-                      <b className="block text-[15.5px] text-white">{feature.title}</b>
-                      <span className="text-sm text-muted">{feature.description}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* WORK */}
-        <section id="work" className="scroll-mt-24 py-24">
-          <div className="mx-auto max-w-[1180px] px-6">
-            <SectionHeading
-              eyebrow="Work"
-              title="Everything that powers, the Alwination Experience"
-              subtitle="From unique game modes and community events to custom development, we create experiences that keep thousands of players engaged every day."
-            />
-            <div className="mt-11 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-              {workItems.map((item, index) => (
-                  <article
-                      key={item.title}
-                      className="group relative flex min-h-[360px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-surface p-[26px] shadow-[0_18px_45px_rgba(0,0,0,0.18)] transition duration-300 hover:-translate-y-1.5 hover:border-brand/35 hover:bg-surface-2 hover:shadow-[0_26px_70px_rgba(0,0,0,0.34)]"
-                  >
-                    <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand/70 to-transparent opacity-0 transition group-hover:opacity-100" />
-                    <div className="pointer-events-none absolute -right-24 -top-24 h-52 w-52 rounded-full bg-[radial-gradient(circle,rgba(255,90,48,0.18),transparent_68%)] opacity-0 blur-2xl transition duration-300 group-hover:opacity-100" />
-
-                    <div className="relative flex items-start justify-between gap-4">
-                      <span className="grid h-[52px] w-[52px] place-items-center rounded-xl border border-brand/30 bg-gradient-to-b from-brand/[0.18] to-brand-2/[0.06] text-brand-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-                        {item.icon}
-                      </span>
-                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-bold text-muted-2">
-                        {String(index + 1).padStart(2, '0')}
-                      </span>
-                    </div>
-
-                    <h3 className="relative mt-6 text-xl font-bold leading-tight text-white">{item.title}</h3>
-
-                    <p className="relative mt-3 min-h-[120px] text-sm leading-6 text-muted">
-                      {item.description}
-                    </p>
-
-                    <div className="relative mt-auto flex flex-col gap-2 pt-5">
-                      {(item.list ?? []).map((listItem) => (
-                          <HeroSection key={listItem} title={listItem} />
-                      ))}
-                    </div>
-                  </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* CONTACT */}
-        <section id="contact" className="scroll-mt-24 border-t border-white/10 bg-bg-2 py-24">
-          <div className="mx-auto grid max-w-[1180px] items-start gap-12 px-6 lg:grid-cols-2">
-            <div>
-              <SectionHeading
-                eyebrow="Contact"
-                title="Need help or want to join?"
-                subtitle="Use the server IP to hop in, or reach the team through our community channels."
-              />
-              <div className="relative mt-6 overflow-hidden rounded-[20px] border border-brand/30 bg-gradient-to-br from-brand/[0.16] to-brand-2/[0.06] p-7">
-                <h3 className="text-[22px] font-bold text-white">Ready to play?</h3>
-                <p className="mt-2.5 text-muted">Copy the IP, launch Minecraft, and join the world.</p>
-                <div className="mt-5 flex flex-wrap items-center gap-3.5">
-                  <CopyIpCard />
-                  <a
-                    href="https://discord.alwination.id"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex min-h-[46px] items-center rounded-xl border border-white/15 bg-white/[0.04] px-[22px] text-[15px] font-semibold text-white transition hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.08]"
-                  >
-                    Join Discord
-                  </a>
-                </div>
-              </div>
-            </div>
-
-            <div className="relative top-33 overflow-hidden rounded-[20px] border border-white/10 bg-surface">
-              {contactItems.map((item) => (
-                <div
-                  key={item.label}
-                  className="flex items-center justify-between gap-4 border-b border-white/10 px-6 py-5 last:border-b-0"
-                >
-                  <span className="flex items-center gap-3.5 text-sm font-medium text-muted">
-                    <span className="grid h-[38px] w-[38px] place-items-center rounded-[10px] bg-brand/12 text-brand-2">
-                      {item.icon}
-                    </span>
-                    {item.label}
-                  </span>
-                  <span className="text-[15px] font-bold text-white">{item.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <Footer />
-    </div>
+    <SitePage section={activeSection}>
+      <HomePage newsItems={newsItems} isLoadingNews={isLoadingNews} />
+    </SitePage>
   )
 }
 

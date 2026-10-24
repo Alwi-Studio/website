@@ -13,11 +13,13 @@
         "lint": "oxlint",
         "optimize:images": "node scripts/optimize-images.mjs",
         "preview": "vite preview",
-        "secure:start": "pnpm run build && node server.mjs"
+        "secure:start": "pnpm run build && node server.mjs",
+        "test": "node --test \"scripts/*.test.mjs\""
     },
     "dependencies": {
         "@ffmpeg-installer/ffmpeg": "^1.1.0",
         "@tailwindcss/vite": "^4.3.2",
+        "mysql2": "3.24.6",
         "react": "^19.2.7",
         "react-dom": "^19.2.7",
         "sharp": "^0.35.3",

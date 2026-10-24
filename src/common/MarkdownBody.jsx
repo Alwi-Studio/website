@@ -1,66 +1,281 @@
-import { useState } from 'react'
-import CollapsibleItems from './CollapsibleItems.jsx'
+import { useId, useRef, useState, useSyncExternalStore } from 'react'
+import '../news/rich.css'
+import { plainText } from '../news/postInfo.js'
 import { isSafeImageUrl } from './safeUrls.js'
 import { getOptimizedImageUrl } from './imageOptimizer.js'
+import { reducedMotion } from './reveal.js'
 import { RichInline, parseMarkdownBlocks } from './RichText.jsx'
 
-function columnClass(columns = 2) {
-  if (columns >= 4) {
-    return 'md:grid-cols-2 xl:grid-cols-4'
-  }
-  if (columns === 3) {
-    return 'md:grid-cols-3'
-  }
-  return 'md:grid-cols-2'
+const pad = (n) => String(n).padStart(2, '0')
+
+// Below 720px the tab stack becomes one sideways row (rich.css), so the arrow axis flips with it.
+const narrowQuery = '(max-width: 720px)'
+function subscribeNarrow(onChange) {
+  const query = window.matchMedia(narrowQuery)
+  query.addEventListener('change', onChange)
+  return () => query.removeEventListener('change', onChange)
 }
+const isNarrow = () => window.matchMedia(narrowQuery).matches
 
-function TitledItemsGrid({ block, card = false }) {
+// ":::tabs" as ARIA tabs: arrows on either axis, Home and End move focus and select.
+function RichTabs({ items, name }) {
+  const id = useId()
+  const listRef = useRef(null)
+  const [chosen, setActive] = useState(0)
+  const narrow = useSyncExternalStore(subscribeNarrow, isNarrow)
+  const count = items.length
+  // Admin previews re-render as tabs are deleted; never point past the last one.
+  const active = Math.min(chosen, count - 1)
+
+  function select(index, focus = false) {
+    setActive(index)
+    const list = listRef.current
+    const button = list?.children[index]
+    if (!button) return
+    if (focus) button.focus({ preventScroll: true })
+    // On phones the row scrolls sideways; keep the chosen tab in sight without moving the page.
+    if (list.scrollWidth > list.clientWidth) {
+      list.scrollTo({ left: button.offsetLeft - 16, behavior: reducedMotion() ? 'auto' : 'smooth' })
+    }
+  }
+
+  function onKeyDown(event) {
+    const { key } = event
+    const next = key === 'ArrowDown' || key === 'ArrowRight' ? (active + 1) % count
+      : key === 'ArrowUp' || key === 'ArrowLeft' ? (active - 1 + count) % count
+        : key === 'Home' ? 0 : key === 'End' ? count - 1 : -1
+    if (next < 0) return
+    event.preventDefault()
+    select(next, true)
+  }
+
   return (
-    <div className={`grid gap-3 ${columnClass(block.columns)}`}>
-      {block.items.map((item, index) => (
-        <div
-          className={`${card ? 'rounded-lg border border-white/10 bg-surface-2 p-4' : 'border-l border-white/10 pl-4'}`}
-          key={`${item.title}-${index}`}
-        >
-          <h4 className="font-bold text-white"><RichInline text={item.title} /></h4>
-          {item.text && <p className="mt-2 text-sm leading-6 text-muted"><RichInline text={item.text} /></p>}
-          {item.meta && <p className="mt-3 text-xs font-semibold uppercase tracking-[0.12em] text-brand-2"><RichInline text={item.meta} /></p>}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function ArticleTabs({ items }) {
-  const [activeIndex, setActiveIndex] = useState(0)
-  const activeItem = items[activeIndex] ?? items[0]
-
-  return (
-    <div className="rounded-lg border border-white/10 bg-bg-2">
-      <div className="flex gap-1 overflow-x-auto border-b border-white/10 p-2">
+    <div className="tabs">
+      <div className="seg tab-list" role="tablist" aria-label={name} aria-orientation={narrow ? 'horizontal' : 'vertical'} ref={listRef} onKeyDown={onKeyDown}>
         {items.map((item, index) => (
           <button
-            className={`min-h-9 shrink-0 rounded-md px-3 text-sm font-semibold transition ${
-              index === activeIndex ? 'bg-brand text-white' : 'text-muted hover:bg-white/[0.06] hover:text-white'
-            }`}
             key={`${item.title}-${index}`}
             type="button"
-            onClick={() => setActiveIndex(index)}
+            role="tab"
+            id={`${id}t${index}`}
+            aria-controls={`${id}p${index}`}
+            aria-selected={index === active}
+            tabIndex={index === active ? 0 : -1}
+            onClick={() => select(index)}
           >
-            <RichInline text={item.title} />
+            <span className="n">{pad(index + 1)}</span>
+            <span><RichInline text={item.title} /></span>
           </button>
         ))}
       </div>
-      <div className="p-4 text-sm leading-7 text-muted">
-        <RichInline text={activeItem?.text ?? ''} />
+      <div className="tab-view panel">
+        {items.map((item, index) => (
+          <div key={`${item.title}-${index}`} role="tabpanel" id={`${id}p${index}`} aria-labelledby={`${id}t${index}`} tabIndex={0} hidden={index !== active}>
+            <p className="label">{name}</p>
+            <h4><RichInline text={item.title} /></h4>
+            {item.text && <p className="txt"><RichInline text={item.text} /></p>}
+          </div>
+        ))}
+        {count > 1 && (
+          <div className="seg tab-nav">
+            <button type="button" onClick={() => select((active - 1 + count) % count)}><span aria-hidden="true">←</span> Previous</button>
+            <span className="count">{pad(active + 1)} / {pad(count)}</span>
+            <button type="button" onClick={() => select((active + 1) % count)}>Next <span aria-hidden="true">→</span></button>
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-// Renders Discord-style markdown (the same mini-syntax used across the site) into
-// styled article content. Shared by the public wiki article page and the admin
-// live preview so both always look identical.
+// Every block shape parseMarkdownBlocks produces, plus the legacy news shapes (plain
+// strings, headings without a level). One renderer for news, wiki, rules and the admin
+// previews; style comes from .prose (theme.css) and .rich (news/rich.css) on the parent.
+// anchors: optional ids by block index, so a contents panel can link to headings.
+// nested: content inside an accordion; its headings start at h3, so they never join the
+// page's h2 outline (the wiki builds its contents list from every h2).
+export function RichBlocks({ blocks, anchors, nested = false }) {
+  // The shallowest heading level present becomes h2 (the page owns h1), so a post written
+  // with "##" sections reads the same as one written with "#".
+  const top = Math.min(3, ...blocks.filter((block) => block?.type === 'heading').map((block) => block.level ?? 2))
+  const base = nested ? 3 : 2
+  let featureNumber = 0
+  let lastHeading = ''
+
+  return blocks.map((raw, index) => {
+    const block = typeof raw === 'string' ? { type: 'paragraph', text: raw } : raw
+    const key = `${block.type}-${index}`
+
+    if (block.type === 'heading') {
+      lastHeading = plainText(block.text)
+      const Heading = `h${Math.min(4, base + (block.level ?? 2) - top)}`
+      return <Heading key={key} id={anchors?.[index]}><RichInline text={block.text} /></Heading>
+    }
+
+    if (block.type === 'divider') {
+      // Rows of feature cards already read as one grid; a rule between two of them is noise.
+      const betweenCards = blocks[index - 1]?.type === 'columns' && blocks[index + 1]?.type === 'columns'
+      return betweenCards ? null : <hr key={key} />
+    }
+
+    if (block.type === 'list') {
+      return <ul key={key}>{block.items.map((item, i) => <li key={i}><RichInline text={item} /></li>)}</ul>
+    }
+
+    if (block.type === 'ordered-list') {
+      return <ol key={key}>{block.items.map((item, i) => <li key={i}><RichInline text={item} /></li>)}</ol>
+    }
+
+    if (block.type === 'checklist') {
+      return (
+        <ul key={key} className="checklist">
+          {block.items.map((item, i) => (
+            <li key={i} className={item.checked ? 'is-done' : undefined}>
+              <span className="sr-only">{item.checked ? 'Done: ' : 'To do: '}</span>
+              <span><RichInline text={item.text} /></span>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+
+    if (block.type === 'table') {
+      return (
+        <div key={key} className="rich-table" tabIndex={0}>
+          <table>
+            <thead>
+              <tr>
+                {block.headers.map((header, i) => (
+                  <th key={`${header}-${i}`} style={{ textAlign: block.alignments?.[i] ?? 'left' }}><RichInline text={header} /></th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {block.rows.map((row, rowIndex) => (
+                <tr key={rowIndex}>
+                  {block.headers.map((header, i) => (
+                    <td key={`${header}-${i}`} style={{ textAlign: block.alignments?.[i] ?? 'left' }}><RichInline text={row[i] ?? ''} /></td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
+    }
+
+    // ":::columns" are the numbered feature cards (numbered across the whole post);
+    // ":::grid" and ":::cards" use the same cards without numbers.
+    if (block.type === 'columns' || block.type === 'grid' || block.type === 'cards') {
+      const numbered = block.type === 'columns'
+      return (
+        <div key={key} className="feats" style={{ '--cols': block.type === 'cards' ? 3 : block.columns }}>
+          {block.items.map((item, i) => (
+            <div className={`feat panel${numbered ? ' has-n' : ''}`} key={`${item.title}-${i}`}>
+              {numbered && <span className="feat-n">{pad(++featureNumber)}</span>}
+              <h3><RichInline text={item.title} /></h3>
+              {item.text && <p><RichInline text={item.text} /></p>}
+              {item.meta && <p className="label"><RichInline text={item.meta} /></p>}
+            </div>
+          ))}
+        </div>
+      )
+    }
+
+    if (block.type === 'tabs') {
+      return <RichTabs key={key} items={block.items} name={lastHeading || 'Details'} />
+    }
+
+    if (block.type === 'accordion') {
+      return (
+        <div key={key} className="rich-acc">
+          {block.items.map((item, i) => (
+            <details className="panel" key={`${item.title}-${i}`}>
+              <summary><RichInline text={item.title} /></summary>
+              {item.text && <div className="rich-acc-body"><RichBlocks blocks={parseMarkdownBlocks(item.text)} nested /></div>}
+            </details>
+          ))}
+        </div>
+      )
+    }
+
+    if (block.type === 'section' || block.type === 'container') {
+      return (
+        <section key={key} className={block.type === 'container' ? 'rich-box panel' : 'rich-section'}>
+          {block.title && <h3><RichInline text={block.title} /></h3>}
+          {block.text && <p><RichInline text={block.text} /></p>}
+        </section>
+      )
+    }
+
+    if (block.type === 'sidebar') {
+      return (
+        <aside key={key} className="rich-box rich-sidebar panel">
+          <div>
+            {block.title && <h3><RichInline text={block.title} /></h3>}
+            {block.text && <p><RichInline text={block.text} /></p>}
+          </div>
+          {block.sidebar && <p className="rich-note"><RichInline text={block.sidebar} /></p>}
+        </aside>
+      )
+    }
+
+    if (block.type === 'quote') {
+      return (
+        <figure key={key} className="quote">
+          <blockquote><RichInline text={block.text} /></blockquote>
+          {block.cite && <figcaption>— {block.cite}</figcaption>}
+        </figure>
+      )
+    }
+
+    if (block.type === 'code') {
+      return <pre key={key} tabIndex={0}><code>{block.text}</code></pre>
+    }
+
+    if (block.type === 'stats') {
+      return (
+        <div key={key} className="stats">
+          {block.items.map((item, i) => (
+            <div className="stat panel" key={`${item.label}-${i}`}><b>{item.value}</b><span>{item.label}</span></div>
+          ))}
+        </div>
+      )
+    }
+
+    if (block.type === 'callout') {
+      return (
+        <aside key={key} className="callout panel">
+          <p className="label"><RichInline text={block.title} /></p>
+          <p><RichInline text={block.text} /></p>
+        </aside>
+      )
+    }
+
+    if (block.type === 'image') {
+      if (!isSafeImageUrl(block.src)) {
+        return null
+      }
+
+      return (
+        <figure key={key} className="rich-figure">
+          <img src={getOptimizedImageUrl(block.src, 1400) || block.src} alt={block.alt} loading="lazy" decoding="async" />
+          {block.caption && <figcaption><RichInline text={block.caption} /></figcaption>}
+        </figure>
+      )
+    }
+
+    return (
+      <p key={key} className={block.type === 'lead' ? 'rich-lead' : undefined}>
+        <RichInline text={block.text} />
+      </p>
+    )
+  })
+}
+
+// Renders the site's Discord-style markdown (the same mini-syntax used across the
+// site) as styled article content. Shared by the public wiki and rules pages and the
+// admin live previews so they always look identical.
 export function MarkdownBody({ text, className = '' }) {
   const blocks = parseMarkdownBlocks(text)
 
@@ -69,244 +284,8 @@ export function MarkdownBody({ text, className = '' }) {
   }
 
   return (
-    <div className={`grid min-w-0 gap-2.5 wrap-anywhere ${className}`}>
-      {blocks.map((block, index) => {
-        const key = `${block.type}-${index}`
-
-        if (block.type === 'heading') {
-          if (block.level === 1) {
-            return (
-              <h2 key={key} className={`text-2xl font-bold tracking-tight text-white ${index > 0 ? 'mt-3' : ''}`}>
-                <RichInline text={block.text} />
-              </h2>
-            )
-          }
-          if (block.level === 2) {
-            return (
-              <h3 key={key} className={`text-xl font-bold tracking-tight text-white ${index > 0 ? 'mt-2' : ''}`}>
-                <RichInline text={block.text} />
-              </h3>
-            )
-          }
-          return (
-            <h4 key={key} className="text-lg font-bold tracking-tight text-white">
-              <RichInline text={block.text} />
-            </h4>
-          )
-        }
-
-        if (block.type === 'divider') {
-          return <hr key={key} className="my-2 border-0 border-t border-white/10" />
-        }
-
-        if (block.type === 'list') {
-          return (
-            <ul key={key} className="grid gap-2 p-0">
-              {block.items.map((item, itemIndex) => (
-                <li key={itemIndex} className="flex items-start gap-3 text-[15px] leading-7 text-muted">
-                  <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-2" />
-                  <span>
-                    <RichInline text={item} />
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )
-        }
-
-        if (block.type === 'ordered-list') {
-          return (
-            <ol key={key} className="grid list-decimal gap-2 pl-5">
-              {block.items.map((item, itemIndex) => (
-                <li key={itemIndex} className="pl-1 text-[15px] leading-7 text-muted">
-                  <RichInline text={item} />
-                </li>
-              ))}
-            </ol>
-          )
-        }
-
-        if (block.type === 'checklist') {
-          return (
-            <ul key={key} className="grid gap-2 p-0">
-              {block.items.map((item, itemIndex) => (
-                <li key={itemIndex} className="flex items-start gap-3 text-[15px] leading-7 text-muted">
-                  <span
-                    className={`mt-1.5 grid h-5 w-5 shrink-0 place-items-center rounded border text-[11px] font-bold ${
-                      item.checked
-                        ? 'border-brand-2 bg-brand-2 text-[#1a0d07]'
-                        : 'border-white/20 bg-surface-2 text-transparent'
-                    }`}
-                  >
-                    x
-                  </span>
-                  <span className={item.checked ? 'text-zinc-300' : ''}>
-                    <RichInline text={item.text} />
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )
-        }
-
-        if (block.type === 'table') {
-          return (
-            <div key={key} className="overflow-x-auto rounded-lg border border-white/10 bg-bg-2">
-              <table className="min-w-full border-collapse text-left text-sm">
-                <thead className="bg-white/[0.04] text-xs font-bold uppercase text-zinc-300">
-                  <tr>
-                    {block.headers.map((header, headerIndex) => (
-                      <th
-                        key={`${header}-${headerIndex}`}
-                        className="border-b border-white/10 px-4 py-3"
-                        style={{ textAlign: block.alignments?.[headerIndex] ?? 'left' }}
-                      >
-                        <RichInline text={header} />
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {block.rows.map((row, rowIndex) => (
-                    <tr key={rowIndex} className="border-b border-white/5 last:border-b-0">
-                      {block.headers.map((header, cellIndex) => (
-                        <td
-                          key={`${header}-${cellIndex}`}
-                          className="px-4 py-3 text-muted"
-                          style={{ textAlign: block.alignments?.[cellIndex] ?? 'left' }}
-                        >
-                          <RichInline text={row[cellIndex] ?? ''} />
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )
-        }
-
-        if (block.type === 'columns' || block.type === 'grid') {
-          return <TitledItemsGrid key={key} block={block} />
-        }
-
-        if (block.type === 'cards') {
-          return <TitledItemsGrid key={key} block={{ ...block, columns: 3 }} card />
-        }
-
-        if (block.type === 'tabs') {
-          return <ArticleTabs key={key} items={block.items} />
-        }
-
-        if (block.type === 'accordion') {
-          return (
-            <CollapsibleItems
-              key={key}
-              items={block.items}
-              renderContent={(content) => <MarkdownBody text={content} />}
-            />
-          )
-        }
-
-        if (block.type === 'section' || block.type === 'container') {
-          const isContainer = block.type === 'container'
-          return (
-            <section
-              key={key}
-              className={`${isContainer ? 'rounded-lg border border-white/10 bg-bg-2 p-5' : 'border-t border-white/10 pt-5'}`}
-            >
-              {block.title && <h3 className="font-bold text-white"><RichInline text={block.title} /></h3>}
-              {block.text && <p className="mt-2 text-sm leading-7 text-muted"><RichInline text={block.text} /></p>}
-            </section>
-          )
-        }
-
-        if (block.type === 'sidebar') {
-          return (
-            <aside key={key} className="grid gap-4 rounded-lg border border-white/10 bg-bg-2 p-5 md:grid-cols-[1fr_240px]">
-              <div>
-                {block.title && <h3 className="font-bold text-white"><RichInline text={block.title} /></h3>}
-                {block.text && <p className="mt-2 text-sm leading-7 text-muted"><RichInline text={block.text} /></p>}
-              </div>
-              {block.sidebar && (
-                <div className="rounded-md border border-brand/30 bg-brand/[0.08] p-4 text-sm leading-6 text-zinc-200">
-                  <RichInline text={block.sidebar} />
-                </div>
-              )}
-            </aside>
-          )
-        }
-
-        if (block.type === 'quote') {
-          return (
-            <blockquote key={key} className="rounded-r-lg border-l-2 border-brand/60 bg-surface-2/50 py-2 pl-4 pr-3 text-[15px] italic leading-7 text-muted">
-              <RichInline text={block.text} />
-            </blockquote>
-          )
-        }
-
-        if (block.type === 'code') {
-          return (
-            <pre key={key} className="overflow-x-auto rounded-xl border border-white/10 bg-black/40 p-4 text-[13px] leading-6 text-brand-2">
-              <code>{block.text}</code>
-            </pre>
-          )
-        }
-
-        if (block.type === 'stats') {
-          return (
-            <div key={key} className="grid gap-3 sm:grid-cols-3">
-              {block.items.map((item) => (
-                <div className="rounded-lg border border-white/10 bg-surface-2 p-4" key={item.label}>
-                  <p className="text-xl font-bold leading-tight text-white">{item.value}</p>
-                  <p className="mt-1 text-xs font-semibold text-muted">{item.label}</p>
-                </div>
-              ))}
-            </div>
-          )
-        }
-
-        if (block.type === 'callout') {
-          return (
-            <div key={key} className="rounded-lg border border-brand/50 bg-brand/[0.08] p-4">
-              <h3 className="font-bold text-white"><RichInline text={block.title} /></h3>
-              <p className="mt-2 text-sm leading-6 text-muted"><RichInline text={block.text} /></p>
-            </div>
-          )
-        }
-
-        if (block.type === 'image') {
-          if (!isSafeImageUrl(block.src)) {
-            return null
-          }
-
-          const imageSrc = getOptimizedImageUrl(block.src, 1200) || block.src
-
-          return (
-            <figure key={key} className="overflow-hidden rounded-xl border border-white/10 bg-bg-2">
-              <img
-                className="h-auto max-h-[560px] w-full object-cover"
-                src={imageSrc}
-                alt={block.alt}
-                loading="lazy"
-                decoding="async"
-              />
-              {block.caption && (
-                <figcaption className="border-t border-white/10 px-4 py-3 text-xs leading-5 text-muted">
-                  <RichInline text={block.caption} />
-                </figcaption>
-              )}
-            </figure>
-          )
-        }
-
-        const isLead = block.type === 'lead'
-        return (
-          <p key={key} className={`${isLead ? 'text-[17px] text-zinc-200' : 'text-[15px] text-muted'} whitespace-pre-line leading-7`}>
-            <RichInline text={block.text} />
-          </p>
-        )
-      })}
+    <div className={`prose rich ${className}`}>
+      <RichBlocks blocks={blocks} />
     </div>
   )
 }

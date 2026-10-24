@@ -141,7 +141,7 @@ export function RichInline({ text }) {
     const key = `${part.type}-${index}`
 
     if (part.type === 'bold') {
-      return <strong key={key} className="font-bold text-white">{part.text}</strong>
+      return <strong key={key}>{part.text}</strong>
     }
 
     if (part.type === 'italic') {
@@ -149,16 +149,16 @@ export function RichInline({ text }) {
     }
 
     if (part.type === 'underline') {
-      return <span key={key} className="underline decoration-brand-2/70 underline-offset-4">{part.text}</span>
+      return <span key={key} className="underline decoration-brand/70 underline-offset-4">{part.text}</span>
     }
 
     if (part.type === 'strike') {
-      return <span key={key} className="line-through decoration-white/50">{part.text}</span>
+      return <span key={key} className="line-through">{part.text}</span>
     }
 
     if (part.type === 'code') {
       return (
-        <code key={key} className="rounded-md border border-white/10 bg-black/30 px-1.5 py-0.5 font-mono text-[0.92em] text-brand-2">
+        <code key={key} className="rounded-[3px] bg-surface-2 px-1.5 py-0.5 font-mono text-[0.86em] text-ink">
           {part.text}
         </code>
       )
@@ -166,7 +166,7 @@ export function RichInline({ text }) {
 
     if (part.type === 'link' && isSafeUrl(part.href)) {
       return (
-        <a key={key} className="font-semibold text-brand-2 underline underline-offset-4 hover:text-brand" href={part.href} target={part.href.startsWith('http') ? '_blank' : undefined} rel={part.href.startsWith('http') ? 'noreferrer' : undefined}>
+        <a key={key} className="font-semibold text-brand-2 underline underline-offset-4" href={part.href} target={part.href.startsWith('http') ? '_blank' : undefined} rel={part.href.startsWith('http') ? 'noreferrer' : undefined}>
           {part.text}
         </a>
       )
@@ -174,7 +174,7 @@ export function RichInline({ text }) {
 
     if (part.type === 'spoiler') {
       return (
-        <span key={key} className="rounded bg-white/12 px-1 text-transparent transition hover:text-white focus:text-white" tabIndex={0}>
+        <span key={key} className="cursor-pointer rounded-[3px] bg-ink/75 px-1 text-transparent hover:bg-ink/10 hover:text-inherit focus:bg-ink/10 focus:text-inherit" tabIndex={0}>
           {part.text}
         </span>
       )

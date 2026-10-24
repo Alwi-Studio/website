@@ -1,92 +1,43 @@
-@import "tailwindcss";
+@import "tailwindcss" source("./");
+@import "./styles/theme.css";
 
-/* ---- AlwiNation design tokens (Tailwind v4 theme) ---- */
-@theme {
-  --color-bg: #0b0b0e;
-  --color-bg-2: #0e0e12;
-  --color-surface: #141418;
-  --color-surface-2: #191920;
-  --color-raised: #20202a;
-  --color-brand: #ff5a30;
-  --color-brand-2: #ff9147;
-  --color-brand-discord: #2563EB;
-  --color-brand-2-discord: #38BDF8;
-  --color-ink: #f4f4f6;
-  --color-muted: #a6a6b0;
-  --color-muted-2: #71717f;
-  --color-positive: #3fd07f;
+/* Tailwind utilities still used by the admin and rich text read the shared tokens. */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-2: var(--bg-2);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-raised: var(--surface-2);
+  --color-brand: var(--brand);
+  --color-brand-2: var(--brand);
+  --color-brand-discord: var(--discord);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-muted-2: var(--dim);
+  --color-positive: var(--online);
 
-  --radius-xl2: 16px;
+  --radius-xl2: var(--radius);
 
-  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-sans: var(--sans);
+  --font-mono: var(--mono);
 }
 
-@keyframes button-shine {
-  0% {
-    background-position: 150% 0;
+.text-brand-2 {
+  color: var(--brand-ink);
+}
+
+@layer utilities {
+  :is(h1, h2, h3, h4, h5, h6).font-bold {
+    font-weight: 800;
   }
+}
 
-  60%,
-  100% {
-    background-position: -150% 0;
+@layer base {
+  #root {
+    width: 100%;
+    min-width: 0;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
   }
-}
-
-:root {
-  color-scheme: dark;
-}
-
-body {
-  margin: 0;
-  background: var(--color-bg);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-  font-size: 16px;
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-}
-
-#root {
-  width: 100%;
-  min-width: 0;
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Reusable primitives ------------------------------------------------ */
-.eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--color-brand-2);
-}
-.eyebrow::before {
-  content: "";
-  width: 22px;
-  height: 2px;
-  border-radius: 2px;
-  background: linear-gradient(90deg, var(--color-brand), transparent);
-}
-
-.text-gradient {
-  background: linear-gradient(120deg, #ffffff 20%, var(--color-brand-2) 62%, var(--color-brand));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.hero-grid-overlay {
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: 54px 54px;
-  -webkit-mask-image: radial-gradient(80% 60% at 50% 40%, #000, transparent 85%);
-  mask-image: radial-gradient(80% 60% at 50% 40%, #000, transparent 85%);
 }

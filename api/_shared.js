@@ -1,4 +1,6 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
+import { normalizeSite, validateSite } from './_site.js'
+export { normalizeSite, validateSite, readSiteBody, SiteValidationError } from './_site.js'
 
 const adminUsername = process.env.ADMIN_USERNAME ?? 'admin'
 const adminPassword = process.env.ADMIN_PASSWORD ?? ''
@@ -172,11 +174,14 @@ async function supabaseRequest(path, options = {}) {
       parsedData?.code === 'PGRST205' ||
       parsedData?.message?.includes(`Could not find the table 'public.${tableName}'`)
     ) {
-      const sqlFile = tableName === 'changelog_entries' ? 'database/supabase-changelog.sql' : 'database/supabase-news.sql'
+      const sqlFile = tableName === 'site_pages' ? 'database/supabase-site.sql'
+        : tableName === 'changelog_entries' ? 'database/supabase-changelog.sql' : 'database/supabase-news.sql'
 
-      throw new Error(
+      const error = new Error(
         `Supabase is configured, but public.${tableName} does not exist yet. Run ${sqlFile} in the Supabase SQL editor, then retry.`,
       )
+      error.code = 'PGRST205'
+      throw error
     }
 
     throw new Error(parsedData?.message ?? 'Supabase request failed.')
@@ -252,6 +257,38 @@ export async function readStaff() {
   }
 
   return normalizeStaff(rows[0].staff)
+}
+
+export async function readSite() {
+  if (!supabaseUrl || !supabaseServiceRoleKey) return normalizeSite()
+  let rows
+  try {
+    rows = await supabaseRequest('site_pages?key=eq.main&select=site&limit=1')
+  } catch (error) {
+    if (error.code === 'PGRST205') return normalizeSite()
+    throw error
+  }
+  if (!Array.isArray(rows)) throw new Error('Invalid response from public.site_pages.')
+  const site = normalizeSite(rows.length ? rows[0].site : undefined)
+  validateSite(site)
+  return site
+}
+
+export async function saveSite(site) {
+  const normalizedSite = normalizeSite(site)
+  validateSite(normalizedSite)
+  await supabaseRequest('site_pages?on_conflict=key', {
+    method: 'POST',
+    body: JSON.stringify({ key: 'main', site: normalizedSite, updated_at: new Date().toISOString() }),
+    headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+  })
+  return normalizedSite
+}
+
+export async function deleteSite() {
+  await supabaseRequest('site_pages?key=eq.main', {
+    method: 'DELETE', headers: { Prefer: 'return=minimal' },
+  })
 }
 
 export async function readWiki() {

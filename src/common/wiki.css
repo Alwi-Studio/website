@@ -1,0 +1,188 @@
+/* Wiki home and wiki article, ported from .taste-skill/example-v2/wiki.html and
+   wiki-article.html. Everything is scoped under .wiki so the generic mockup
+   class names (.cat, .chip, .pager ...) cannot leak into other pages. */
+
+/* The picture band stays dark even before its picture loads. */
+.wiki .page-hero { background: #0a0a0c; }
+.wiki .page-hero h1 { overflow-wrap: anywhere; }
+/* Keeps the kicker readable over bright category pictures. */
+.wiki .page-hero .crumbs + .label { text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9); }
+
+/* Section heads: the shared .sec-head size, left aligned on the wiki. */
+.wiki .sec-head { align-items: flex-start; text-align: left; margin-bottom: 30px; }
+.wiki-sec + .wiki-sec { margin-top: 96px; }
+
+/* Panel labels: --dim sits just under 4.5:1 on --surface in dark mode. */
+.wiki .toc .label { color: var(--muted); }
+
+/* ---------- Hero search ---------- */
+.wiki-search { margin-top: 30px; max-width: 780px; }
+.wiki-search .field svg { left: 20px; width: 22px; height: 22px; }
+.wiki-search .field input { min-height: 66px; padding: 0 64px 0 56px; border-width: 3px; font-size: 18px; font-weight: 500; }
+/* Our own clear button replaces the native one, which Firefox does not draw. */
+.wiki-search .field input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; display: none; }
+.wiki-search kbd {
+  position: absolute; right: 16px; display: grid; place-items: center; min-width: 30px; height: 30px; padding: 0 8px;
+  border: 2px solid var(--edge); border-radius: 3px; background: var(--surface-2); color: var(--muted);
+  font-family: var(--mono); font-size: 13px; font-weight: 700; box-shadow: inset 0 -3px 0 var(--bevel-lo); pointer-events: none;
+}
+.wiki-search .wiki-clear {
+  position: absolute; right: 12px; display: grid; place-items: center; width: 40px; height: 40px;
+  border: 0; border-radius: var(--radius); background: none; color: var(--muted);
+}
+.wiki-search .wiki-clear:hover { background: var(--surface-2); color: var(--ink); }
+.wiki-search .wiki-clear svg { position: static; width: 18px; height: 18px; color: inherit; }
+.wiki .try { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.wiki .try .label { color: rgba(255, 255, 255, 0.7); margin-right: 4px; }
+.wiki .try button {
+  min-height: 34px; padding: 0 12px; border: 2px solid #000; border-radius: var(--radius);
+  background: rgba(20, 20, 24, 0.82); color: #e6e7ec; font-family: var(--mono); font-size: 13px; font-weight: 700;
+  box-shadow: inset 0 -3px 0 #0b0b0d, inset 0 2px 0 rgba(255, 255, 255, 0.1);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.wiki .try button:hover { background: #2c2c33; color: #fff; }
+
+/* Live results: an in-flow panel under the field. */
+.wiki .results { margin-top: 12px; max-width: 780px; padding: 8px; color: var(--ink); }
+.wiki .results .results-head { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px 10px; color: var(--muted); }
+.wiki .result { display: grid; gap: 4px; padding: 12px 14px; border-radius: 3px; border-left: 3px solid transparent; transition: background-color 120ms ease; }
+.wiki .result:hover, .wiki .result:focus-visible { background: var(--surface-2); border-left-color: var(--brand); }
+.wiki .result-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.wiki .result b { font-size: 17px; font-weight: 800; letter-spacing: -0.01em; }
+.wiki .result .snip { color: var(--muted); font-size: 14.5px; line-height: 1.55; overflow-wrap: anywhere; }
+.wiki .results mark { background: color-mix(in srgb, var(--brand) 30%, transparent); color: inherit; border-radius: 2px; padding: 0 1px; }
+.wiki .results .none { padding: 18px 12px 14px; color: var(--muted); }
+.wiki .results .none a { color: var(--brand-ink); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+.wiki .page-hero .wiki-stats { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 8px 26px; color: rgba(255, 255, 255, 0.72); }
+.wiki .wiki-stats b { color: #fff; font-weight: 700; }
+
+/* ---------- Start here ---------- */
+.wiki .start { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+.wiki .start > li { display: grid; } /* the panel fills its row, so all three match in height */
+.wiki .start a { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 18px; align-items: start; padding: 24px 24px 22px; transition: transform 160ms ease; }
+.wiki .start a:hover { transform: translateY(-4px); }
+.wiki .start .num {
+  display: grid; place-items: center; width: 52px; height: 52px; border-radius: var(--radius);
+  background: var(--brand); color: #160904; border: 2px solid #000; font-size: 22px; font-weight: 800;
+  box-shadow: inset 0 -4px 0 var(--brand-dark), inset 0 3px 0 rgba(255, 255, 255, 0.3);
+}
+.wiki .start .label { color: var(--muted); }
+.wiki .start b { display: block; margin-top: 4px; font-size: 20px; font-weight: 800; line-height: 1.25; letter-spacing: -0.01em; }
+.wiki .start p { margin-top: 6px; color: var(--muted); }
+.wiki .start .go { margin-top: 14px; display: inline-flex; gap: 8px; color: var(--brand-ink); font-weight: 700; }
+.wiki .start .go span { transition: transform 160ms ease; }
+.wiki .start a:hover .go span { transform: translateX(4px); }
+
+/* ---------- Category cards ---------- */
+.wiki .cats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 22px; }
+/* 100px clears the nav; +26px covers the reveal offset the card still has when a #cat- link scrolls to it. */
+.wiki .cat { grid-column: span 2; display: flex; flex-direction: column; overflow: hidden; scroll-margin-top: 126px; }
+.wiki .cat:nth-child(-n+2) { grid-column: span 3; }
+.wiki .cat-pic { position: relative; isolation: isolate; display: flex; flex-direction: column; justify-content: flex-end; min-height: 170px; padding: 20px 22px 18px; color: #fff; border-bottom: 2px solid var(--edge); overflow: hidden; }
+.wiki .cat-pic img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: var(--pos, 50% 40%); transition: transform 700ms cubic-bezier(.2, .7, .2, 1); }
+.wiki .cat-pic::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(0deg, rgba(8, 8, 10, 0.92) 0%, rgba(8, 8, 10, 0.55) 45%, rgba(8, 8, 10, 0.15) 100%); }
+.wiki .cat:hover .cat-pic img { transform: scale(1.05); }
+.wiki .cat-pic .realm-badge { --realm: var(--brand); }
+.wiki .cat-pic h3 { font-size: clamp(24px, 2.2vw, 30px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5); overflow-wrap: anywhere; }
+.wiki .cat-pic h3 a:hover { color: #ffb08f; }
+.wiki .cat-body { padding: 18px 22px 12px; display: flex; flex-direction: column; flex: 1; }
+.wiki .cat-desc { color: var(--muted); }
+.wiki .cat-list { margin-top: 14px; }
+.wiki .cat-list a { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); }
+.wiki .cat-list b { font-weight: 700; overflow-wrap: anywhere; transition: color 120ms ease; }
+.wiki .cat-list small { grid-column: 1; color: var(--muted); font-size: 14px; }
+.wiki .cat-list .arr { grid-row: 1 / span 2; grid-column: 2; color: var(--dim); transition: transform 160ms ease, color 160ms ease; }
+.wiki .cat-list a:hover b, .wiki .cat-list a:hover .arr { color: var(--brand-ink); }
+.wiki .cat-list a:hover .arr { transform: translateX(4px); }
+.wiki .cat-empty { margin-top: 14px; padding: 12px 0; border-top: 1px solid var(--line); color: var(--muted); }
+
+/* ---------- Realm index: the home page's realm cards, smaller ---------- */
+.wiki .ri { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
+/* clip, not hidden: a scroll container loses the aspect-ratio minimum, so long admin labels were cut off at the
+   top of the small cards (768px). With clip the card grows to fit, and stretch keeps a row's cards level and
+   column wide (an aspect-ratio item otherwise takes its width from its grown height). */
+.wiki .ri .realm { aspect-ratio: 4 / 5; padding: 18px; border-width: 2px; overflow: clip; place-self: stretch; }
+/* The text fills more of these small cards, so the dark part of the shade reaches higher than on the home page. */
+.wiki .ri .realm::before { background: linear-gradient(0deg, color-mix(in srgb, var(--realm) 26%, #050506) 0%, rgba(5, 5, 6, 0.86) 45%, rgba(5, 5, 6, 0.2) 78%, rgba(5, 5, 6, 0) 100%); }
+.wiki .ri .realm .label { font-size: 11px; letter-spacing: 0.14em; }
+.wiki .ri .realm-name { margin-top: 6px; font-size: clamp(20px, 1.7vw, 24px); line-height: 1; overflow-wrap: anywhere; }
+.wiki .ri .soon { margin-top: 10px; display: inline-flex; align-items: center; gap: 7px; color: #c3c5ce; font-size: 13px; font-weight: 600; }
+.wiki .ri .soon::before { content: ""; width: 7px; height: 7px; border-radius: 1px; background: #8a8c96; }
+.wiki .ri .realm-go { margin-top: 8px; font-size: 14px; }
+.wiki .ri div.realm:hover { transform: none; }
+.wiki .ri div.realm:hover > img { transform: none; }
+
+/* ---------- Discord help band ---------- */
+.wiki .help-band { margin-top: 96px; }
+.wiki .help-band .row { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 12px; }
+.wiki .help-band .row .btn { margin-top: 0; }
+
+/* ---------- Article hero ---------- */
+.wiki-art .page-hero h1 { max-width: 20ch; }
+.wiki .art-meta { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 8px; }
+.wiki .chip {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 11px; border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55); border: 1px solid rgba(255, 255, 255, 0.16); color: #c9ccd6;
+  font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase;
+}
+.wiki .chip b { color: #fff; font-weight: 700; }
+
+/* Sidebar: this topic's guides, then the contents of this page. */
+.wiki .side .toc { padding: 18px 14px; }
+.wiki .side .label { padding-inline: 10px; }
+/* The topic link sits in a label, not in the list: undo the .toc a row styling. */
+.wiki .side .label a, .wiki .side .label a:hover { display: inline; padding: 0; border: 0; background: none; font: inherit; color: var(--brand-ink); }
+.wiki .side .label a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.wiki .side-group + .side-group { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.wiki .side .back { display: inline-flex; gap: 8px; margin: 14px 10px 0; color: var(--muted); font-weight: 700; font-size: 14px; }
+.wiki .side .back:hover { color: var(--brand-ink); }
+
+.wiki .art { min-width: 0; }
+.wiki .art .prose { overflow-wrap: anywhere; }
+.wiki .art-empty { color: var(--muted); }
+
+/* Previous / next guide. */
+.wiki .pager { margin-top: 64px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.wiki .pager a { display: flex; flex-direction: column; gap: 4px; padding: 18px 22px 20px; transition: transform 160ms ease; }
+.wiki .pager a:hover { transform: translateY(-3px); }
+.wiki .pager a:hover b { color: var(--brand-ink); }
+.wiki .pager .label { color: var(--muted); }
+.wiki .pager b { font-size: 19px; font-weight: 800; line-height: 1.25; letter-spacing: -0.01em; overflow-wrap: anywhere; transition: color 120ms ease; }
+.wiki .pager small { color: var(--muted); font-size: 14px; }
+.wiki .pager .next { grid-column: 2; text-align: right; align-items: flex-end; }
+.wiki-art .help-band { margin-top: 72px; }
+
+/* ---------- Loading ---------- */
+.wiki .page-hero .skeleton { background: rgba(255, 255, 255, 0.1); }
+.wiki-skel-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+
+@media (max-width: 1060px) {
+  .wiki .start { grid-template-columns: minmax(0, 1fr); }
+  .wiki .cats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wiki .cat, .wiki .cat:nth-child(-n+2) { grid-column: auto; }
+  .wiki .cat:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .wiki .ri { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .wiki .ri .realm { aspect-ratio: 1; }
+  /* On the square cards the text reaches the top edge, so the shade has to as well. */
+  .wiki .ri .realm::before { background: linear-gradient(0deg, color-mix(in srgb, var(--realm) 26%, #050506) 0%, rgba(5, 5, 6, 0.86) 55%, rgba(5, 5, 6, 0.5) 100%); }
+  /* The sidebar sits above the article here (same as the other pages); other topics stay on desktop only. */
+  .wiki .side-other { display: none; }
+  .wiki-skel-cards { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .wiki-search .field input { min-height: 58px; padding-right: 56px; font-size: 16px; }
+  .wiki-search kbd { display: none; }
+  .wiki .try { gap: 6px; }
+  .wiki .try button { min-height: 32px; padding: 0 9px; font-size: 12px; }
+  .wiki-sec + .wiki-sec, .wiki .help-band { margin-top: 72px; }
+  .wiki .start a { grid-template-columns: 44px minmax(0, 1fr); gap: 14px; padding: 20px 18px; }
+  .wiki .start .num { width: 44px; height: 44px; font-size: 19px; }
+  .wiki .cats { grid-template-columns: minmax(0, 1fr); }
+  .wiki .cat-pic { min-height: 140px; }
+  .wiki .ri { gap: 12px; }
+  .wiki .ri .realm { padding: 14px; }
+  .wiki .help-band .row .btn { flex: 1 1 100%; }
+  .wiki .pager { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .wiki .pager .next { grid-column: 1; }
+  .wiki-art .help-band { margin-top: 56px; }
+}

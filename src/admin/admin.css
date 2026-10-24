@@ -1,0 +1,213 @@
+/* Admin app shell. Calm and dense, on the site tokens: no picture bands,
+   particles or gradients. Unlayered, so these win over Tailwind utilities. */
+.adm, .adm-login {
+  --adm-line: color-mix(in srgb, var(--ink) 14%, transparent);
+  /* Danger and success text: both clear 4.5:1 on --surface and --surface-2. */
+  --adm-danger: #ff9b9b;
+  --adm-ok: var(--tag-community-ink);
+}
+.adm {
+  display: grid; grid-template-columns: 248px minmax(0, 1fr);
+  min-height: 100svh; background: var(--bg); color: var(--ink);
+}
+:root[data-theme="light"] .adm, :root[data-theme="light"] .adm-login { --adm-danger: #b42318; }
+
+/* ---------- Sidebar ---------- */
+.adm-side {
+  /* ThemeToggle and .icon-btn read the nav ink variables. */
+  --nav-ink: var(--ink); --nav-muted: var(--muted);
+  position: sticky; top: 0; height: 100svh; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 20px; padding: 18px 14px;
+  background: var(--bg-2); box-shadow: 1px 0 0 var(--adm-line);
+}
+.adm-brand { display: flex; align-items: center; gap: 10px; padding: 4px 6px; }
+.adm-brand img { width: 34px; height: 34px; }
+.adm-brand b { display: block; font-weight: 800; font-size: 17px; line-height: 1.1; }
+.adm-brand .label { color: var(--muted); font-size: 11px; }
+.adm-menu-btn { display: none; }
+.adm-drawer { display: flex; flex-direction: column; gap: 20px; flex: 1; }
+.adm-nav { display: grid; gap: 2px; }
+.adm-nav .label { padding: 0 10px 6px; color: var(--muted); font-size: 11px; }
+.adm-nav button, .adm-nav a {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 0 10px;
+  border: 0; border-left: 3px solid transparent; border-radius: 0 3px 3px 0; background: none;
+  color: var(--ink-2); font-weight: 600; font-size: 14.5px; text-align: left;
+}
+.adm-nav button:hover, .adm-nav a:hover { background: var(--surface-2); color: var(--ink); }
+.adm-nav [aria-current="page"] { border-left-color: var(--brand); background: var(--surface-2); color: var(--ink); }
+.adm-nav .count { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.adm-nav .dot { width: 7px; height: 7px; border-radius: 1px; background: var(--brand); flex: none; }
+/* Unsaved edits: an outlined square, so it never reads as the filled "customized" dot. */
+.adm-nav .dot.unsaved { width: 9px; height: 9px; background: none; box-shadow: inset 0 0 0 2px var(--brand-ink); }
+.adm-side-foot { margin-top: auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding-top: 16px; border-top: 1px solid var(--adm-line); }
+.adm-side-row { display: flex; align-items: center; gap: 8px; }
+.adm-user { display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; }
+.adm-user .avatar { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: var(--radius); background: var(--brand); color: #160904; font-weight: 800; box-shadow: inset 0 -3px 0 var(--brand-dark); }
+.adm-user .who { min-width: 0; line-height: 1.3; }
+.adm-user .who b { display: block; font-size: 14px; }
+.adm-user .who span { font-size: 12.5px; color: var(--muted); }
+
+/* ---------- Main column ---------- */
+.adm-main { min-width: 0; display: flex; flex-direction: column; }
+.adm-top {
+  position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px;
+  min-height: 68px; padding: 12px 28px; background: var(--nav-solid); box-shadow: 0 1px 0 var(--adm-line);
+}
+.adm-top h1 { font-size: 22px; letter-spacing: -0.02em; line-height: 1.15; }
+.adm-top .label { color: var(--muted); font-size: 11px; }
+.adm-top-tools { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.adm-top .field input { min-height: 42px; width: 260px; font-size: 15px; }
+.adm-status { display: inline-flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 10px; border-radius: 6px; font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; background: var(--surface-2); color: var(--muted); }
+.adm-status::before { content: ""; width: 7px; height: 7px; border-radius: 1px; background: currentColor; }
+.adm-status[data-state="dirty"] { color: var(--brand-ink); }
+.adm-status[data-state="saved"] { color: var(--adm-ok); }
+.adm-body { padding: 24px 28px 64px; min-width: 0; }
+
+/* ---------- Panes: list | editor | preview ---------- */
+.adm-panes { display: grid; grid-template-columns: 300px minmax(0, 1.2fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.adm-panes.two { grid-template-columns: 340px minmax(0, 1fr); }
+.adm-panes.settings { grid-template-columns: minmax(0, 1fr) 340px; }
+/* Realm rows carry a swatch, a switch and two move buttons: give the names room. */
+.adm-panes.realms { grid-template-columns: 340px minmax(0, 1fr) minmax(0, 1fr); }
+.adm-pane { min-width: 0; padding: 20px; }
+.adm-pane > h2, .adm-pane-head h2 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
+.adm-pane-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+.adm-pane .label:not(.adm-accent) { color: var(--muted); }
+/* Orange text. --brand-ink darkens in light mode; plain --brand there is 3:1 on white. */
+.adm-accent { color: var(--brand-ink); }
+.adm-sticky { position: sticky; top: 88px; max-height: calc(100svh - 104px); overflow-y: auto; }
+.adm-preview { overflow-wrap: anywhere; }
+.adm-preview > .label { display: block; margin-bottom: 14px; }
+
+/* List rows inside a pane. */
+.adm-card { min-width: 0; padding: 12px; border: 1px solid var(--adm-line); border-radius: var(--radius); background: var(--surface-2); }
+.adm-card.is-active { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 9%, var(--surface-2)); }
+.adm-card.is-off .pick { opacity: 0.7; }
+/* Edit / View / Delete fit on one row in the 300px list column. */
+.adm-card .btn-sm { padding: 0 12px; }
+.adm-chip { display: inline-flex; align-items: center; min-height: 24px; padding: 0 8px; border-radius: 6px; background: var(--bg-2); color: var(--muted); font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+
+/* ---------- Form controls ---------- */
+/* In the components layer so per-field utilities (min-h-24, font-mono,
+   text-[13px]) still apply; Tailwind declares that layer order first. */
+@layer components {
+  .adm-label { display: grid; align-content: start; min-width: 0; gap: 7px; font-size: 14px; font-weight: 600; color: var(--ink-2); }
+  .adm-label > .hint, .adm-hint { font-size: 12.5px; font-weight: 500; line-height: 1.5; color: var(--muted); }
+  .adm-input {
+    min-width: 0; min-height: 44px; padding: 0 12px;
+    border: 2px solid var(--edge); border-radius: var(--radius); background: var(--bg-2); color: var(--ink);
+    font-size: 15px; font-weight: 500;
+    box-shadow: inset 2px 2px 0 var(--bevel-lo);
+  }
+  textarea.adm-input { width: 100%; min-height: 96px; padding: 10px 12px; line-height: 1.6; resize: vertical; }
+  .adm-input::placeholder { color: var(--dim); }
+  .adm-input:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
+  .adm-input[aria-invalid="true"] { border-color: var(--adm-danger); }
+  .adm-color { width: 52px; height: 44px; padding: 3px; border: 2px solid var(--edge); border-radius: var(--radius); background: var(--bg-2); cursor: pointer; }
+}
+.adm-error { font-size: 13px; font-weight: 600; line-height: 1.5; color: var(--adm-danger); }
+.adm-msg { font-size: 14px; font-weight: 600; color: var(--brand-ink); }
+.adm-fieldset { display: grid; gap: 16px; min-width: 0; margin: 0; padding: 16px; border: 1px solid var(--adm-line); border-radius: var(--radius); }
+.adm-fieldset > legend { padding: 0 6px; font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+.adm-grid2 { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); }
+
+/* Square tool buttons: move, remove. */
+.adm-icon-btn {
+  display: grid; place-items: center; width: 34px; height: 34px; flex: none; padding: 0;
+  border: 2px solid var(--edge); border-radius: var(--radius); background: var(--stone); color: var(--stone-ink);
+  font-size: 15px; font-weight: 700; line-height: 1;
+  box-shadow: inset 0 -3px 0 var(--stone-lo), inset 0 2px 0 var(--bevel-hi);
+}
+.adm-icon-btn:hover { background: var(--stone-hover); }
+.adm-icon-btn:disabled { opacity: 0.35; cursor: default; }
+.adm-icon-btn.danger { color: var(--adm-danger); }
+.adm .btn:disabled, .adm-login .btn:disabled { opacity: 0.6; cursor: default; transform: none; }
+.adm .btn-primary.is-saved { background: var(--online); box-shadow: inset 0 -5px 0 #1f8a4c, inset 0 3px 0 rgba(255, 255, 255, 0.3); }
+.btn-danger { background: transparent; color: var(--adm-danger); border: 2px solid color-mix(in srgb, var(--adm-danger) 55%, transparent); box-shadow: none; }
+.btn-danger:hover { background: color-mix(in srgb, var(--adm-danger) 12%, transparent); }
+.adm-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px; border: 2px solid color-mix(in srgb, var(--adm-danger) 55%, transparent); border-radius: var(--radius); background: color-mix(in srgb, var(--adm-danger) 8%, transparent); }
+.adm-confirm p { flex: 1 1 220px; font-size: 14px; font-weight: 600; color: var(--ink); }
+
+/* On/off switch: a real checkbox, drawn with an outline so "off" stays visible in dark mode. */
+.adm-switch { position: relative; display: inline-flex; flex: none; width: 40px; height: 22px; }
+.adm-switch input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.adm-switch span { width: 100%; height: 100%; border: 2px solid var(--muted); border-radius: 3px; background: var(--bg-2); pointer-events: none; }
+.adm-switch span::after { content: ""; position: absolute; top: 5px; left: 5px; width: 12px; height: 12px; border-radius: 2px; background: var(--muted); }
+@media (prefers-reduced-motion: no-preference) {
+  .adm-switch span { transition: background-color 150ms ease, border-color 150ms ease; }
+  .adm-switch span::after { transition: transform 150ms ease, background-color 150ms ease; }
+}
+.adm-switch input:checked + span { border-color: var(--brand); background: var(--brand); }
+.adm-switch input:checked + span::after { transform: translateX(18px); background: #fff; }
+.adm-switch input:focus-visible + span { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+/* Ordered lists with move buttons (realms, sections). */
+.adm-order { display: grid; gap: 6px; }
+.adm-order li { display: flex; align-items: center; gap: 6px; padding: 8px 8px 8px 10px; }
+.adm-order .pick { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; padding: 0; border: 0; background: none; text-align: left; }
+.adm-order .pick b { display: block; font-size: 14.5px; line-height: 1.25; overflow-wrap: anywhere; }
+.adm-order .pick small { display: block; font-family: var(--mono); font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
+.adm-swatch { width: 18px; height: 18px; flex: none; border: 2px solid var(--edge); border-radius: 3px; }
+.adm-rows { display: grid; gap: 10px; }
+.adm-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+.adm-row-tools { display: flex; gap: 6px; padding-top: 26px; }
+
+/* Image URL thumbnail. */
+.adm-thumb { display: grid; place-items: center; width: 120px; aspect-ratio: 16 / 10; overflow: hidden; border: 2px solid var(--edge); border-radius: var(--radius); background: var(--bg-2); color: var(--muted); font-size: 12px; text-align: center; }
+.adm-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.adm-realm-preview { width: min(100%, 320px); margin-inline: auto; }
+
+/* Overview. */
+.adm-stats { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.adm-stat { display: grid; gap: 6px; padding: 18px; text-align: left; }
+.adm-stat b { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; line-height: 1; }
+.adm-stat span { font-size: 13.5px; color: var(--muted); }
+button.adm-stat { border: 2px solid var(--edge); }
+button.adm-stat:hover { background: var(--surface-2); }
+.adm-live { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: var(--adm-ok); }
+.adm-live::before { content: ""; width: 9px; height: 9px; border-radius: 1px; background: currentColor; }
+.adm-live.off { color: var(--muted); }
+.adm-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.adm-toolbar { position: sticky; top: 68px; z-index: 10; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: -24px -28px 20px; padding: 12px 28px; background: var(--bg); box-shadow: 0 1px 0 var(--adm-line); }
+.adm-toolbar .seg { margin-right: auto; }
+/* Panes under the home/settings toolbar stick below it, not under it. */
+.adm-toolbar ~ .adm-panes .adm-sticky { top: 150px; max-height: calc(100svh - 166px); }
+
+/* Formatting docs code samples. */
+.adm-code { overflow-x: auto; margin: 0; padding: 14px; border: 1px solid var(--adm-line); border-radius: var(--radius); background: var(--bg-2); color: var(--ink-2); font-family: var(--mono); font-size: 12.5px; line-height: 1.7; }
+
+/* ---------- Login and loading ---------- */
+.adm-login { min-height: 100svh; display: grid; place-items: center; padding: 40px 16px; background: var(--bg); color: var(--ink); }
+.adm-login .panel { width: min(100%, 420px); padding: 28px; }
+.adm-login h1 { margin-top: 10px; font-size: 30px; letter-spacing: -0.02em; line-height: 1.1; }
+.adm-login .label { color: var(--brand-ink); }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1380px) {
+  .adm-panes { grid-template-columns: 300px minmax(0, 1fr); }
+  .adm-panes.realms { grid-template-columns: 340px minmax(0, 1fr); }
+  .adm-panes > .adm-preview { grid-column: 2; }
+  .adm-panes > .adm-preview.adm-sticky { position: static; max-height: none; }
+}
+@media (max-width: 1080px) {
+  .adm-panes, .adm-panes.two, .adm-panes.settings, .adm-panes.realms { grid-template-columns: minmax(0, 1fr); }
+  .adm-panes > .adm-preview { grid-column: auto; }
+  .adm-sticky { position: static; max-height: none; }
+}
+/* Phones and small tablets: the sidebar becomes a bar with a menu button. */
+@media (max-width: 900px) {
+  .adm { grid-template-columns: minmax(0, 1fr); }
+  .adm-side { position: sticky; z-index: 30; height: auto; max-height: 100svh; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0; padding: 10px 16px; box-shadow: 0 1px 0 var(--adm-line); }
+  .adm-menu-btn { display: inline-flex; margin-left: auto; }
+  .adm-drawer { display: none; flex-basis: 100%; padding: 14px 0 6px; }
+  .adm-side.is-open .adm-drawer { display: flex; }
+  .adm-top { position: static; padding: 14px 16px; }
+  .adm-top-tools { margin-left: 0; width: 100%; }
+  .adm-top .field { flex: 1 1 100%; }
+  .adm-top .field input { width: 100%; }
+  .adm-body { padding: 18px 16px 48px; }
+  /* It wraps to several rows on phones; sticky it would cover a third of the screen. */
+  .adm-toolbar { position: static; margin: -18px -16px 16px; padding: 10px 16px; }
+  .adm-toolbar ~ .adm-panes .adm-sticky { position: static; max-height: none; }
+  .adm-pane { padding: 16px; }
+}

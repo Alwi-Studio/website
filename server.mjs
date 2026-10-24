@@ -1,9 +1,11 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import { createReadStream, existsSync } from 'node:fs'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { extname, resolve } from 'node:path'
 import { optimizedRemoteImage } from './image-optimizer.mjs'
+import leaderboardHandler from './api/leaderboard.js'
+import { normalizeSite, validateSite, readSiteBody, SiteValidationError } from './api/_site.js'
 
 const rootDir = process.cwd()
 const distDir = resolve(rootDir, 'dist')
@@ -11,6 +13,10 @@ const dataDir = resolve(rootDir, 'data')
 const newsFile = resolve(dataDir, 'admin-news.json')
 const changelogFile = resolve(dataDir, 'admin-changelog.json')
 const changelogRealmsFile = resolve(dataDir, 'changelog-realms.json')
+const siteFile = resolve(dataDir, 'site.json')
+// This process owns local site mutations; concurrent Windows renames collide.
+let siteWrites = Promise.resolve()
+let pendingSiteWrites = 0
 const envFile = resolve(rootDir, '.env')
 const port = Number(process.env.PORT ?? 4175)
 
@@ -146,6 +152,7 @@ function fromDatabaseRow(row) {
 }
 
 async function supabaseRequest(path, options = {}) {
+  const tableName = path.split('?')[0]
   const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
     ...options,
     headers: {
@@ -162,17 +169,91 @@ async function supabaseRequest(path, options = {}) {
   if (!response.ok) {
     if (
       parsedData?.code === 'PGRST205' ||
-      parsedData?.message?.includes("Could not find the table 'public.news_posts'")
+      parsedData?.message?.includes(`Could not find the table 'public.${tableName}'`)
     ) {
-      throw new Error(
-        'Supabase is configured, but public.news_posts does not exist yet. Run database/supabase-news.sql in the Supabase SQL editor, then retry.',
+      const sqlFile = tableName === 'site_pages' ? 'database/supabase-site.sql'
+        : tableName.startsWith('changelog_') ? 'database/supabase-changelog.sql' : 'database/supabase-news.sql'
+      const error = new Error(
+        `Supabase is configured, but public.${tableName} does not exist yet. Run ${sqlFile} in the Supabase SQL editor, then retry.`,
       )
+      error.code = 'PGRST205'
+      throw error
     }
 
     throw new Error(parsedData?.message ?? 'Supabase request failed.')
   }
 
   return parsedData
+}
+
+async function readSite() {
+  let stored
+  if (hasSupabaseStorage) {
+    let rows
+    try {
+      rows = await supabaseRequest('site_pages?key=eq.main&select=site&limit=1')
+    } catch (error) {
+      if (error.code === 'PGRST205') return normalizeSite()
+      throw error
+    }
+    if (!Array.isArray(rows)) throw new Error('Invalid response from public.site_pages.')
+    stored = rows.length ? rows[0].site : undefined
+  } else {
+    try {
+      stored = JSON.parse(await readFile(siteFile, 'utf8'))
+    } catch (error) {
+      if (error.code === 'ENOENT') return normalizeSite()
+      throw error
+    }
+  }
+  const site = normalizeSite(stored)
+  validateSite(site)
+  return site
+}
+
+async function saveSite(site) {
+  const normalizedSite = normalizeSite(site)
+  validateSite(normalizedSite)
+  if (hasSupabaseStorage) {
+    await supabaseRequest('site_pages?on_conflict=key', {
+      method: 'POST',
+      body: JSON.stringify({ key: 'main', site: normalizedSite, updated_at: new Date().toISOString() }),
+      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+    })
+  } else {
+    await writeLocalSite(normalizedSite)
+  }
+  return normalizedSite
+}
+
+async function deleteSite() {
+  if (hasSupabaseStorage) {
+    await supabaseRequest('site_pages?key=eq.main', { method: 'DELETE', headers: { Prefer: 'return=minimal' } })
+  } else {
+    await writeLocalSite(null)
+  }
+}
+
+function writeLocalSite(site) {
+  if (pendingSiteWrites >= 16) throw new Error('Too many pending site saves. Retry shortly.')
+  pendingSiteWrites++
+  const write = siteWrites.then(async () => {
+    if (site === null) {
+      await rm(siteFile, { force: true })
+      return
+    }
+    await mkdir(dataDir, { recursive: true })
+    const temporaryFile = resolve(dataDir, `site-${randomBytes(16).toString('hex')}.tmp`)
+    try {
+      await writeFile(temporaryFile, `${JSON.stringify(site, null, 2)}\n`, { flag: 'wx' })
+      await rename(temporaryFile, siteFile)
+    } finally {
+      await rm(temporaryFile, { force: true })
+    }
+  })
+  // The caller still receives the original rejection; the next write can run.
+  siteWrites = write.catch(() => {}).finally(() => { pendingSiteWrites-- })
+  return write
 }
 
 async function readLocalAdminNews() {
@@ -1009,6 +1090,24 @@ async function handleApi(req, res, url) {
     return
   }
 
+  if (pathname === '/api/leaderboard') {
+    await leaderboardHandler(req, res)
+    return
+  }
+
+  if (pathname === '/api/site') {
+    if (req.method !== 'GET') {
+      json(res, 405, { error: 'Method not allowed.' }, { Allow: 'GET' })
+      return
+    }
+    try {
+      json(res, 200, { site: await readSite() })
+    } catch (error) {
+      json(res, 500, { error: error.message })
+    }
+    return
+  }
+
   if (req.method === 'GET' && pathname === '/api/news') {
     json(res, 200, { items: await readAdminNews() })
     return
@@ -1078,6 +1177,24 @@ async function handleApi(req, res, url) {
 
   if (!isAuthenticated(req)) {
     json(res, 401, { error: 'Authentication required.' })
+    return
+  }
+
+  if (pathname === '/api/admin/site') {
+    if (req.method !== 'POST' && req.method !== 'DELETE') {
+      json(res, 405, { error: 'Method not allowed.' }, { Allow: 'POST, DELETE' })
+      return
+    }
+    try {
+      if (req.method === 'DELETE') {
+        await deleteSite()
+        json(res, 200, { site: await readSite() })
+      } else {
+        json(res, 200, { site: await saveSite(await readSiteBody(req)) })
+      }
+    } catch (error) {
+      json(res, error instanceof SiteValidationError ? 400 : 500, { error: error.message })
+    }
     return
   }
 
@@ -1182,6 +1299,7 @@ function serveFile(req, res, pathname) {
     pathname === '/admin/docs' ||
     pathname === '/rules' ||
     pathname === '/terms' ||
+    pathname === '/leaderboard' ||
     /^\/news\/[^/]+\/?$/.test(pathname) ||
     /^\/changelog\/[^/]+\/?$/.test(pathname)
   const safeFilePath = hasStaticFile ? filePath : resolvedIndex

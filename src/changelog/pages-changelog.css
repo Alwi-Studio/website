@@ -1,0 +1,154 @@
+/* Changelog list and detail, ported from .taste-skill/example-v2/changelog.html.
+   Change-type colours, one set per theme. No yellow; small orange text uses --brand-ink. */
+:root {
+  --t-added: #6ee06e; --t-changed: #7cc4ff; --t-improved: #c4a1ff; --t-fixed: #4fe0c4;
+  --t-removed: #ff7b7b; --t-deprecated: #a8a8b3; --t-security: #ff8ad8;
+  --rail-c: color-mix(in srgb, var(--ink) 16%, transparent);
+}
+:root[data-theme="light"] {
+  --t-added: #1d7330; --t-changed: #1259a0; --t-improved: #6b3fc4; --t-fixed: #0b7262;
+  --t-removed: #b42323; --t-deprecated: #565662; --t-security: #a3207a;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --t-added: #1d7330; --t-changed: #1259a0; --t-improved: #6b3fc4; --t-fixed: #0b7262;
+    --t-removed: #b42323; --t-deprecated: #565662; --t-security: #a3207a;
+  }
+}
+
+/* Hero: the newest update, styled like the home page's server plaque. */
+.cl-page .cl-latest { margin-top: 26px; display: inline-flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; max-width: 100%; padding: 7px 14px 7px 7px; border-radius: 6px; background: rgba(0, 0, 0, 0.66); border: 1px solid rgba(255, 255, 255, 0.16); color: #b4b4bd; font-size: 15px; }
+.cl-page .cl-latest .new { padding: 5px 9px; border-radius: 3px; background: var(--brand); color: #160904; font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; box-shadow: inset 0 -2px 0 var(--brand-dark); }
+.cl-page .cl-latest b { color: #fff; font-weight: 700; }
+.cl-page .cl-latest:hover b { color: #ffb08f; }
+.cl-page .cl-latest .go { transition: transform 160ms ease; }
+.cl-page .cl-latest:hover .go { transform: translateX(4px); }
+.cl-page .cl-hero-meta { margin-top: 22px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; color: rgba(255, 255, 255, 0.78); font-size: 15px; }
+
+/* Filters. */
+.cl-page .cl-filters { display: grid; gap: 12px; padding: 16px 18px; }
+.cl-page .cl-row { display: grid; grid-template-columns: 108px minmax(0, 1fr); align-items: center; gap: 14px; }
+.cl-page .cl-row .label { color: var(--dim); }
+.cl-page .seg .sw { width: 10px; height: 10px; border-radius: 2px; background: var(--c); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35); }
+.cl-page .cl-status { margin-top: 26px; color: var(--muted); font-size: 15px; }
+.cl-page .cl-status b { color: var(--ink); }
+.cl-page .cl-layout { margin-top: 18px; }
+.cl-page .cl-layout.is-bare { display: block; }
+
+/* Side: jump list and Discord note. */
+.cl-page .cl-toc a { display: grid; padding: 8px 10px; }
+.cl-page .cl-toc a small { font-family: var(--mono); font-size: 11.5px; font-weight: 700; color: var(--dim); letter-spacing: 0.04em; }
+.cl-page .cl-toc .m { margin: 14px 0 4px; padding-left: 13px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--brand-ink); }
+.cl-page .cl-discord { padding: 18px; }
+.cl-page .cl-toc + .cl-discord { margin-top: 16px; }
+.cl-page .cl-discord p { color: var(--muted); font-size: 14.5px; line-height: 1.5; }
+.cl-page .cl-discord b { display: block; margin-bottom: 4px; color: var(--ink); font-size: 16px; }
+.cl-page .cl-discord .btn { margin-top: 14px; width: 100%; }
+
+/* Timeline: a rail on the left, a block node per month and per update. */
+.cl-page .tl { --rail: 15px; --indent: 52px; position: relative; }
+.cl-page .tl::before { content: ""; position: absolute; left: calc(var(--rail) - 2px); top: 18px; bottom: 30px; width: 4px; border-radius: 2px; background: var(--rail-c); }
+.cl-page .tl-month { position: relative; padding-left: var(--indent); }
+.cl-page .tl-month + .tl-month { margin-top: 56px; }
+.cl-page .tl-head { position: relative; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; margin-bottom: 20px; }
+.cl-page .tl-head::before {
+  content: ""; position: absolute; left: calc(var(--rail) - var(--indent) - 13px); top: 4px; width: 26px; height: 26px;
+  background: var(--brand); border: 2px solid #000; border-radius: 3px;
+  box-shadow: inset 0 -4px 0 var(--brand-dark), inset 0 3px 0 rgba(255, 255, 255, 0.3);
+}
+.cl-page .tl-head h2 { font-size: clamp(26px, 2.6vw, 34px); }
+.cl-page .tl-head .label { color: var(--dim); }
+
+.cl-page .entry { position: relative; scroll-margin-top: 96px; }
+.cl-page .entry + .entry { margin-top: 18px; }
+/* Branch from the rail to the card, then the node block on the rail. */
+.cl-page .entry::after { content: ""; position: absolute; left: calc(var(--rail) - var(--indent)); top: 36px; width: calc(var(--indent) - var(--rail)); height: 3px; background: var(--rail-c); }
+.cl-page .entry::before {
+  content: ""; position: absolute; z-index: 1; left: calc(var(--rail) - var(--indent) - 9px); top: 28px; width: 18px; height: 18px;
+  background: var(--stone); border: 2px solid var(--edge); border-radius: 2px;
+  box-shadow: inset 0 -3px 0 var(--stone-lo), inset 0 2px 0 var(--bevel-hi);
+  transition: background-color 200ms ease;
+}
+.cl-page .entry:has(details[open])::before { background: var(--brand); border-color: #000; box-shadow: inset 0 -3px 0 var(--brand-dark), inset 0 2px 0 rgba(255, 255, 255, 0.3); }
+
+.cl-page .entry summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 20px; padding: 22px 22px 22px 24px; border-radius: var(--radius); }
+.cl-page .entry summary::-webkit-details-marker { display: none; }
+.cl-page .entry summary > :not(.e-chev) { grid-column: 1; }
+.cl-page .entry summary:focus-visible { outline-offset: -4px; }
+.cl-page .e-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; color: var(--dim); font-size: 14px; }
+.cl-page .e-ver { padding: 3px 8px; border-radius: 3px; background: #16161b; color: #fff; font-family: var(--mono); font-size: 13px; font-weight: 700; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); }
+.cl-page .e-title { font-size: clamp(20px, 2vw, 24px); font-weight: 800; letter-spacing: -0.015em; line-height: 1.2; color: var(--ink); overflow-wrap: anywhere; transition: color 150ms ease; }
+.cl-page .entry summary:hover .e-title, .cl-page .cl-rel:hover .e-title { color: var(--brand-ink); }
+.cl-page .e-counts { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--muted); font-size: 13.5px; }
+.cl-page .e-counts span { display: inline-flex; align-items: center; gap: 7px; }
+.cl-page .e-counts span::before { content: ""; width: 8px; height: 8px; border-radius: 1px; background: var(--c); }
+.cl-page .e-chev {
+  grid-column: 2; grid-row: 1 / span 3; align-self: center; display: grid; place-items: center; width: 42px; height: 42px;
+  border: 2px solid var(--edge); border-radius: var(--radius); background: var(--stone); color: var(--stone-ink);
+  box-shadow: inset 0 -3px 0 var(--stone-lo), inset 0 2px 0 var(--bevel-hi); transition: background-color 150ms ease;
+}
+.cl-page .entry summary:hover .e-chev { background: var(--stone-hover); }
+.cl-page .e-chev svg { width: 18px; height: 18px; transition: transform 220ms ease; }
+.cl-page .entry details[open] .e-chev svg { transform: rotate(180deg); }
+
+.cl-page .e-body { margin: 0 24px; padding: 18px 0 24px; border-top: 1px solid var(--line); }
+.cl-page .e-pic { width: 100%; aspect-ratio: 8 / 3; object-fit: cover; margin-bottom: 18px; border: 2px solid var(--edge); border-radius: var(--radius); }
+.cl-page .e-sum { max-width: 68ch; color: var(--ink-2); font-size: 16.5px; line-height: 1.6; overflow-wrap: anywhere; }
+.cl-page .e-sum + .e-groups { margin-top: 22px; }
+.cl-page .e-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 26px 34px; }
+.cl-page .cg-head { margin: 0; display: flex; align-items: center; gap: 10px; font-size: inherit; line-height: 1.4; }
+.cl-page .cg-head .pill { --c: var(--tc); text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--mono); font-size: 11.5px; padding: 4px 9px; }
+.cl-page .cg .rule { flex: 1; height: 1px; background: var(--line); }
+.cl-page .cg .n { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--dim); }
+.cl-page .cg ul { margin-top: 12px; display: grid; gap: 9px; }
+.cl-page .cg li { position: relative; padding-left: 20px; color: var(--ink-2); font-size: 15.5px; line-height: 1.55; overflow-wrap: anywhere; }
+.cl-page .cg li::before { content: ""; position: absolute; left: 2px; top: 0.6em; width: 7px; height: 7px; border-radius: 1px; background: var(--tc); }
+.cl-page .e-actions { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.cl-page .btn-sm svg { width: 16px; height: 16px; }
+.cl-page .e-by { margin-left: auto; color: var(--dim); font-size: 14px; }
+
+.cl-page .cl-empty { display: grid; justify-items: center; gap: 16px; }
+.cl-page .cl-empty b { display: block; color: var(--ink); font-size: 20px; font-weight: 800; }
+.cl-page .cl-loading { display: grid; gap: 18px; }
+.cl-page .cl-loading .skeleton { height: 132px; border: 2px solid var(--edge); }
+
+/* Detail page: changes on the left, facts on the right (after the changes on phones). */
+.cl-page .cl-detail { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 48px; align-items: start; }
+.cl-page .cl-changes { padding: 26px 30px 30px; }
+.cl-page .cl-changes .cg-head { font-family: var(--sans); }
+.cl-page .cl-facts { padding: 20px; }
+.cl-page .cl-facts .label { color: var(--dim); }
+.cl-page .cl-facts dl { margin: 12px 0 0; display: grid; gap: 12px; }
+.cl-page .cl-facts dt { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); }
+.cl-page .cl-facts dd { margin: 2px 0 0; color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+.cl-page .cl-facts-actions { margin-top: 18px; display: grid; gap: 8px; }
+.cl-page .cl-related { margin-top: 76px; }
+.cl-page .cl-related .label { color: var(--brand-ink); }
+.cl-page .cl-related h2 { margin-top: 10px; font-size: clamp(26px, 2.6vw, 34px); }
+.cl-page .cl-rel-grid { margin-top: 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 18px; }
+.cl-page .cl-rel { display: grid; align-content: start; gap: 10px; padding: 22px 24px; transition: transform 180ms ease; }
+.cl-page .cl-rel:hover { transform: translateY(-4px); }
+
+/* Closing Discord band. */
+.cl-page .cl-band { margin-top: 96px; }
+
+@media (max-width: 1060px) {
+  .cl-page .cl-layout .side { display: none; }
+  .cl-page .cl-detail { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+}
+@media (max-width: 640px) {
+  .cl-page .cl-filters { padding: 14px; }
+  .cl-page .cl-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .cl-page .tl { --rail: 9px; --indent: 30px; }
+  .cl-page .tl-head::before { width: 20px; height: 20px; left: calc(var(--rail) - var(--indent) - 10px); top: 6px; }
+  .cl-page .entry::before { width: 14px; height: 14px; left: calc(var(--rail) - var(--indent) - 7px); top: 26px; }
+  .cl-page .entry::after { top: 32px; }
+  .cl-page .entry summary { padding: 18px 16px; gap: 8px 12px; }
+  .cl-page .e-chev { width: 36px; height: 36px; grid-row: 1; align-self: start; }
+  .cl-page .e-body { margin: 0 16px; padding-bottom: 18px; }
+  .cl-page .e-sum { font-size: 16px; }
+  .cl-page .e-by { margin-left: 0; width: 100%; }
+  .cl-page .cl-changes { padding: 20px 18px 22px; }
+  .cl-page .cl-related { margin-top: 60px; }
+  .cl-page .cl-band { margin-top: 72px; }
+}

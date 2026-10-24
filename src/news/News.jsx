@@ -1,97 +1,35 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { RichInline } from '../common/RichText.jsx'
-import { getOptimizedImageUrl } from './imageOptimizer.js'
+import { useState } from 'react'
+import { revealRef } from '../common/reveal.js'
+import { fallbackImage, plainText, postImage, tagClass } from './postInfo.js'
+import './news.css'
 
-function NewsImage({ src, avifSrc = '', eager = false }) {
-  const imageRef = useRef(null)
-  const optimizedSrc = useMemo(() => avifSrc || getOptimizedImageUrl(src, 1200), [avifSrc, src])
-  const primarySrc = optimizedSrc || src
-  const [currentSrc, setCurrentSrc] = useState(primarySrc)
-  const [status, setStatus] = useState('loading')
-
-  useLayoutEffect(() => {
-    const image = imageRef.current
-
-    if (image?.complete) {
-      setStatus(image.naturalWidth > 0 ? 'loaded' : 'error')
-      return
-    }
-
-    setStatus(currentSrc ? 'loading' : 'error')
-  }, [currentSrc])
-
-  useEffect(() => {
-    setCurrentSrc(primarySrc)
-    setStatus(primarySrc ? 'loading' : 'error')
-  }, [primarySrc])
-
-  function handleError() {
-    setStatus('error')
-  }
+// One news card for the index grid and the article's "More news" row.
+function News({ item, index = 0, delay }) {
+  // A broken remote image swaps once to one of the server's own screenshots.
+  const [failed, setFailed] = useState(false)
+  const src = failed ? fallbackImage(index) : postImage(item, 700, index)
 
   return (
-    <>
-      {status === 'loading' && (
-        <div className="absolute inset-0 grid place-items-center bg-surface-2">
-          <div className="h-11 w-11 animate-spin rounded-full border-2 border-white/15 border-t-brand-2" />
-        </div>
-      )}
-      {status === 'error' && (
-        <div className="absolute inset-0 grid place-items-center bg-surface-2 px-5 text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Image unavailable</p>
-        </div>
-      )}
-      {currentSrc && (
-        <img
-          ref={imageRef}
-          className={`h-full w-full object-cover transition duration-500 group-hover:scale-[1.06] ${
-            status === 'loaded' ? 'opacity-100' : 'opacity-0'
-          }`}
-          key={currentSrc}
-          src={currentSrc}
-          alt=""
-          width="1200"
-          height="750"
-          loading={eager ? 'eager' : 'lazy'}
-          fetchPriority={eager ? 'high' : 'auto'}
-          decoding="async"
-          onLoad={() => setStatus('loaded')}
-          onError={handleError}
-        />
-      )}
-    </>
-  )
-}
-
-function News({ img, imgAvif, title, description, category, date, readingTime, slug, imageEager = false }) {
-  return (
-    <article className="group flex min-h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-surface transition duration-200 hover:-translate-y-1.5 hover:border-brand/40 hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-      <div className="relative aspect-[16/10] overflow-hidden">
-        <NewsImage src={img} avifSrc={imgAvif} eager={imageEager} />
-        <div className="absolute inset-0 bg-gradient-to-t from-bg/55 to-transparent" />
-        {category ? (
-          <span className="absolute left-3.5 top-3.5 z-[2] rounded-full border border-white/15 bg-bg/60 px-3 py-1.5 text-[11.5px] font-bold uppercase tracking-[0.08em] text-brand-2 backdrop-blur">
-            {category}
-          </span>
-        ) : null}
+    <a className="post panel news-card" href={`/news/${encodeURIComponent(item.slug)}`} data-reveal data-delay={delay} ref={revealRef}>
+      <div className="pic">
+        <img src={src} width="1400" height="788" alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />
       </div>
-
-      <div className="flex flex-1 flex-col gap-3 p-[22px]">
-        <div className="text-[12.5px] font-medium text-muted-2">
-          {date}
-          {readingTime ? ` · ${readingTime}` : ''}
-        </div>
-        <h3 className="text-xl font-bold leading-tight text-white">{title}</h3>
-        <p className="flex-1 text-[14.5px] leading-6 text-muted"><RichInline text={description} /></p>
-        <a
-          className="mt-1 inline-flex w-fit items-center gap-2 text-sm font-semibold text-brand-2 transition"
-          href={`/news/${slug}`}
-        >
-          Read more
-          <span className="transition-transform duration-200 group-hover:translate-x-1">→</span>
-        </a>
+      <div className="post-body">
+        <p className="post-meta">
+          {item.category && <span className={`tag ${tagClass(item.category)}`}>{item.category}</span>}
+          {item.date && <span>{item.date}</span>}
+          {item.date && item.readingTime && <span aria-hidden="true">·</span>}
+          {item.readingTime && <span>{item.readingTime}</span>}
+        </p>
+        <h3>{item.title}</h3>
+        {/* Plain text: the whole card is a link, and a link inside a link is invalid. */}
+        {item.description && <p>{plainText(item.description)}</p>}
+        <p className="post-foot">
+          <span className="by"><img src="/img/logo-mark.webp" width="20" height="20" alt="" />{item.author || 'AlwiNation Team'}</span>
+          <span className="go">Read <span aria-hidden="true">→</span></span>
+        </p>
       </div>
-    </article>
+    </a>
   )
 }
 

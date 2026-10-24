@@ -1,0 +1,108 @@
+/* Rich content blocks from RichBlocks / MarkdownBody (news, wiki, rules, admin previews).
+   Always inside .prose (theme.css), which sets the type, lists, links, quotes and rules.
+   Scoped under .rich so these rules outrank .prose and the shared .seg/.panel rules
+   whatever order the stylesheets load in. */
+
+/* overflow-wrap:anywhere (not break-word) is what lets a long unbroken string shrink the
+   column's min-content; without it user text widens grid tracks around the content. */
+.rich { min-width: 0; overflow-wrap: anywhere; }
+.rich > :first-child { margin-top: 0; }
+.rich > p, .rich-acc-body > p, .rich blockquote { white-space: pre-line; }
+.rich > .rich-lead { font-size: 1.12em; color: var(--ink); }
+.rich h4 { margin-top: 1.4em; font-size: 18px; font-weight: 800; line-height: 1.3; color: var(--ink); scroll-margin-top: 100px; }
+
+/* Feature cards (":::columns", numbered across the post) and plain cards (":::grid", ":::cards").
+   At most --cols columns; fewer when each would drop under 220px. */
+.rich > .feats { margin-top: 34px; }
+.rich > .feats + .feats { margin-top: 14px; }
+.rich .feats { display: grid; grid-template-columns: repeat(auto-fill, minmax(max(220px, (100% - (var(--cols, 2) - 1) * 14px) / var(--cols, 2)), 1fr)); gap: 14px; }
+.rich .feat { position: relative; padding: 22px 24px 24px; }
+.rich .feat.has-n { padding-left: 84px; }
+.rich .feat-n {
+  position: absolute; left: 20px; top: 20px; display: grid; place-items: center; width: 46px; height: 46px;
+  background: var(--brand); color: #160904; border: 2px solid #000; border-radius: var(--radius);
+  box-shadow: inset 0 -4px 0 var(--brand-dark), inset 0 3px 0 rgba(255, 255, 255, 0.3);
+  font-family: var(--mono); font-size: 15px; font-weight: 700; line-height: 1;
+}
+.rich .feat h3 { margin-top: 0; font-size: 19px; letter-spacing: -0.01em; }
+.rich .feat p { margin-top: 6px; font-size: 15.5px; line-height: 1.6; color: var(--muted); }
+.rich .feat .label { margin-top: 12px; font-size: 12px; color: var(--brand-ink); }
+
+/* Tabs (":::tabs"): a stack of stone buttons beside the open entry. */
+.rich > .tabs { margin-top: 22px; }
+.rich .tabs { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 14px; align-items: start; }
+.rich .tab-list { position: relative; flex-direction: column; flex-wrap: nowrap; gap: 6px; }
+.rich .tab-list button { width: 100%; padding: 7px 12px; justify-content: flex-start; text-align: left; line-height: 1.3; }
+.rich .tab-list .n { flex: none; font-family: var(--mono); font-size: 12px; opacity: 0.85; }
+.rich .tab-view { position: sticky; top: 100px; padding: 26px 28px 22px; }
+.rich .tab-view [role="tabpanel"]:focus-visible { outline-offset: 8px; }
+.rich .tab-view .label { color: var(--brand-ink); }
+.rich .tab-view h4 { margin: 8px 0 0; font-size: 25px; letter-spacing: -0.02em; line-height: 1.2; }
+.rich .tab-view .txt { margin-top: 10px; }
+.rich .tab-nav { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); justify-content: space-between; align-items: center; }
+/* The shared .seg .count dims to 0.75, which drops this below AA in both themes. */
+.rich .tab-nav .count { font-family: var(--mono); font-size: 13px; color: var(--muted); opacity: 1; }
+
+.rich .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
+.rich .stat { padding: 18px 20px; }
+.rich .stat b { display: block; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; color: var(--ink); }
+.rich .stat span { font-size: 14px; color: var(--muted); }
+
+.rich .quote blockquote { margin: 0; }
+.rich .quote figcaption { margin-top: 8px; font-size: 14px; color: var(--muted); }
+
+.rich .callout { padding: 20px 22px; border-left: 5px solid var(--brand); }
+.rich .callout .label { color: var(--brand-ink); }
+.rich .callout p + p { margin-top: 6px; }
+
+.rich pre { overflow-x: auto; overflow-wrap: normal; padding: 16px 18px; border: 2px solid var(--edge); border-radius: var(--radius); background: var(--surface); box-shadow: inset 2px 2px 0 var(--bevel-lo); font-family: var(--mono); font-size: 14px; line-height: 1.6; color: var(--ink); }
+.rich pre code { padding: 0; background: none; font-size: inherit; }
+
+/* Wide tables scroll inside their frame instead of squeezing every cell to a letter. */
+.rich .rich-table { overflow-x: auto; border: 2px solid var(--edge); border-radius: var(--radius); background: var(--surface); }
+.rich table { width: 100%; border-collapse: collapse; overflow-wrap: normal; font-size: 15px; line-height: 1.5; }
+.rich th { padding: 12px 16px; background: var(--surface-2); border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); }
+.rich td { padding: 12px 16px; border-bottom: 1px solid var(--line); color: var(--ink-2); }
+.rich tbody tr:last-child td { border-bottom: 0; }
+
+.rich .checklist { list-style: none; padding-left: 0; }
+.rich .checklist li { display: flex; align-items: flex-start; gap: 12px; }
+/* The empty box takes a --dim border: the black --edge vanishes on the dark page. */
+.rich .checklist li::before { content: ""; flex: none; width: 20px; height: 20px; margin-top: 0.2em; border: 2px solid var(--dim); border-radius: 3px; background: var(--surface-2); }
+.rich .checklist li.is-done::before { content: "✓"; display: grid; place-items: center; border-color: #000; background: var(--brand); color: #160904; font-size: 12px; font-weight: 800; line-height: 1; }
+
+.rich .rich-section { padding-top: 18px; border-top: 1px solid var(--line); }
+.rich .rich-box { padding: 20px 22px; }
+.rich :is(.rich-section, .rich-box) h3 { margin-top: 0; font-size: 19px; }
+.rich :is(.rich-section, .rich-box) h3 + p { margin-top: 6px; }
+.rich .rich-sidebar { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 18px; align-items: start; }
+.rich .rich-note { padding: 14px 16px; border-left: 4px solid var(--brand); border-radius: 0 var(--radius) var(--radius) 0; background: var(--surface-2); font-size: 15px; }
+
+.rich .rich-figure img { width: 100%; height: auto; max-height: 620px; object-fit: cover; }
+.rich .rich-figure figcaption { margin-top: 8px; font-size: 14px; color: var(--muted); }
+
+.rich .rich-acc { display: grid; gap: 8px; }
+.rich .rich-acc summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 52px; padding: 12px 18px; cursor: pointer; list-style: none; font-weight: 700; color: var(--ink); }
+.rich .rich-acc summary::-webkit-details-marker { display: none; }
+.rich .rich-acc summary::after { content: "+"; flex: none; font-family: var(--mono); font-size: 20px; line-height: 1; color: var(--brand-ink); }
+.rich .rich-acc details[open] > summary::after { content: "−"; }
+.rich .rich-acc summary:focus-visible { outline-offset: -4px; }
+.rich .rich-acc-body { padding: 16px 18px 18px; border-top: 1px solid var(--line); }
+.rich .rich-acc-body > * + * { margin-top: 1em; }
+.rich .rich-acc-body > :first-child { margin-top: 0; }
+
+@media (max-width: 720px) {
+  .rich .tabs { grid-template-columns: minmax(0, 1fr); }
+  /* One sideways row of tabs. The vertical padding keeps focus rings inside the scroll box, which clips them. */
+  .rich .tab-list { flex-direction: row; overflow-x: auto; scrollbar-width: none; margin: -6px -2px -2px; padding: 6px 2px; }
+  .rich .tab-list::-webkit-scrollbar { display: none; }
+  .rich .tab-list button { width: auto; flex: none; white-space: nowrap; }
+  .rich .tab-view { position: static; padding: 20px 20px 18px; }
+  .rich .feats { grid-template-columns: minmax(0, 1fr); }
+  .rich .rich-sidebar { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .rich .feat.has-n { padding: 18px 18px 20px 76px; }
+  .rich .feat-n { left: 16px; top: 18px; width: 44px; height: 44px; }
+  .rich .tab-view h4 { font-size: 22px; }
+}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   deleteAdminNewsItem,
   isAdminSessionActive,
@@ -13,12 +13,19 @@ import {
 } from '../changelog/adminChangelogStore.js'
 import { changeTypeOrder, getChangeTypeLabel } from '../changelog/changelogData.js'
 import CollapsibleItems from '../common/CollapsibleItems.jsx'
+import { formatCount, useServerStatus } from '../common/liveData.js'
 import MarkdownBody from '../common/MarkdownBody.jsx'
 import { RichInline, parseMarkdownBlocks } from '../common/RichText.jsx'
 import { isSafeImageUrl } from '../common/safeUrls.js'
+import { useSite } from '../common/siteContext.js'
+import ThemeToggle from '../common/ThemeToggle.jsx'
 import { isPolicyCustomized, resetAdminPolicy, saveAdminPolicy } from '../content/policyStore.js'
+import { loadSite } from '../content/siteStore.js'
 import { isStaffCustomized, resetAdminStaff, saveAdminStaff } from '../content/staffStore.js'
 import { isWikiCustomized } from '../content/wikiStore.js'
+import './admin.css'
+import HomeEditor from './HomeEditor.jsx'
+import SettingsEditor from './SettingsEditor.jsx'
 import WikiManager from './WikiManager.jsx'
 
 const defaultForm = {
@@ -63,6 +70,22 @@ function buildChangelogChanges(form) {
         .filter(Boolean),
     }))
     .filter((group) => group.items.length > 0)
+}
+
+// Also the baseline for the "Unsaved changes" status while a post is open.
+function newsToForm(item) {
+  return {
+    title: item.title,
+    slug: item.slug,
+    description: item.description,
+    category: item.category,
+    date: getDateInputValue(item),
+    author: item.author,
+    readingTime: item.readingTime,
+    imageUrl: typeof item.img === 'string' && item.img.startsWith('http') ? item.img : '',
+    bodyText: getBodyText(item.body),
+    highlightsText: item.highlights.join('\n'),
+  }
 }
 
 function changelogToForm(entry) {
@@ -679,22 +702,22 @@ function staffToForm(staff) {
   }
 }
 
-const inputClass =
-  'min-h-11 rounded-xl border border-white/10 bg-surface-2 px-3 text-white outline-none transition focus:border-brand'
-const textareaClass =
-  'w-full resize-y rounded-xl border border-white/10 bg-surface-2 px-3 py-3 text-white outline-none transition focus:border-brand'
-const labelClass = 'grid min-w-0 gap-2 text-sm font-semibold text-zinc-300'
-const primaryButtonClass =
-  'inline-flex items-center justify-center rounded-xl bg-gradient-to-b from-brand-2 to-brand px-5 text-sm font-bold text-[#1a0d07] transition hover:brightness-105'
-const secondaryButtonClass =
-  'inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/[0.04] px-5 text-sm font-semibold text-zinc-200 transition hover:border-white/25 hover:text-white'
+// Central form helpers; the look lives in admin.css (textarea.adm-input is
+// full width, so long rows never widen the column).
+const inputClass = 'adm-input'
+const textareaClass = 'adm-input'
+const labelClass = 'adm-label'
+const primaryButtonClass = 'btn btn-primary btn-sm'
+const secondaryButtonClass = 'btn btn-stone btn-sm'
+const dangerButtonClass = 'btn btn-sm btn-danger'
 
+// The right-hand pane of an editor. wrap-anywhere keeps long unbroken text inside it.
 function PreviewShell({ children }) {
   return (
-    <div className="mt-6 min-w-0 wrap-anywhere rounded-xl border border-white/10 bg-bg-2/50 p-5">
-      <p className="mb-4 text-xs font-bold uppercase tracking-[0.14em] text-muted-2">Live preview</p>
+    <section className="panel adm-pane adm-preview adm-sticky min-w-0 wrap-anywhere" aria-label="Live preview">
+      <p className="label">Live preview</p>
       {children}
-    </div>
+    </section>
   )
 }
 
@@ -717,12 +740,12 @@ function PreviewTitledItems({ block, card = false }) {
     <div className={`grid gap-3 ${previewColumnClass(block.columns)}`}>
       {block.items.map((item, index) => (
         <div
-          className={`${card ? 'rounded-lg border border-white/10 bg-surface-2 p-4' : 'border-l border-white/10 pl-4'}`}
+          className={`${card ? 'rounded border border-[var(--adm-line)] bg-surface-2 p-4' : 'border-l border-[var(--adm-line)] pl-4'}`}
           key={`${item.title}-${index}`}
         >
-          <h4 className="font-bold text-white"><RichInline text={item.title} /></h4>
+          <h4 className="font-bold text-ink"><RichInline text={item.title} /></h4>
           {item.text && <p className="mt-2 text-sm leading-6 text-muted"><RichInline text={item.text} /></p>}
-          {item.meta && <p className="mt-3 text-xs font-semibold uppercase tracking-[0.12em] text-brand-2"><RichInline text={item.meta} /></p>}
+          {item.meta && <p className="mt-3 text-xs font-semibold uppercase tracking-[0.12em] adm-accent"><RichInline text={item.meta} /></p>}
         </div>
       ))}
     </div>
@@ -735,13 +758,13 @@ function PreviewArticleBlock({ block }) {
   }
 
   if (block.type === 'lead') {
-    return <p className="whitespace-pre-line text-base font-semibold leading-7 text-zinc-100"><RichInline text={block.text} /></p>
+    return <p className="whitespace-pre-line text-base font-semibold leading-7 text-[var(--ink-2)]"><RichInline text={block.text} /></p>
   }
 
   if (block.type === 'heading') {
     const HeadingTag = block.level === 3 ? 'h4' : 'h3'
     return (
-      <HeadingTag className={`${block.level === 3 ? 'text-base' : 'text-lg'} pt-2 font-bold leading-tight text-white`}>
+      <HeadingTag className={`${block.level === 3 ? 'text-base' : 'text-lg'} pt-2 font-bold leading-tight text-ink`}>
         <RichInline text={block.text} />
       </HeadingTag>
     )
@@ -773,7 +796,7 @@ function PreviewArticleBlock({ block }) {
   }
 
   if (block.type === 'divider') {
-    return <hr className="my-1.5 border-0 border-t border-white/10" />
+    return <hr className="my-1.5 border-0 border-t border-[var(--adm-line)]" />
   }
 
   if (block.type === 'checklist') {
@@ -783,7 +806,7 @@ function PreviewArticleBlock({ block }) {
           <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={index}>
             <span
               className={`mt-1 grid h-5 w-5 shrink-0 place-items-center rounded border text-[11px] font-bold ${
-                item.checked ? 'border-brand-2 bg-brand-2 text-[#1a0d07]' : 'border-white/20 bg-surface-2 text-transparent'
+                item.checked ? 'border-brand bg-brand text-[#160904]' : 'border-[var(--muted)] bg-surface-2 text-transparent'
               }`}
             >
               x
@@ -797,13 +820,13 @@ function PreviewArticleBlock({ block }) {
 
   if (block.type === 'table') {
     return (
-      <div className="overflow-x-auto rounded-lg border border-white/10 bg-bg-2">
+      <div className="overflow-x-auto rounded border border-[var(--adm-line)] bg-bg-2">
         <table className="min-w-full border-collapse text-left text-xs">
-          <thead className="bg-white/[0.04] font-bold uppercase text-zinc-300">
+          <thead className="bg-surface-2 font-bold uppercase text-[var(--ink-2)]">
             <tr>
               {block.headers.map((header, headerIndex) => (
                 <th
-                  className="border-b border-white/10 px-3 py-2"
+                  className="border-b border-[var(--adm-line)] px-3 py-2"
                   key={`${header}-${headerIndex}`}
                   style={{ textAlign: block.alignments?.[headerIndex] ?? 'left' }}
                 >
@@ -814,7 +837,7 @@ function PreviewArticleBlock({ block }) {
           </thead>
           <tbody>
             {block.rows.map((row, rowIndex) => (
-              <tr className="border-b border-white/5 last:border-b-0" key={rowIndex}>
+              <tr className="border-b border-[var(--adm-line)] last:border-b-0" key={rowIndex}>
                 {block.headers.map((header, cellIndex) => (
                   <td
                     className="px-3 py-2 text-muted"
@@ -842,12 +865,12 @@ function PreviewArticleBlock({ block }) {
 
   if (block.type === 'tabs') {
     return (
-      <div className="rounded-lg border border-white/10 bg-bg-2">
-        <div className="flex gap-1 overflow-x-auto border-b border-white/10 p-2">
+      <div className="rounded border border-[var(--adm-line)] bg-bg-2">
+        <div className="flex gap-1 overflow-x-auto border-b border-[var(--adm-line)] p-2">
           {block.items.map((item, index) => (
             <span
               className={`min-h-9 shrink-0 rounded-md px-3 py-2 text-sm font-semibold ${
-                index === 0 ? 'bg-brand text-white' : 'text-muted'
+                index === 0 ? 'bg-brand text-[#160904]' : 'text-muted'
               }`}
               key={`${item.title}-${index}`}
             >
@@ -880,8 +903,8 @@ function PreviewArticleBlock({ block }) {
   if (block.type === 'section' || block.type === 'container') {
     const isContainer = block.type === 'container'
     return (
-      <section className={`${isContainer ? 'rounded-lg border border-white/10 bg-bg-2 p-5' : 'border-t border-white/10 pt-5'}`}>
-        {block.title && <h4 className="text-lg font-bold text-white"><RichInline text={block.title} /></h4>}
+      <section className={`${isContainer ? 'rounded border border-[var(--adm-line)] bg-bg-2 p-5' : 'border-t border-[var(--adm-line)] pt-5'}`}>
+        {block.title && <h4 className="text-lg font-bold text-ink"><RichInline text={block.title} /></h4>}
         {block.text && <p className="mt-2 text-sm leading-7 text-muted"><RichInline text={block.text} /></p>}
       </section>
     )
@@ -889,13 +912,13 @@ function PreviewArticleBlock({ block }) {
 
   if (block.type === 'sidebar') {
     return (
-      <aside className="grid gap-4 rounded-lg border border-white/10 bg-bg-2 p-5 md:grid-cols-[1fr_220px]">
+      <aside className="grid gap-4 rounded border border-[var(--adm-line)] bg-bg-2 p-5 md:grid-cols-[1fr_220px]">
         <div>
-          {block.title && <h4 className="text-lg font-bold text-white"><RichInline text={block.title} /></h4>}
+          {block.title && <h4 className="text-lg font-bold text-ink"><RichInline text={block.title} /></h4>}
           {block.text && <p className="mt-2 text-sm leading-7 text-muted"><RichInline text={block.text} /></p>}
         </div>
         {block.sidebar && (
-          <div className="rounded-md border border-brand/30 bg-brand/[0.08] p-4 text-sm leading-6 text-zinc-200">
+          <div className="rounded-md border border-brand/30 bg-brand/[0.08] p-4 text-sm leading-6 text-[var(--ink-2)]">
             <RichInline text={block.sidebar} />
           </div>
         )}
@@ -905,18 +928,18 @@ function PreviewArticleBlock({ block }) {
 
   if (block.type === 'quote') {
     return (
-      <figure className="border-l-4 border-[#ff5732] bg-[#202020] px-5 py-4">
-        <blockquote className="whitespace-pre-line text-lg font-semibold leading-8 text-white">
+      <figure className="rounded-r border-l-4 border-brand bg-surface-2 px-5 py-4">
+        <blockquote className="whitespace-pre-line text-lg font-semibold leading-8 text-ink">
           <RichInline text={block.text} />
         </blockquote>
-        {block.cite && <figcaption className="mt-3 text-sm text-zinc-400">{block.cite}</figcaption>}
+        {block.cite && <figcaption className="mt-3 text-sm text-muted">{block.cite}</figcaption>}
       </figure>
     )
   }
 
   if (block.type === 'code') {
     return (
-      <pre className="overflow-x-auto rounded-lg border border-white/10 bg-black/35 p-4 text-xs leading-6 text-zinc-200">
+      <pre className="overflow-x-auto rounded border border-[var(--adm-line)] bg-bg-2 p-4 text-xs leading-6 text-[var(--ink-2)]">
         <code>{block.text}</code>
       </pre>
     )
@@ -926,8 +949,8 @@ function PreviewArticleBlock({ block }) {
     return (
       <div className="grid gap-3 sm:grid-cols-3">
         {block.items.map((item) => (
-          <div className="rounded-lg border border-white/10 bg-surface-2 p-4" key={item.label}>
-            <p className="text-xl font-bold leading-tight text-white">{item.value}</p>
+          <div className="rounded border border-[var(--adm-line)] bg-surface-2 p-4" key={item.label}>
+            <p className="text-xl font-bold leading-tight text-ink">{item.value}</p>
             <p className="mt-1 text-xs font-semibold text-muted">{item.label}</p>
           </div>
         ))}
@@ -937,9 +960,9 @@ function PreviewArticleBlock({ block }) {
 
   if (block.type === 'callout') {
     return (
-      <div className="rounded-lg border border-[#ff5732]/60 bg-[#2a1d19] p-5">
-        <h4 className="text-lg font-bold text-white"><RichInline text={block.title} /></h4>
-        <p className="mt-3 text-sm leading-7 text-zinc-200"><RichInline text={block.text} /></p>
+      <div className="rounded border border-brand/60 bg-brand/10 p-5">
+        <h4 className="text-lg font-bold text-ink"><RichInline text={block.title} /></h4>
+        <p className="mt-3 text-sm leading-7 text-[var(--ink-2)]"><RichInline text={block.text} /></p>
       </div>
     )
   }
@@ -950,10 +973,10 @@ function PreviewArticleBlock({ block }) {
     }
 
     return (
-      <figure className="overflow-hidden rounded-lg border border-white/10 bg-bg-2">
+      <figure className="overflow-hidden rounded border border-[var(--adm-line)] bg-bg-2">
         <img className="h-auto max-h-[360px] w-full object-cover" src={block.src} alt={block.alt} loading="lazy" decoding="async" />
         {block.caption && (
-          <figcaption className="border-t border-white/10 px-4 py-3 text-xs leading-5 text-muted">
+          <figcaption className="border-t border-[var(--adm-line)] px-4 py-3 text-xs leading-5 text-muted">
             <RichInline text={block.caption} />
           </figcaption>
         )}
@@ -972,21 +995,21 @@ function NewsLivePreview({ item }) {
       {!hasContent ? (
         <PreviewEmpty />
       ) : (
-        <article className="overflow-hidden rounded-xl border border-white/10 bg-surface">
+        <article className="panel overflow-hidden">
           {item.img ? (
             <div className="relative aspect-video bg-bg">
               <img className="h-full w-full object-cover" src={item.img} alt="" loading="lazy" />
             </div>
           ) : null}
           <div className="p-5">
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-brand-2">
+            <div className="label flex flex-wrap items-center gap-2 adm-accent">
               <span>{item.category || 'Announcement'}</span>
               <span className="h-1 w-1 rounded-full bg-muted-2" />
               <span>{item.date}</span>
               <span className="h-1 w-1 rounded-full bg-muted-2" />
               <span>{item.readingTime || '2 min read'}</span>
             </div>
-            <h3 className="mt-3 text-2xl font-bold leading-tight text-white">{item.title || 'Untitled news post'}</h3>
+            <h3 className="mt-3 text-2xl font-bold leading-tight text-ink">{item.title || 'Untitled news post'}</h3>
             {item.description && (
               <p className="mt-3 text-sm leading-7 text-muted"><RichInline text={item.description} /></p>
             )}
@@ -1001,8 +1024,8 @@ function NewsLivePreview({ item }) {
             )}
 
             {item.highlights.length > 0 && (
-              <div className="mt-5 rounded-lg border border-white/10 bg-bg-2 p-4">
-                <h4 className="text-xs font-bold uppercase tracking-[0.14em] text-brand-2">Highlights</h4>
+              <div className="mt-5 rounded border border-[var(--adm-line)] bg-bg-2 p-4">
+                <h4 className="text-xs font-bold uppercase tracking-[0.14em] adm-accent">Highlights</h4>
                 <ul className="mt-3 grid gap-2 p-0">
                   {item.highlights.map((highlight) => (
                     <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={highlight}>
@@ -1027,26 +1050,26 @@ function PolicyLivePreview({ policy, activeKey }) {
         <PreviewEmpty />
       ) : (
         <article className="grid gap-4">
-          <div className="rounded-xl border border-white/10 bg-surface p-5">
+          <div className="rounded border border-[var(--adm-line)] bg-surface-2 p-5">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="eyebrow">{policy.eyebrow}</span>
-              <span className="rounded-full border border-white/10 bg-bg-2 px-3 py-1 text-xs font-semibold text-muted">
+              <span className="label adm-accent">{policy.eyebrow}</span>
+              <span className="rounded-md bg-bg-2 px-3 py-1 text-xs font-semibold text-muted">
                 {policy.sections.length} sections
               </span>
             </div>
-            <h3 className="mt-3 text-2xl font-bold leading-tight text-white">{policy.title || 'Untitled page'}</h3>
+            <h3 className="mt-3 text-2xl font-bold leading-tight text-ink">{policy.title || 'Untitled page'}</h3>
             {policy.intro && <p className="mt-3 text-sm leading-7 text-muted"><RichInline text={policy.intro} /></p>}
             <p className="mt-4 text-xs font-semibold text-muted">Last updated {policy.updated}</p>
           </div>
 
           {policy.sections.map((section, index) => (
-            <section className="rounded-xl border border-white/10 bg-surface p-5" key={`${section.title}-${index}`}>
+            <section className="rounded border border-[var(--adm-line)] bg-surface-2 p-5" key={`${section.title}-${index}`}>
               <div className="flex items-start gap-3">
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand/12 text-xs font-bold text-brand-2">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded bg-surface text-xs font-bold adm-accent">
                   {index + 1}
                 </span>
                 <div className="min-w-0">
-                  <h4 className="font-bold leading-tight text-white"><RichInline text={section.title} /></h4>
+                  <h4 className="font-bold leading-tight text-ink"><RichInline text={section.title} /></h4>
                   {section.description && (
                     /^\s*:::(?:accordion|collapse)(?:\s|$)/m.test(section.description)
                       ? <MarkdownBody text={section.description} className="mt-2" />
@@ -1057,11 +1080,11 @@ function PolicyLivePreview({ policy, activeKey }) {
                       {section.items.map((item, itemIndex) => (
                         item === '---' ? (
                           <li className="list-none py-1" key={`divider-${itemIndex}`}>
-                            <hr className="border-0 border-t border-white/10" />
+                            <hr className="border-0 border-t border-[var(--adm-line)]" />
                           </li>
                         ) : /^\d+\.\s+/.test(item) ? (
                           <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
-                            <span className="min-w-5 shrink-0 font-bold text-brand-2">{item.match(/^(\d+)\./)?.[1]}.</span>
+                            <span className="min-w-5 shrink-0 font-bold adm-accent">{item.match(/^(\d+)\./)?.[1]}.</span>
                             <span><RichInline text={item.replace(/^\d+\.\s+/, '')} /></span>
                           </li>
                         ) : (
@@ -1074,10 +1097,10 @@ function PolicyLivePreview({ policy, activeKey }) {
                     </ul>
                   )}
                   {section.subsections?.length > 0 && (
-                    <div className="mt-4 grid gap-3">
+                    <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-3">
                       {section.subsections.map((subsection) => (
-                        <section className="rounded-lg border border-white/10 bg-bg-2/50 p-4" key={subsection.title}>
-                          <h5 className="text-sm font-bold text-white"><RichInline text={subsection.title} /></h5>
+                        <section className="rounded border border-[var(--adm-line)] bg-bg-2 p-4" key={subsection.title}>
+                          <h5 className="text-sm font-bold text-ink"><RichInline text={subsection.title} /></h5>
                           {subsection.description && (
                             /^\s*:::(?:accordion|collapse)(?:\s|$)/m.test(subsection.description)
                               ? <MarkdownBody text={subsection.description} className="mt-2" />
@@ -1088,11 +1111,11 @@ function PolicyLivePreview({ policy, activeKey }) {
                               {subsection.items.map((item, itemIndex) => (
                                 item === '---' ? (
                                   <li className="list-none py-1" key={`divider-${itemIndex}`}>
-                                    <hr className="border-0 border-t border-white/10" />
+                                    <hr className="border-0 border-t border-[var(--adm-line)]" />
                                   </li>
                                 ) : /^\d+\.\s+/.test(item) ? (
                                   <li className="flex items-start gap-3 text-sm leading-6 text-muted" key={item}>
-                                    <span className="min-w-5 shrink-0 font-bold text-brand-2">{item.match(/^(\d+)\./)?.[1]}.</span>
+                                    <span className="min-w-5 shrink-0 font-bold adm-accent">{item.match(/^(\d+)\./)?.[1]}.</span>
                                     <span><RichInline text={item.replace(/^\d+\.\s+/, '')} /></span>
                                   </li>
                                 ) : (
@@ -1113,8 +1136,8 @@ function PolicyLivePreview({ policy, activeKey }) {
             </section>
           ))}
 
-          <div className="rounded-xl border border-brand/25 bg-brand/[0.06] p-5">
-            <h4 className="font-bold text-white">Questions about the {activeKey === 'rules' ? 'rules' : 'terms'}?</h4>
+          <div className="rounded border border-brand/25 bg-brand/[0.06] p-5">
+            <h4 className="font-bold text-ink">Questions about the {activeKey === 'rules' ? 'rules' : 'terms'}?</h4>
             <p className="mt-2 text-sm leading-6 text-muted">Reach out to the staff team for clarifications, appeals, or reports.</p>
           </div>
         </article>
@@ -1132,14 +1155,14 @@ function StaffLivePreview({ staff }) {
         <PreviewEmpty />
       ) : (
         <article className="grid gap-4">
-          <div className="rounded-xl border border-white/10 bg-surface p-5">
+          <div className="rounded border border-[var(--adm-line)] bg-surface-2 p-5">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="eyebrow">{staff.eyebrow}</span>
-              <span className="rounded-full border border-white/10 bg-bg-2 px-3 py-1 text-xs font-semibold text-muted">
+              <span className="label adm-accent">{staff.eyebrow}</span>
+              <span className="rounded-md bg-bg-2 px-3 py-1 text-xs font-semibold text-muted">
                 {totalMembers} member{totalMembers === 1 ? '' : 's'}
               </span>
             </div>
-            <h3 className="mt-3 text-2xl font-bold leading-tight text-white">{staff.title || 'Untitled staff page'}</h3>
+            <h3 className="mt-3 text-2xl font-bold leading-tight text-ink">{staff.title || 'Untitled staff page'}</h3>
             {staff.intro && <p className="mt-3 text-sm leading-7 text-muted"><RichInline text={staff.intro} /></p>}
             <p className="mt-4 text-xs font-semibold text-muted">Last updated {staff.updated}</p>
           </div>
@@ -1147,21 +1170,21 @@ function StaffLivePreview({ staff }) {
           {staff.groups.map((group) => (
             <section key={group.name}>
               <div className="flex items-center gap-3">
-                <h4 className="font-bold tracking-tight text-white">{group.name}</h4>
-                <span className="rounded-full border border-white/10 bg-bg-2 px-2.5 py-0.5 text-xs font-semibold text-muted">
+                <h4 className="font-bold tracking-tight text-ink">{group.name}</h4>
+                <span className="rounded-md bg-bg-2 px-2.5 py-0.5 text-xs font-semibold text-muted">
                   {group.members.length}
                 </span>
-                <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
+                <span className="h-px flex-1 bg-[var(--adm-line)]" aria-hidden="true" />
               </div>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 {group.members.map((member) => (
-                  <article className="flex items-start gap-3 rounded-xl border border-white/10 bg-surface p-4" key={`${group.name}-${member.name}`}>
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-gradient-to-b from-brand-2 to-brand text-sm font-bold text-[#1a0d07]">
+                  <article className="flex items-start gap-3 rounded border border-[var(--adm-line)] bg-surface-2 p-4" key={`${group.name}-${member.name}`}>
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded bg-brand text-sm font-bold text-[#160904] shadow-[inset_0_-3px_0_var(--brand-dark)]">
                       {String(member.name || '?').slice(0, 2).toUpperCase()}
                     </span>
                     <div className="min-w-0">
-                      <h5 className="truncate font-bold leading-tight text-white">{member.name}</h5>
-                      {member.role && <p className="mt-0.5 text-sm font-semibold text-brand-2">{member.role}</p>}
+                      <h5 className="truncate font-bold leading-tight text-ink">{member.name}</h5>
+                      {member.role && <p className="mt-0.5 text-sm font-semibold adm-accent">{member.role}</p>}
                       {member.note && <p className="mt-2 text-sm leading-6 text-muted"><RichInline text={member.note} /></p>}
                     </div>
                   </article>
@@ -1216,19 +1239,19 @@ function FormattingDocs() {
   ]
 
   return (
-    <div className="mt-8 grid gap-6">
-      <section className="rounded-2xl border border-white/10 bg-surface p-6">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-2">Formatting Docs</p>
-        <h2 className="mt-3 text-2xl font-bold leading-tight text-white">Editor formatting guide</h2>
+    <div className="grid gap-6">
+      <section className="panel adm-pane">
+        <p className="label adm-accent">Formatting docs</p>
+        <h2 className="mt-2 text-2xl font-bold leading-tight text-ink">Editor formatting guide</h2>
         <p className="mt-3 max-w-[74ch] text-sm leading-7 text-muted">
           These formats are used by the admin editors and live previews. Each editable page type has its own section below.
         </p>
-        <div className="mt-5 flex flex-wrap gap-3">
-          <a className={`${secondaryButtonClass} min-h-10`} href="/admin">
+        <div className="mt-5 flex flex-wrap gap-2">
+          <a className={secondaryButtonClass} href="/admin">
             Back to admin
           </a>
           {docsSections.map((section) => (
-            <a className={`${secondaryButtonClass} min-h-10`} href={`#${section.id}`} key={section.id}>
+            <a className={secondaryButtonClass} href={`#${section.id}`} key={section.id}>
               {section.title}
             </a>
           ))}
@@ -1236,15 +1259,15 @@ function FormattingDocs() {
       </section>
 
       {docsSections.map((section) => (
-        <section id={section.id} className="scroll-mt-28 rounded-2xl border border-white/10 bg-surface p-6" key={section.id}>
-          <h3 className="text-xl font-bold text-white">{section.title}</h3>
+        <section id={section.id} className="panel adm-pane scroll-mt-24" key={section.id}>
+          <h3 className="text-xl font-bold text-ink">{section.title}</h3>
           <p className="mt-2 text-sm leading-7 text-muted">{section.description}</p>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             {section.examples.map((example) => (
-              <article className="rounded-xl border border-white/10 bg-bg-2 p-4" key={example.title}>
-                <h4 className="font-bold text-white">{example.title}</h4>
+              <article className="adm-card" key={example.title}>
+                <h4 className="font-bold text-ink">{example.title}</h4>
                 <p className="mt-2 text-sm leading-6 text-muted">{example.description}</p>
-                <pre className="mt-4 overflow-x-auto rounded-lg border border-white/10 bg-black/35 p-4 text-xs leading-6 text-brand-2">
+                <pre className="adm-code mt-4">
                   <code>{example.code}</code>
                 </pre>
               </article>
@@ -1252,6 +1275,88 @@ function FormattingDocs() {
           </div>
         </section>
       ))}
+    </div>
+  )
+}
+
+// Shown while App loads the content and while the session is checked.
+export function AdminLoading({ message = 'Loading admin…' }) {
+  return (
+    <main className="adm-login" aria-busy="true">
+      <section className="panel grid gap-4">
+        <p className="label">Admin</p>
+        <div className="skeleton h-8 w-48" />
+        <div className="skeleton h-11" />
+        <div className="skeleton h-11" />
+        <p className="text-sm text-muted">{message}</p>
+      </section>
+    </main>
+  )
+}
+
+const statusText = { dirty: 'Unsaved changes', saving: 'Saving…', saved: 'Saved' }
+const statusOf = (saveState, dirty) => (saveState === 'saving' ? 'saving' : saveState === 'saved' ? 'saved' : dirty ? 'dirty' : '')
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b)
+
+const publicPages = [
+  ['Home', '/'], ['Leaderboard', '/leaderboard'], ['News', '/news'], ['Changelog', '/changelog'],
+  ['Wiki', '/wiki'], ['Staff', '/staff'], ['Rules', '/rules'], ['Terms', '/terms'],
+]
+
+function Overview({ sections, onOpen }) {
+  const { settings, home } = useSite()
+  const server = useServerStatus(settings.serverAddress)
+  const shownRealms = home.realms.filter((realm) => realm.enabled).length
+
+  return (
+    <div className="grid gap-6">
+      <section className="panel adm-pane" aria-labelledby="adm-live">
+        <p className="label">Live</p>
+        <h2 id="adm-live" className="mt-2 text-xl">{settings.serverAddress}</h2>
+        <p className="mt-3 text-[15px]">
+          {server.loading ? (
+            <span className="text-muted">Checking the server…</span>
+          ) : server.online ? (
+            <span className="adm-live">{formatCount(server.players)}{server.maxPlayers !== null ? ` / ${formatCount(server.maxPlayers)}` : ''} players online</span>
+          ) : (
+            <span className="adm-live off">Offline or not reachable</span>
+          )}
+        </p>
+      </section>
+
+      <section aria-labelledby="adm-content-title">
+        <h2 id="adm-content-title" className="mb-3 text-lg">Content</h2>
+        <div className="adm-stats">
+          {sections.filter((section) => section.count !== undefined).map((section) => (
+            <button className="panel adm-stat" type="button" key={section.id} onClick={() => onOpen(section.id)}>
+              <b>{section.count}</b>
+              <span>{section.unit}{section.id === 'home' ? `, ${shownRealms} shown` : ''}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section className="panel adm-pane" aria-labelledby="adm-quick">
+          <h2 id="adm-quick" className="mb-4 text-lg">Quick actions</h2>
+          <div className="adm-links">
+            <button className={primaryButtonClass} type="button" onClick={() => onOpen('news')}>Write a news post</button>
+            <button className={secondaryButtonClass} type="button" onClick={() => onOpen('changelog')}>Add a changelog entry</button>
+            <button className={secondaryButtonClass} type="button" onClick={() => onOpen('home')}>Edit the home page</button>
+            <button className={secondaryButtonClass} type="button" onClick={() => onOpen('settings')}>Server address and links</button>
+            <button className={secondaryButtonClass} type="button" onClick={() => onOpen('docs')}>Formatting docs</button>
+          </div>
+        </section>
+        <section className="panel adm-pane" aria-labelledby="adm-pages">
+          <h2 id="adm-pages" className="mb-4 text-lg">Public pages</h2>
+          <div className="adm-links">
+            {publicPages.map(([label, href]) => (
+              <a className={secondaryButtonClass} href={href} target="_blank" rel="noreferrer" key={href}>{label}</a>
+            ))}
+          </div>
+          <p className="adm-hint mt-3">Each opens in a new tab.</p>
+        </section>
+      </div>
     </div>
   )
 }
@@ -1284,6 +1389,16 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
   const [newRealmName, setNewRealmName] = useState('')
   const [realmMessage, setRealmMessage] = useState('')
   const [isSavingRealms, setIsSavingRealms] = useState(false)
+  const { home, setSite } = useSite()
+  const [siteLoad, setSiteLoad] = useState({ ready: false, error: '' })
+  const [childStatus, setChildStatus] = useState({})
+  const [query, setQuery] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
+  // Wiki, Home page and Site settings own their drafts and report their save status here.
+  const reportStatus = useCallback(
+    (id, value) => setChildStatus((current) => (current[id] === value ? current : { ...current, [id]: value })),
+    [],
+  )
 
   const editablePosts = useMemo(() => newsItems, [newsItems])
   const editableChangelog = useMemo(() => changelogEntries, [changelogEntries])
@@ -1370,6 +1485,40 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
     return () => {
       isCurrent = false
     }
+  }, [])
+
+  // The Home page and Site settings editors start from a fresh copy of the stored
+  // document, never from the seed, so a save cannot overwrite unseen server data.
+  useEffect(() => {
+    if (!isLoggedIn) {
+      return undefined
+    }
+    let isCurrent = true
+    loadSite()
+      .then((loaded) => {
+        if (isCurrent) {
+          setSite(loaded)
+          setSiteLoad({ ready: true, error: '' })
+        }
+      })
+      .catch((error) => {
+        if (isCurrent) setSiteLoad({ ready: false, error: error.message })
+      })
+    return () => {
+      isCurrent = false
+    }
+  }, [isLoggedIn, setSite])
+
+  // Back and forward return to the sections opened in this visit (openTab
+  // records each entry's section). Anchor links in the docs add entries without one.
+  useEffect(() => {
+    function handlePopState(event) {
+      setActiveTab(event.state?.adminTab ?? (window.location.pathname === '/admin/docs' ? 'docs' : 'overview'))
+      setQuery('')
+      setMenuOpen(false)
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
   }, [])
 
   // Load the selected policy into the editor whenever the tab or source data changes.
@@ -1489,18 +1638,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
       return
     }
 
-    setForm({
-      title: item.title,
-      slug: item.slug,
-      description: item.description,
-      category: item.category,
-      date: getDateInputValue(item),
-      author: item.author,
-      readingTime: item.readingTime,
-      imageUrl: typeof item.img === 'string' && item.img.startsWith('http') ? item.img : '',
-      bodyText: getBodyText(item.body),
-      highlightsText: item.highlights.join('\n'),
-    })
+    setForm(newsToForm(item))
     setEditingSlug(item.slug)
     setSaveMessage(`Editing "${item.title}". Saving creates a local override.`)
   }
@@ -1714,21 +1852,16 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
   }
 
   if (isCheckingSession) {
-    return (
-      <main className="min-h-svh bg-bg px-5 pb-16 pt-36 text-white sm:px-8 lg:px-12">
-        <section className="mx-auto max-w-md rounded-2xl border border-white/10 bg-surface p-6">
-          <p className="text-sm font-semibold text-zinc-300">Checking admin session...</p>
-        </section>
-      </main>
-    )
+    return <AdminLoading message="Checking admin session…" />
   }
 
   if (!isLoggedIn) {
     return (
-      <main className="min-h-svh bg-bg px-5 pb-16 pt-36 text-white sm:px-8 lg:px-12">
-        <section className="mx-auto max-w-md rounded-2xl border border-white/10 bg-surface p-6 shadow-[0_18px_45px_rgba(0,0,0,0.35)]">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-2">Admin</p>
-          <h1 className="mt-3 text-3xl font-bold leading-tight text-white">Admin Login</h1>
+      <main className="adm-login">
+        <section className="panel">
+          <img src="/img/logo-mark.webp" width="44" height="44" alt="" />
+          <p className="label mt-5">Admin</p>
+          <h1>Admin login</h1>
           <p className="mt-3 text-sm leading-6 text-muted">
             Credentials are verified by the server and stored in an HttpOnly session cookie.
           </p>
@@ -1738,6 +1871,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
               Username
               <input
                 className={inputClass}
+                autoComplete="username"
                 value={loginForm.username}
                 onChange={(event) =>
                   setLoginForm((currentForm) => ({ ...currentForm, username: event.target.value }))
@@ -1749,17 +1883,21 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
               <input
                 className={inputClass}
                 type="password"
+                autoComplete="current-password"
                 value={loginForm.password}
                 onChange={(event) =>
                   setLoginForm((currentForm) => ({ ...currentForm, password: event.target.value }))
                 }
               />
             </label>
-            {loginError && <p className="text-sm font-semibold text-red-400">{loginError}</p>}
-            <button className={`${primaryButtonClass} min-h-11`} type="submit">
+            {loginError && <p className="adm-error" role="alert">{loginError}</p>}
+            <button className="btn btn-primary" type="submit">
               Log in
             </button>
           </form>
+          <a className="mt-5 inline-block text-sm font-semibold text-muted hover:text-ink" href="/">
+            ← Back to the site
+          </a>
         </section>
       </main>
     )
@@ -1811,33 +1949,63 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
     }
   }
 
-  const tabs = [
-    { id: 'news', label: 'News' },
-    { id: 'changelog', label: 'Changelog' },
-    { id: 'staff', label: 'Staff' },
-    { id: 'wiki', label: 'Wiki' },
-    { id: 'rules', label: 'Rules' },
-    { id: 'terms', label: 'Terms' },
-    { id: 'docs', label: 'Docs' },
+  const sections = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'home', label: 'Home page', count: home.realms.length, unit: 'realms' },
+    { id: 'settings', label: 'Site settings' },
+    { id: 'news', label: 'News', count: newsItems.filter((item) => !item.deleted).length, unit: 'news posts' },
+    { id: 'changelog', label: 'Changelog', count: changelogEntries.filter((entry) => !entry.deleted).length, unit: 'changelog entries' },
+    { id: 'wiki', label: 'Wiki', count: (wiki?.categories ?? []).reduce((sum, category) => sum + (category.articles?.length ?? 0), 0), unit: 'wiki articles' },
+    { id: 'staff', label: 'Staff', count: (staff?.groups ?? []).reduce((sum, group) => sum + (group.members?.length ?? 0), 0), unit: 'staff members' },
+    { id: 'rules', label: 'Rules', count: policies?.rules?.sections?.length ?? 0, unit: 'rules sections' },
+    { id: 'terms', label: 'Terms', count: policies?.terms?.sections?.length ?? 0, unit: 'terms sections' },
   ]
 
+  function openTab(id) {
+    setActiveTab(id)
+    setQuery('')
+    setMenuOpen(false)
+    if (id !== activeTab) {
+      window.history.replaceState({ ...window.history.state, adminTab: activeTab }, '')
+      window.history.pushState({ adminTab: id }, '', id === 'docs' ? '/admin/docs' : '/admin')
+    }
+  }
+
   const activeMeta = isPolicyTab ? policyMeta[activeTab] : null
-  const heading =
-    activeTab === 'news'
-      ? editingSlug
-        ? 'Edit News'
-        : 'Create News'
-      : activeTab === 'changelog'
-      ? editingChangelogSlug
-        ? 'Edit Changelog'
-        : 'Create Changelog'
-      : activeTab === 'staff'
-        ? 'Edit Staff'
-        : activeTab === 'wiki'
-          ? 'Edit Wiki'
-          : activeTab === 'docs'
-            ? 'Formatting Docs'
-            : `Edit ${activeMeta.heading}`
+  const heading = {
+    overview: 'Overview',
+    home: 'Home page',
+    settings: 'Site settings',
+    news: editingSlug ? 'Edit News' : 'Create News',
+    changelog: editingChangelogSlug ? 'Edit Changelog' : 'Create Changelog',
+    staff: 'Edit Staff',
+    wiki: 'Edit Wiki',
+    docs: 'Formatting Docs',
+  }[activeTab] ?? `Edit ${activeMeta.heading}`
+
+  // Top-bar status. Dirty compares the form with what it was loaded from; only
+  // the active tab is computed.
+  let saveStatus = childStatus[activeTab] ?? ''
+  if (activeTab === 'news') {
+    const editingItem = editingSlug ? editablePosts.find((item) => item.slug === editingSlug) : null
+    saveStatus = statusOf(newsSaveState, !same(form, editingItem ? newsToForm(editingItem) : defaultForm))
+  } else if (activeTab === 'changelog') {
+    const editingEntry = editingChangelogSlug ? editableChangelog.find((entry) => entry.slug === editingChangelogSlug) : null
+    saveStatus = statusOf(changelogSaveState, !same(changelogForm, editingEntry ? changelogToForm(editingEntry) : defaultChangelogForm))
+  } else if (isPolicyTab) {
+    saveStatus = statusOf(policySaveState, !same(policyForm, policyToForm(policies?.[activeTab])))
+  } else if (isStaffTab) {
+    saveStatus = statusOf(staffSaveState, !same(staffForm, staffToForm(staff)))
+  }
+
+  const needle = query.trim().toLowerCase()
+  const visiblePosts = needle
+    ? editablePosts.filter((item) => `${item.title} ${item.slug}`.toLowerCase().includes(needle))
+    : editablePosts
+  const visibleChangelog = needle
+    ? editableChangelog.filter((entry) => `${entry.realm} ${entry.version} ${entry.title ?? ''} ${entry.summary ?? ''}`.toLowerCase().includes(needle))
+    : editableChangelog
+  const hasSearch = activeTab === 'news' || activeTab === 'changelog'
   const newsSaveButtonLabel = newsSaveState === 'saving'
     ? 'Saving...'
     : newsSaveState === 'saved'
@@ -1864,62 +2032,173 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
         : 'Save changelog entry'
 
   return (
-    <main className="min-h-svh bg-bg px-5 pb-16 pt-36 text-white sm:px-8 lg:px-12">
-      <section className="mx-auto max-w-6xl">
-        {/* Top bar */}
-        <div className="flex flex-col gap-5 rounded-2xl border border-white/10 bg-surface p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-2">Admin</p>
-              <h1 className="mt-3 text-3xl font-bold leading-tight text-white">{heading}</h1>
-            </div>
-            <button className={`${secondaryButtonClass} min-h-10`} type="button" onClick={handleLogout}>
-              Log out
-            </button>
-          </div>
-
-          <div className="flex flex-wrap gap-1.5 rounded-xl border border-white/10 bg-bg-2 p-1.5">
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.id
+    <div className="adm">
+      <aside className={`adm-side${menuOpen ? ' is-open' : ''}`}>
+        <div className="adm-brand">
+          <img src="/img/logo-mark.webp" width="34" height="34" alt="" />
+          <span>
+            <b>AlwiNation</b>
+            <span className="label">Admin</span>
+          </span>
+        </div>
+        <button
+          className="adm-menu-btn btn btn-stone btn-sm"
+          type="button"
+          aria-expanded={menuOpen}
+          aria-controls="adm-drawer"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          {menuOpen ? 'Close' : 'Menu'}
+        </button>
+        <div className="adm-drawer" id="adm-drawer">
+          <nav className="adm-nav" aria-label="Admin sections">
+            {sections.map((section) => {
               const customized =
-                tab.id === 'staff'
+                section.id === 'staff'
                   ? isStaffCustomized()
-                  : tab.id === 'wiki'
+                  : section.id === 'wiki'
                     ? isWikiCustomized()
-                    : (tab.id === 'rules' || tab.id === 'terms') && isPolicyCustomized(tab.id)
+                    : (section.id === 'rules' || section.id === 'terms') && isPolicyCustomized(section.id)
+              const unsaved = childStatus[section.id] === 'dirty'
               return (
                 <button
-                  key={tab.id}
+                  key={section.id}
                   type="button"
-                  onClick={() => {
-                    setActiveTab(tab.id)
-                    window.history.pushState(null, '', tab.id === 'docs' ? '/admin/docs' : '/admin')
-                  }}
-                  className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                    isActive ? 'bg-brand text-white' : 'text-muted hover:bg-white/[0.06] hover:text-white'
-                  }`}
+                  aria-current={activeTab === section.id ? 'page' : undefined}
+                  onClick={() => openTab(section.id)}
                 >
-                  {tab.label}
-                  {customized && (
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-white' : 'bg-brand-2'}`}
-                      title="Customized"
-                    />
-                  )}
+                  {section.label}
+                  {customized && <span className="dot" title="Customized"><span className="sr-only">(customized)</span></span>}
+                  {unsaved && <span className="dot unsaved" title="Unsaved changes"><span className="sr-only">(unsaved changes)</span></span>}
+                  {section.count !== undefined && <span className="count">{section.count}</span>}
                 </button>
               )
             })}
+          </nav>
+          <nav className="adm-nav" aria-label="Help">
+            <p className="label">Help</p>
+            <button type="button" aria-current={activeTab === 'docs' ? 'page' : undefined} onClick={() => openTab('docs')}>
+              Formatting docs
+            </button>
+          </nav>
+          <div className="adm-side-foot">
+            <div className="adm-side-row">
+              {/* The session API returns no username; there is one admin account. */}
+              <div className="adm-user">
+                <span className="avatar" aria-hidden="true">A</span>
+                <span className="who"><b>Administrator</b><span>Signed in</span></span>
+              </div>
+              <ThemeToggle />
+            </div>
+            <div className="adm-side-row">
+              <a className="btn btn-stone btn-sm flex-1" href="/" target="_blank" rel="noreferrer">View site</a>
+              <button className="btn btn-stone btn-sm" type="button" onClick={handleLogout}>
+                Log out
+              </button>
+            </div>
           </div>
+        </div>
+      </aside>
+
+      <div className="adm-main">
+        <header className="adm-top">
+          <div className="min-w-0">
+            <p className="label">Admin</p>
+            <h1>{heading}</h1>
+          </div>
+          <div className="adm-top-tools">
+            {hasSearch && (
+              <div className="field">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m20 20-3.5-3.5" />
+                </svg>
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder={activeTab === 'news' ? 'Search news posts' : 'Search changelog entries'}
+                  aria-label={activeTab === 'news' ? 'Search news posts' : 'Search changelog entries'}
+                />
+              </div>
+            )}
+            <span className={saveStatus ? 'adm-status' : undefined} data-state={saveStatus || undefined} role="status">
+              {statusText[saveStatus] ?? ''}
+            </span>
+          </div>
+        </header>
+
+        <main className="adm-body">
+        {activeTab === 'overview' && <Overview sections={sections} onOpen={openTab} />}
+
+        {/* Kept mounted while hidden so switching sections never drops a draft. */}
+        <div hidden={activeTab !== 'home'}>
+          {siteLoad.error ? (
+            <p className="panel adm-pane adm-error">Could not load the site document: {siteLoad.error} Editing is off so the stored copy is not overwritten; reload the page to try again.</p>
+          ) : (
+            <HomeEditor ready={siteLoad.ready} onStatus={reportStatus} />
+          )}
+        </div>
+        <div hidden={activeTab !== 'settings'}>
+          {siteLoad.error ? (
+            <p className="panel adm-pane adm-error">Could not load the site document: {siteLoad.error} Editing is off so the stored copy is not overwritten; reload the page to try again.</p>
+          ) : (
+            <SettingsEditor ready={siteLoad.ready} onStatus={reportStatus} />
+          )}
         </div>
 
         {activeTab === 'docs' && <FormattingDocs />}
 
         {/* News manager */}
         {activeTab === 'news' && (
-          <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
-            <div className="min-w-0 rounded-2xl border border-white/10 bg-surface p-6">
+          <div className="adm-panes">
+            <aside className="panel adm-pane adm-sticky" aria-labelledby="adm-news-list">
+              <h2 id="adm-news-list">News posts</h2>
+              <p className="adm-hint mt-2">
+                Existing news appears here too. Deleting a seed post hides it through a stored override.
+              </p>
+
+              <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-3">
+                {visiblePosts.length === 0 ? (
+                  <p className="adm-card text-sm text-muted">
+                    {needle ? 'No news posts match the search.' : 'No news posts available.'}
+                  </p>
+                ) : (
+                  visiblePosts.map((item) => (
+                    <article className={`adm-card${editingSlug === item.slug ? ' is-active' : ''}`} key={item.id}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="text-[15px] font-bold leading-snug text-ink">{item.title}</h3>
+                          <p className="mt-1 text-sm text-muted wrap-anywhere">/news/{item.slug}</p>
+                        </div>
+                        <span className="adm-chip">
+                          {item.deleted ? 'Hidden' : item.source === 'admin' ? 'Local' : 'Seed'}
+                        </span>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {!item.deleted && (
+                          <>
+                            <button className={primaryButtonClass} type="button" onClick={() => handleEdit(item)}>
+                              Edit
+                            </button>
+                            <a className={secondaryButtonClass} href={`/news/${item.slug}`}>
+                              View
+                            </a>
+                          </>
+                        )}
+                        <button className={dangerButtonClass} type="button" onClick={() => handleDelete(item.slug)}>
+                          {item.deleted ? 'Keep hidden' : 'Delete'}
+                        </button>
+                      </div>
+                    </article>
+                  ))
+                )}
+              </div>
+            </aside>
+
+            <section className="panel adm-pane min-w-0" aria-label="News editor">
               <form className="grid gap-5" onSubmit={handleSubmit}>
-                <div className="grid gap-5 md:grid-cols-2">
+                <div className="adm-grid2">
                   <label className={labelClass}>
                     Title
                     <input className={inputClass} value={form.title} onChange={(event) => updateField('title', event.target.value)} />
@@ -1927,7 +2206,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                   <label className={labelClass}>
                     Slug
                     <input className={inputClass} maxLength={maxSlugLength} value={form.slug} onChange={(event) => updateField('slug', event.target.value)} />
-                    <span className="text-xs font-medium leading-5 text-muted">
+                    <span className="hint">
                       Used in /news/{getEffectiveSlug(form) || 'your-post-slug'}. Leave empty to generate it from the title.
                     </span>
                   </label>
@@ -1938,7 +2217,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                   <textarea className={`${textareaClass} min-h-24`} value={form.description} onChange={(event) => updateField('description', event.target.value)} />
                 </label>
 
-                <div className="grid gap-5 md:grid-cols-2">
+                <div className="adm-grid2">
                   <label className={labelClass}>
                     Category
                     <input className={inputClass} value={form.category} onChange={(event) => updateField('category', event.target.value)} />
@@ -1960,7 +2239,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                 <label className={labelClass}>
                   Image URL
                   <input className={inputClass} placeholder="https://example.com/news-image.png" value={form.imageUrl} onChange={(event) => updateField('imageUrl', event.target.value)} />
-                  <span className="text-xs font-medium leading-5 text-muted">
+                  <span className="hint">
                     Use a direct image URL. PNG, JPG, and WebP images are converted to optimized WebP.
                   </span>
                 </label>
@@ -1973,10 +2252,10 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                     value={form.bodyText}
                     onChange={(event) => updateField('bodyText', event.target.value)}
                   />
-                  <span className="text-xs font-medium leading-5 text-muted">
+                  <span className="hint">
                     Use :::collapse Title, write its description on the next line, and close it with ::: to add collapsible content.
                     {' '}
-                    <a className="font-semibold text-brand-2 underline underline-offset-4 hover:text-brand" href="/admin/docs">
+                    <a className="font-semibold adm-accent underline underline-offset-4" href="/admin/docs">
                       View formatting docs
                     </a>
                   </span>
@@ -1987,65 +2266,103 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                   <textarea className={`${textareaClass} min-h-28`} placeholder="One highlight per line." value={form.highlightsText} onChange={(event) => updateField('highlightsText', event.target.value)} />
                 </label>
 
-                <NewsLivePreview item={newsPreview} />
-
-                {saveMessage && <p className="text-sm font-semibold text-brand-2">{saveMessage}</p>}
+                {saveMessage && <p className="adm-msg" role="status">{saveMessage}</p>}
 
                 <div className="flex flex-wrap gap-3">
                   <button
-                    className={`${primaryButtonClass} min-h-12 min-w-[150px] ${
-                      newsSaveState === 'saved' ? 'from-positive to-positive text-[#062412]' : ''
-                    } active:translate-y-0.5 active:scale-[0.98] disabled:cursor-wait disabled:opacity-80`}
+                    className={`btn btn-primary${newsSaveState === 'saved' ? ' is-saved' : ''}`}
                     type="submit"
                     disabled={isSavingNews}
                   >
                     {newsSaveButtonLabel}
                   </button>
                   {editingSlug && (
-                    <button className={`${secondaryButtonClass} min-h-12`} type="button" onClick={handleCancelEdit}>
+                    <button className="btn btn-stone" type="button" onClick={handleCancelEdit}>
                       Cancel edit
                     </button>
                   )}
                 </div>
               </form>
-            </div>
+            </section>
 
-            <aside className="rounded-2xl border border-white/10 bg-surface p-6 lg:sticky lg:top-28">
-              <h2 className="text-xl font-bold text-white">News Posts</h2>
-              <p className="mt-3 text-sm leading-6 text-muted">
-                Existing news appears here too. Deleting a seed post hides it through a stored override.
+            <NewsLivePreview item={newsPreview} />
+          </div>
+        )}
+
+        {/* Changelog manager */}
+        {activeTab === 'changelog' && (
+          <div className="adm-panes">
+            <aside className="panel adm-pane adm-sticky" aria-labelledby="adm-changelog-list">
+              <div className="mb-5 border-b border-[var(--adm-line)] pb-5">
+                <h2>Realms</h2>
+                <p className="adm-hint mt-2">
+                  Categories you assign to entries. Create them with the realm picker in the form, or remove ones you no longer use.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {changelogRealms.length === 0 ? (
+                    <p className="text-sm text-muted">No saved realms yet. Create one with the realm picker.</p>
+                  ) : (
+                    changelogRealms.map((realm) => (
+                      <span
+                        className="inline-flex items-center gap-1.5 rounded-md border border-[var(--adm-line)] bg-surface-2 py-1 pl-3 pr-1 text-sm font-semibold text-ink"
+                        key={realm}
+                      >
+                        {realm}
+                        <button
+                          className="adm-icon-btn danger"
+                          type="button"
+                          disabled={isSavingRealms}
+                          onClick={() => handleDeleteRealm(realm)}
+                          title={`Remove ${realm}`}
+                          aria-label={`Remove ${realm}`}
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))
+                  )}
+                </div>
+                {realmMessage && <p className="adm-msg mt-3" role="status">{realmMessage}</p>}
+              </div>
+
+              <h2 id="adm-changelog-list">Changelog entries</h2>
+              <p className="adm-hint mt-2">
+                Entries created here or posted by the Discord bot appear in this list. Deleting a seed entry hides it
+                through a stored override.
               </p>
 
-              <div className="mt-6 grid gap-4">
-                {editablePosts.length === 0 ? (
-                  <p className="rounded-xl border border-white/10 bg-surface-2 p-4 text-sm text-muted">
-                    No news posts available.
+              <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-3">
+                {visibleChangelog.length === 0 ? (
+                  <p className="adm-card text-sm text-muted">
+                    {needle ? 'No changelog entries match the search.' : 'No changelog entries yet.'}
                   </p>
                 ) : (
-                  editablePosts.map((item) => (
-                    <article className="rounded-xl border border-white/10 bg-surface-2 p-4" key={item.id}>
+                  visibleChangelog.map((entry) => (
+                    <article className={`adm-card${editingChangelogSlug === entry.slug ? ' is-active' : ''}`} key={entry.id || entry.slug}>
                       <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <h3 className="font-bold text-white">{item.title}</h3>
-                          <p className="mt-1 text-sm text-muted">/news/{item.slug}</p>
+                        <div className="min-w-0">
+                          <h3 className="text-[15px] font-bold leading-snug text-ink">
+                            {entry.realm} <span className="font-mono text-sm text-muted">{entry.version}</span>
+                          </h3>
+                          <p className="mt-1 truncate text-sm text-muted">{entry.title || entry.summary || `/changelog`}</p>
                         </div>
-                        <span className="rounded-md border border-white/10 px-2 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-muted">
-                          {item.deleted ? 'Hidden' : item.source === 'admin' ? 'Local' : 'Seed'}
+                        <span className="adm-chip">
+                          {entry.deleted ? 'Hidden' : entry.source === 'bot' ? 'Bot' : entry.source === 'admin' ? 'Local' : 'Seed'}
                         </span>
                       </div>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {!item.deleted && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {!entry.deleted && (
                           <>
-                            <button className="inline-flex min-h-9 items-center rounded-lg bg-gradient-to-b from-brand-2 to-brand px-3 text-sm font-semibold text-[#1a0d07] transition hover:brightness-105" type="button" onClick={() => handleEdit(item)}>
+                            <button className={primaryButtonClass} type="button" onClick={() => handleChangelogEdit(entry)}>
                               Edit
                             </button>
-                            <a className="inline-flex min-h-9 items-center rounded-lg border border-white/15 px-3 text-sm font-semibold text-zinc-200 no-underline transition hover:border-white/25 hover:text-white" href={`/news/${item.slug}`}>
+                            <a className={secondaryButtonClass} href="/changelog">
                               View
                             </a>
                           </>
                         )}
-                        <button className="inline-flex min-h-9 items-center rounded-lg border border-red-400/40 px-3 text-sm font-semibold text-red-300 transition hover:bg-red-500/10" type="button" onClick={() => handleDelete(item.slug)}>
-                          {item.deleted ? 'Keep hidden' : 'Delete'}
+                        <button className={dangerButtonClass} type="button" onClick={() => handleChangelogDelete(entry.slug)}>
+                          {entry.deleted ? 'Keep hidden' : 'Delete'}
                         </button>
                       </div>
                     </article>
@@ -2053,19 +2370,15 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                 )}
               </div>
             </aside>
-          </div>
-        )}
 
-        {/* Changelog manager */}
-        {activeTab === 'changelog' && (
-          <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
-            <div className="rounded-2xl border border-white/10 bg-surface p-6">
+            <section className="panel adm-pane min-w-0" aria-label="Changelog editor">
               <form className="grid gap-5" onSubmit={handleChangelogSubmit}>
-                <div className="grid gap-5 md:grid-cols-2">
+                <div className="adm-grid2">
                   <div className={labelClass}>
                     <span>Realm</span>
                     <select
                       className={inputClass}
+                      aria-label="Realm"
                       value={changelogForm.realm}
                       onChange={(event) => {
                         if (event.target.value === '__new__') {
@@ -2099,7 +2412,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                           }}
                         />
                         <button
-                          className={`${primaryButtonClass} min-h-11 px-4`}
+                          className={`${primaryButtonClass}`}
                           type="button"
                           disabled={isSavingRealms || !newRealmName.trim()}
                           onClick={handleCreateRealm}
@@ -2107,7 +2420,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                           Add
                         </button>
                         <button
-                          className={`${secondaryButtonClass} min-h-11 px-4`}
+                          className={`${secondaryButtonClass}`}
                           type="button"
                           onClick={() => {
                             setShowNewRealm(false)
@@ -2118,7 +2431,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                         </button>
                       </div>
                     ) : null}
-                    <span className="text-xs font-medium leading-5 text-muted">
+                    <span className="hint">
                       The backend server / gamemode this update is for. Create realms once, then reuse them.
                     </span>
                   </div>
@@ -2133,9 +2446,9 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                   </label>
                 </div>
 
-                <div className="grid gap-5 md:grid-cols-2">
+                <div className="adm-grid2">
                   <label className={labelClass}>
-                    Headline <span className="font-normal text-muted-2">(optional)</span>
+                    Headline <span className="font-normal text-muted">(optional)</span>
                     <input
                       className={inputClass}
                       placeholder="Season 3 balance pass"
@@ -2155,19 +2468,19 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                 </div>
 
                 <label className={labelClass}>
-                  Summary <span className="font-normal text-muted-2">(optional)</span>
+                  Summary <span className="font-normal text-muted">(optional)</span>
                   <textarea
                     className={`${textareaClass} min-h-20`}
                     placeholder="A short sentence describing this update."
                     value={changelogForm.summary}
                     onChange={(event) => updateChangelogField('summary', event.target.value)}
                   />
-                  <span className="text-xs font-medium leading-5 text-muted">
+                  <span className="hint">
                     Supports inline formatting: **bold**, *italic*, `code`, [links](https://…), ||spoiler||.
                   </span>
                 </label>
 
-                <div className="grid gap-5 md:grid-cols-2">
+                <div className="adm-grid2">
                   <label className={labelClass}>
                     Date
                     <input
@@ -2176,7 +2489,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                       value={changelogForm.date}
                       onChange={(event) => updateChangelogField('date', event.target.value)}
                     />
-                    <span className="text-xs font-medium leading-5 text-muted">Leave empty to use today.</span>
+                    <span className="hint">Leave empty to use today.</span>
                   </label>
                   <label className={labelClass}>
                     Author
@@ -2189,20 +2502,20 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                 </div>
 
                 <label className={labelClass}>
-                  Image URL <span className="font-normal text-muted-2">(optional)</span>
+                  Image URL <span className="font-normal text-muted">(optional)</span>
                   <input
                     className={inputClass}
                     placeholder="https://example.com/skyblock-banner.png"
                     value={changelogForm.imageUrl}
                     onChange={(event) => updateChangelogField('imageUrl', event.target.value)}
                   />
-                  <span className="text-xs font-medium leading-5 text-muted">
+                  <span className="hint">
                     Shown on the card and as the detail-page banner. PNG, JPG, and WebP are optimized to WebP.
                   </span>
                 </label>
 
                 <label className={labelClass}>
-                  Slug <span className="font-normal text-muted-2">(optional)</span>
+                  Slug <span className="font-normal text-muted">(optional)</span>
                   <input
                     className={inputClass}
                     maxLength={maxSlugLength}
@@ -2210,13 +2523,13 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                     value={changelogForm.slug}
                     onChange={(event) => updateChangelogField('slug', slugify(event.target.value))}
                   />
-                  <span className="text-xs font-medium leading-5 text-muted">
+                  <span className="hint">
                     Leave empty to build it from the realm and version. Used to update the same entry later.
                   </span>
                 </label>
 
-                <div className="grid gap-4 rounded-xl border border-white/10 bg-surface-2 p-4">
-                  <p className="text-sm font-bold text-white">Changes</p>
+                <div className="adm-fieldset">
+                  <p className="text-sm font-bold text-ink">Changes</p>
                   <p className="-mt-2 text-xs font-medium leading-5 text-muted">
                     One change per line. Fill only the groups you need — empty groups are skipped. Inline formatting
                     works: **bold**, *italic*, `code`, [links](https://…), ||spoiler||.
@@ -2225,7 +2538,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                     const label = getChangeTypeLabel(type)
                     return (
                       <label className={labelClass} key={type}>
-                        <span className="text-xs font-bold uppercase tracking-[0.18em] text-muted-2">{label}</span>
+                        <span className="text-xs font-bold uppercase tracking-[0.18em] text-muted">{label}</span>
                         <textarea
                           className={`${textareaClass} min-h-20`}
                           placeholder={`One ${label.toLowerCase()} item per line.`}
@@ -2237,12 +2550,29 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                   })}
                 </div>
 
-                {/* Live preview */}
-                <div className="min-w-0 wrap-anywhere rounded-xl border border-white/10 bg-surface-2 p-5">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-muted-2">Live preview</p>
+                {changelogMessage && <p className="adm-msg" role="status">{changelogMessage}</p>}
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    className={`btn btn-primary${changelogSaveState === 'saved' ? ' is-saved' : ''}`}
+                    type="submit"
+                    disabled={isSavingChangelog}
+                  >
+                    {changelogSaveButtonLabel}
+                  </button>
+                  {editingChangelogSlug && (
+                    <button className="btn btn-stone" type="button" onClick={handleChangelogCancelEdit}>
+                      Cancel edit
+                    </button>
+                  )}
+                </div>
+              </form>
+            </section>
+
+            <PreviewShell>
                   {changelogForm.imageUrl.trim().startsWith('http') ? (
                     <img
-                      className="mt-3 aspect-[16/9] w-full rounded-lg border border-white/10 object-cover"
+                      className="mt-3 aspect-[16/9] w-full rounded border border-[var(--adm-line)] object-cover"
                       src={changelogForm.imageUrl.trim()}
                       alt=""
                       onError={(event) => {
@@ -2251,20 +2581,20 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                     />
                   ) : null}
                   <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-brand-2">
+                    <span className="rounded-md border border-brand/30 bg-brand/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] adm-accent">
                       {changelogForm.realm.trim() || 'Realm'}
                     </span>
                     {changelogForm.tag.trim() ? (
-                      <span className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
+                      <span className="rounded-md border border-[var(--adm-line)] bg-surface-2 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
                         {changelogForm.tag.trim()}
                       </span>
                     ) : null}
                     {changelogForm.version.trim() ? (
-                      <span className="font-mono text-sm font-semibold text-white">{changelogForm.version.trim()}</span>
+                      <span className="font-mono text-sm font-semibold text-ink">{changelogForm.version.trim()}</span>
                     ) : null}
                   </div>
                   {changelogForm.title.trim() ? (
-                    <h3 className="mt-2 text-lg font-bold leading-tight text-white">{changelogForm.title.trim()}</h3>
+                    <h3 className="mt-2 text-lg font-bold leading-tight text-ink">{changelogForm.title.trim()}</h3>
                   ) : null}
                   {changelogForm.summary.trim() ? (
                     <p className="mt-1 text-sm leading-6 text-muted"><RichInline text={changelogForm.summary.trim()} /></p>
@@ -2274,15 +2604,15 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                       {changelogPreviewGroups.map((group) => (
                         <div key={group.type}>
                           <div className="flex items-center gap-3">
-                            <span className="whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.2em] text-brand-2">
+                            <span className="whitespace-nowrap text-[11px] font-bold uppercase tracking-[0.2em] adm-accent">
                               {getChangeTypeLabel(group.type)}
                             </span>
-                            <span className="h-px flex-1 bg-white/10" aria-hidden="true" />
+                            <span className="h-px flex-1 bg-[var(--adm-line)]" aria-hidden="true" />
                           </div>
                           <ul className="mt-2.5 space-y-1.5">
                             {group.items.map((item, index) => (
                               <li className="flex gap-2.5 text-[13.5px] leading-6 text-muted" key={`${group.type}-${index}`}>
-                                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-600" aria-hidden="true" />
+                                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-2" aria-hidden="true" />
                                 <span><RichInline text={item} /></span>
                               </li>
                             ))}
@@ -2291,118 +2621,65 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                       ))}
                     </div>
                   ) : (
-                    <p className="mt-4 text-sm text-muted-2">Add at least one change to see the preview.</p>
+                    <p className="mt-4 text-sm text-muted">Add at least one change to see the preview.</p>
                   )}
-                </div>
-
-                {changelogMessage && <p className="text-sm font-semibold text-brand-2">{changelogMessage}</p>}
-
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    className={`${primaryButtonClass} min-h-12 min-w-[170px] ${
-                      changelogSaveState === 'saved' ? 'from-positive to-positive text-[#062412]' : ''
-                    } active:translate-y-0.5 active:scale-[0.98] disabled:cursor-wait disabled:opacity-80`}
-                    type="submit"
-                    disabled={isSavingChangelog}
-                  >
-                    {changelogSaveButtonLabel}
-                  </button>
-                  {editingChangelogSlug && (
-                    <button className={`${secondaryButtonClass} min-h-12`} type="button" onClick={handleChangelogCancelEdit}>
-                      Cancel edit
-                    </button>
-                  )}
-                </div>
-              </form>
-            </div>
-
-            <aside className="rounded-2xl border border-white/10 bg-surface p-6 lg:sticky lg:top-28">
-              <div className="mb-6 border-b border-white/10 pb-6">
-                <h2 className="text-xl font-bold text-white">Realms</h2>
-                <p className="mt-2 text-sm leading-6 text-muted">
-                  Categories you assign to entries. Create them from the form above, or remove ones you no longer use.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {changelogRealms.length === 0 ? (
-                    <p className="text-sm text-muted-2">No saved realms yet. Create one with the realm picker above.</p>
-                  ) : (
-                    changelogRealms.map((realm) => (
-                      <span
-                        className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-surface-2 py-1.5 pl-3 pr-1.5 text-sm font-semibold text-white"
-                        key={realm}
-                      >
-                        {realm}
-                        <button
-                          className="grid h-6 w-6 place-items-center rounded-full text-muted transition hover:bg-red-500/15 hover:text-red-300 disabled:opacity-50"
-                          type="button"
-                          disabled={isSavingRealms}
-                          onClick={() => handleDeleteRealm(realm)}
-                          title={`Remove ${realm}`}
-                          aria-label={`Remove ${realm}`}
-                        >
-                          ✕
-                        </button>
-                      </span>
-                    ))
-                  )}
-                </div>
-                {realmMessage && <p className="mt-3 text-sm font-semibold text-brand-2">{realmMessage}</p>}
-              </div>
-
-              <h2 className="text-xl font-bold text-white">Changelog Entries</h2>
-              <p className="mt-3 text-sm leading-6 text-muted">
-                Entries created here or posted by the Discord bot appear in this list. Deleting a seed entry hides it
-                through a stored override.
-              </p>
-
-              <div className="mt-6 grid gap-4">
-                {editableChangelog.length === 0 ? (
-                  <p className="rounded-xl border border-white/10 bg-surface-2 p-4 text-sm text-muted">
-                    No changelog entries yet.
-                  </p>
-                ) : (
-                  editableChangelog.map((entry) => (
-                    <article className="rounded-xl border border-white/10 bg-surface-2 p-4" key={entry.id || entry.slug}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <h3 className="font-bold text-white">
-                            {entry.realm} <span className="font-mono text-sm text-muted">{entry.version}</span>
-                          </h3>
-                          <p className="mt-1 truncate text-sm text-muted">{entry.title || entry.summary || `/changelog`}</p>
-                        </div>
-                        <span className="shrink-0 rounded-md border border-white/10 px-2 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-muted">
-                          {entry.deleted ? 'Hidden' : entry.source === 'bot' ? 'Bot' : entry.source === 'admin' ? 'Local' : 'Seed'}
-                        </span>
-                      </div>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {!entry.deleted && (
-                          <>
-                            <button className="inline-flex min-h-9 items-center rounded-lg bg-gradient-to-b from-brand-2 to-brand px-3 text-sm font-semibold text-[#1a0d07] transition hover:brightness-105" type="button" onClick={() => handleChangelogEdit(entry)}>
-                              Edit
-                            </button>
-                            <a className="inline-flex min-h-9 items-center rounded-lg border border-white/15 px-3 text-sm font-semibold text-zinc-200 no-underline transition hover:border-white/25 hover:text-white" href="/changelog">
-                              View
-                            </a>
-                          </>
-                        )}
-                        <button className="inline-flex min-h-9 items-center rounded-lg border border-red-400/40 px-3 text-sm font-semibold text-red-300 transition hover:bg-red-500/10" type="button" onClick={() => handleChangelogDelete(entry.slug)}>
-                          {entry.deleted ? 'Keep hidden' : 'Delete'}
-                        </button>
-                      </div>
-                    </article>
-                  ))
-                )}
-              </div>
-            </aside>
+            </PreviewShell>
           </div>
         )}
 
         {/* Policy editor (Rules / Terms) */}
         {isPolicyTab && (
-          <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_320px]">
-            <div className="rounded-2xl border border-white/10 bg-surface p-6">
+          <div className="adm-panes">
+            <aside className="panel adm-pane adm-sticky" aria-label="Formatting guide">
+              <h2>Formatting guide</h2>
+              <p className="mt-3 text-sm leading-6 text-muted">
+                Structure the {activeMeta.label} content with this simple syntax:
+              </p>
+              <ul className="mt-4 grid gap-3 p-0">
+                <li className="flex items-start gap-3 text-sm text-muted">
+                  <code className="rounded-md bg-surface-2 px-2 py-0.5 adm-accent"># Title</code>
+                  <span>starts a new section</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-muted">
+                  <code className="rounded-md bg-surface-2 px-2 py-0.5 adm-accent">## Title</code>
+                  <span>starts a subsection</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-muted">
+                  <code className="rounded-md bg-surface-2 px-2 py-0.5 adm-accent">- item</code>
+                  <span>adds a bullet point</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-muted">
+                  <code className="rounded-md bg-surface-2 px-2 py-0.5 adm-accent">---</code>
+                  <span>adds a divider line</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-muted">
+                  <code className="rounded-md bg-surface-2 px-2 py-0.5 adm-accent">:::collapse Title</code>
+                  <span>starts a collapsible description; close it with :::</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-muted">
+                  <span className="rounded-md bg-surface-2 px-2 py-0.5 text-[var(--ink-2)]">plain text</span>
+                  <span>becomes a section description</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-muted">
+                  <code className="rounded-md bg-surface-2 px-2 py-0.5 adm-accent">**bold**</code>
+                  <span>also supports *italic*, __underline__, ~~strike~~, `code`, [links](https://...), and ||spoiler||</span>
+                </li>
+              </ul>
+              <div className="adm-card mt-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Detected</p>
+                <p className="mt-2 text-sm font-semibold text-ink">{parsedSectionCount} section{parsedSectionCount === 1 ? '' : 's'}</p>
+                <p className="mt-3 text-xs leading-5 text-muted">
+                  Changes apply to the live {activeMeta.path} page after saving.
+                </p>
+              </div>
+              <a className={`${secondaryButtonClass} mt-4 w-full`} href="/admin/docs">
+                View formatting docs
+              </a>
+            </aside>
+
+            <section className="panel adm-pane min-w-0" aria-label="Policy editor">
               <form className="grid gap-5" onSubmit={handlePolicySubmit}>
-                <div className="grid gap-5 md:grid-cols-2">
+                <div className="adm-grid2">
                   <label className={labelClass}>
                     Eyebrow
                     <input className={inputClass} placeholder={activeMeta.fallbackEyebrow} value={policyForm.eyebrow} onChange={(event) => updatePolicyField('eyebrow', event.target.value)} />
@@ -2432,84 +2709,62 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                   />
                 </label>
 
-                <PolicyLivePreview policy={policyPreview} activeKey={activeTab} />
-
-                {policyMessage && <p className="text-sm font-semibold text-brand-2">{policyMessage}</p>}
+                {policyMessage && <p className="adm-msg" role="status">{policyMessage}</p>}
 
                 <div className="flex flex-wrap items-center gap-3">
                   <button
-                    className={`${primaryButtonClass} min-h-12 min-w-[150px] ${
-                      policySaveState === 'saved' ? 'from-positive to-positive text-[#062412]' : ''
-                    } active:translate-y-0.5 active:scale-[0.98] disabled:cursor-wait disabled:opacity-80`}
+                    className={`btn btn-primary${policySaveState === 'saved' ? ' is-saved' : ''}`}
                     type="submit"
                     disabled={isSavingPolicy}
                   >
                     {policySaveButtonLabel}
                   </button>
-                  <a className={`${secondaryButtonClass} min-h-12`} href={activeMeta.path} target="_blank" rel="noreferrer">
+                  <a className="btn btn-stone" href={activeMeta.path} target="_blank" rel="noreferrer">
                     Preview page
                   </a>
-                  <button className="inline-flex min-h-12 items-center justify-center rounded-xl border border-red-400/40 px-5 text-sm font-semibold text-red-300 transition hover:bg-red-500/10" type="button" onClick={handlePolicyReset}>
+                  <button className="btn btn-danger" type="button" onClick={handlePolicyReset}>
                     Reset to default
                   </button>
                 </div>
               </form>
-            </div>
+            </section>
 
-            <aside className="rounded-2xl border border-white/10 bg-surface p-6 lg:sticky lg:top-28">
-              <h2 className="text-xl font-bold text-white">Formatting guide</h2>
-              <p className="mt-3 text-sm leading-6 text-muted">
-                Structure the {activeMeta.label} content with this simple syntax:
-              </p>
-              <ul className="mt-4 grid gap-3 p-0">
-                <li className="flex items-start gap-3 text-sm text-muted">
-                  <code className="rounded-md bg-surface-2 px-2 py-0.5 text-brand-2"># Title</code>
-                  <span>starts a new section</span>
-                </li>
-                <li className="flex items-start gap-3 text-sm text-muted">
-                  <code className="rounded-md bg-surface-2 px-2 py-0.5 text-brand-2">## Title</code>
-                  <span>starts a subsection</span>
-                </li>
-                <li className="flex items-start gap-3 text-sm text-muted">
-                  <code className="rounded-md bg-surface-2 px-2 py-0.5 text-brand-2">- item</code>
-                  <span>adds a bullet point</span>
-                </li>
-                <li className="flex items-start gap-3 text-sm text-muted">
-                  <code className="rounded-md bg-surface-2 px-2 py-0.5 text-brand-2">---</code>
-                  <span>adds a divider line</span>
-                </li>
-                <li className="flex items-start gap-3 text-sm text-muted">
-                  <code className="rounded-md bg-surface-2 px-2 py-0.5 text-brand-2">:::collapse Title</code>
-                  <span>starts a collapsible description; close it with :::</span>
-                </li>
-                <li className="flex items-start gap-3 text-sm text-muted">
-                  <span className="rounded-md bg-surface-2 px-2 py-0.5 text-zinc-300">plain text</span>
-                  <span>becomes a section description</span>
-                </li>
-                <li className="flex items-start gap-3 text-sm text-muted">
-                  <code className="rounded-md bg-surface-2 px-2 py-0.5 text-brand-2">**bold**</code>
-                  <span>also supports *italic*, __underline__, ~~strike~~, `code`, [links](https://...), and ||spoiler||</span>
-                </li>
-              </ul>
-              <div className="mt-6 rounded-xl border border-white/10 bg-surface-2 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-2">Detected</p>
-                <p className="mt-2 text-sm font-semibold text-white">{parsedSectionCount} section{parsedSectionCount === 1 ? '' : 's'}</p>
-                <p className="mt-3 text-xs leading-5 text-muted">
-                  Changes apply to the live {activeMeta.path} page after saving.
-                </p>
-              </div>
-              <a className={`${secondaryButtonClass} mt-4 min-h-10 w-full`} href="/admin/docs">
-                View formatting docs
-              </a>
-            </aside>
+            <PolicyLivePreview policy={policyPreview} activeKey={activeTab} />
           </div>
         )}
 
         {isStaffTab && (
-          <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_320px]">
-            <div className="rounded-2xl border border-white/10 bg-surface p-6">
+          <div className="adm-panes">
+            <aside className="panel adm-pane adm-sticky" aria-label="Formatting guide">
+              <h2>Formatting guide</h2>
+              <p className="mt-3 text-sm leading-6 text-muted">Structure the staff list with this simple syntax:</p>
+              <ul className="mt-4 grid gap-3 p-0">
+                <li className="flex items-start gap-3 text-sm text-muted">
+                  <code className="rounded-md bg-surface-2 px-2 py-0.5 adm-accent"># Group</code>
+                  <span>starts a new group (e.g. Moderators)</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-muted">
+                  <code className="rounded-md bg-surface-2 px-2 py-0.5 adm-accent">Name | Role | note</code>
+                  <span>adds a member (role and note optional)</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-muted">
+                  <code className="rounded-md bg-surface-2 px-2 py-0.5 text-[var(--ink-2)]">Name</code>
+                  <span>a name alone is a member with no role</span>
+                </li>
+              </ul>
+              <div className="adm-card mt-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted">Detected</p>
+                <p className="mt-2 text-sm font-semibold text-ink">{parsedMemberCount} member{parsedMemberCount === 1 ? '' : 's'}</p>
+                <p className="mt-3 text-xs leading-5 text-muted">Changes apply to the live /staff page after saving.</p>
+              </div>
+              <a className={`${secondaryButtonClass} mt-4 w-full`} href="/admin/docs">
+                View formatting docs
+              </a>
+            </aside>
+
+            <section className="panel adm-pane min-w-0" aria-label="Staff editor">
               <form className="grid gap-5" onSubmit={handleStaffSubmit}>
-                <div className="grid gap-5 md:grid-cols-2">
+                <div className="adm-grid2">
                   <label className={labelClass}>
                     Eyebrow
                     <input className={inputClass} placeholder={staffMeta.fallbackEyebrow} value={staffForm.eyebrow} onChange={(event) => setStaffForm((current) => ({ ...current, eyebrow: event.target.value }))} />
@@ -2539,65 +2794,33 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                   />
                 </label>
 
-                <StaffLivePreview staff={staffPreview} />
-
-                {staffMessage && <p className="text-sm font-semibold text-brand-2">{staffMessage}</p>}
+                {staffMessage && <p className="adm-msg" role="status">{staffMessage}</p>}
 
                 <div className="flex flex-wrap items-center gap-3">
                   <button
-                    className={`${primaryButtonClass} min-h-12 min-w-[150px] ${
-                      staffSaveState === 'saved' ? 'from-positive to-positive text-[#062412]' : ''
-                    } active:translate-y-0.5 active:scale-[0.98] disabled:cursor-wait disabled:opacity-80`}
+                    className={`btn btn-primary${staffSaveState === 'saved' ? ' is-saved' : ''}`}
                     type="submit"
                     disabled={isSavingStaff}
                   >
                     {staffSaveButtonLabel}
                   </button>
-                  <a className={`${secondaryButtonClass} min-h-12`} href={staffMeta.path} target="_blank" rel="noreferrer">
+                  <a className="btn btn-stone" href={staffMeta.path} target="_blank" rel="noreferrer">
                     Preview page
                   </a>
-                  <button className="inline-flex min-h-12 items-center justify-center rounded-xl border border-red-400/40 px-5 text-sm font-semibold text-red-300 transition hover:bg-red-500/10" type="button" onClick={handleStaffReset}>
+                  <button className="btn btn-danger" type="button" onClick={handleStaffReset}>
                     Reset to default
                   </button>
                 </div>
               </form>
-            </div>
+            </section>
 
-            <aside className="rounded-2xl border border-white/10 bg-surface p-6 lg:sticky lg:top-28">
-              <h2 className="text-xl font-bold text-white">Formatting guide</h2>
-              <p className="mt-3 text-sm leading-6 text-muted">Structure the staff list with this simple syntax:</p>
-              <ul className="mt-4 grid gap-3 p-0">
-                <li className="flex items-start gap-3 text-sm text-muted">
-                  <code className="rounded-md bg-surface-2 px-2 py-0.5 text-brand-2"># Group</code>
-                  <span>starts a new group (e.g. Moderators)</span>
-                </li>
-                <li className="flex items-start gap-3 text-sm text-muted">
-                  <code className="rounded-md bg-surface-2 px-2 py-0.5 text-brand-2">Name | Role | note</code>
-                  <span>adds a member (role and note optional)</span>
-                </li>
-                <li className="flex items-start gap-3 text-sm text-muted">
-                  <code className="rounded-md bg-surface-2 px-2 py-0.5 text-zinc-300">Name</code>
-                  <span>a name alone is a member with no role</span>
-                </li>
-              </ul>
-              <div className="mt-6 rounded-xl border border-white/10 bg-surface-2 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-2">Detected</p>
-                <p className="mt-2 text-sm font-semibold text-white">{parsedMemberCount} member{parsedMemberCount === 1 ? '' : 's'}</p>
-                <p className="mt-3 text-xs leading-5 text-muted">Changes apply to the live /staff page after saving.</p>
-              </div>
-              <a className={`${secondaryButtonClass} mt-4 min-h-10 w-full`} href="/admin/docs">
-                View formatting docs
-              </a>
-            </aside>
+            <StaffLivePreview staff={staffPreview} />
           </div>
         )}
-        {activeTab === 'wiki' && (
-          <div className="mt-8">
-            <WikiManager wiki={wiki} onWikiChange={onWikiChange} />
-          </div>
-        )}
-      </section>
-    </main>
+        {activeTab === 'wiki' && <WikiManager wiki={wiki} onWikiChange={onWikiChange} onStatus={reportStatus} />}
+        </main>
+      </div>
+    </div>
   )
 }
 

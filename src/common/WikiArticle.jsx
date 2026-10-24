@@ -1,145 +1,163 @@
+import { useEffect, useRef, useState } from 'react'
 import MarkdownBody from './MarkdownBody.jsx'
+import { WikiHelpBand, WikiPicture } from './WikiPage.jsx'
+
+const articleHref = (slug) => `/wiki/${encodeURIComponent(slug)}`
+
+// "On this page" links with scrollspy: the last heading that has passed under the nav is current.
+function OnThisPage({ items }) {
+  const [active, setActive] = useState(0)
+
+  useEffect(() => {
+    let frame = 0
+    function spy() {
+      frame = 0
+      let current = 0
+      items.forEach((item, index) => {
+        const top = document.getElementById(item.id)?.getBoundingClientRect().top
+        if (top !== undefined && top < 140) current = index
+      })
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) current = items.length - 1
+      setActive(current)
+    }
+    function onScroll() {
+      if (!frame) frame = requestAnimationFrame(spy)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    spy()
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      cancelAnimationFrame(frame)
+    }
+  }, [items])
+
+  return (
+    <nav className="side-group" aria-labelledby="wiki-on-page">
+      <p className="label" id="wiki-on-page">On this page</p>
+      {items.map((item, index) => (
+        <a href={`#${item.id}`} key={item.id} aria-current={index === active ? 'true' : undefined}>{item.text}</a>
+      ))}
+    </nav>
+  )
+}
 
 function WikiArticle({ article, category, wiki }) {
   const categories = wiki?.categories ?? []
   const siblingArticles = category.articles ?? []
   const otherCategories = categories.filter((cat) => cat.id !== category.id)
-  const hasBody = Boolean(String(article.body || '').trim())
+  const all = categories.flatMap((cat) => (cat.articles ?? []).map((item) => ({ item, cat })))
+  const index = all.findIndex(({ item }) => item.slug === article.slug)
+  const prev = index > 0 ? all[index - 1] : null
+  const next = index >= 0 && index < all.length - 1 ? all[index + 1] : null
+  const body = String(article.body ?? '')
+  const hasBody = Boolean(body.trim())
+  const words = body.split(/\s+/).filter((word) => /[\p{L}\p{N}]/u.test(word)).length
+  const categoryHref = `/wiki#cat-${category.id}`
+
+  // The shared renderer gives its headings no ids, so the contents list names them here.
+  // Ids are "sec-" plus [a-z0-9-], unique on the page; an id the renderer already set is kept.
+  const proseRef = useRef(null)
+  const [contents, setContents] = useState([])
+  useEffect(() => {
+    const headings = [...(proseRef.current?.querySelectorAll('h2') ?? [])]
+    for (const heading of headings) {
+      if (heading.id) continue
+      const base = `sec-${heading.textContent.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'section'}`
+      let id = base
+      for (let n = 2; document.getElementById(id); n += 1) id = `${base}-${n}`
+      heading.id = id
+    }
+    setContents(headings.map((heading) => ({ id: heading.id, text: heading.textContent })))
+    // A shared /wiki/<slug>#sec-… link arrives before these ids exist, so jump once they do,
+    // and after the web fonts are in (a later font swap moves the heading under the nav).
+    const target = headings.find((heading) => `#${heading.id}` === window.location.hash)
+    if (target) document.fonts.ready.then(() => target.scrollIntoView({ block: 'start' }))
+  }, [body])
 
   return (
-    <main className="min-h-svh bg-bg pb-24 pt-32 text-white">
-      {/* Header */}
-      <section className="mx-auto max-w-[1080px] px-6">
-        <nav aria-label="Breadcrumb" className="text-sm text-muted">
-          <ol className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-            <li className="flex items-center">
-              <a href="/wiki" className="transition hover:text-white">
-                Wiki
-              </a>
-            </li>
-            <li aria-hidden="true" className="text-muted-2">/</li>
-            <li className="flex min-w-0 items-center">
-              <a href={`/wiki#cat-${category.id}`} className="inline-flex min-w-0 items-center gap-1.5 transition hover:text-white">
-                <span className="shrink-0">{category.icon || '\uD83D\uDCC4'}</span>
-                <span className="truncate">{category.name}</span>
-              </a>
-            </li>
-            <li aria-hidden="true" className="text-muted-2">/</li>
-            <li className="min-w-0 max-w-full text-white" aria-current="page">
-              <span className="block truncate">{article.title}</span>
-            </li>
-          </ol>
-        </nav>
-
-        <div className="relative mt-4 overflow-hidden rounded-[24px] border border-white/10 bg-surface p-7 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:p-10">
-          <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(255,90,48,0.18),transparent_65%)] blur-2xl" />
-          <div className="relative">
-            <span className="eyebrow">{category.name}</span>
-            <h1 className="mt-4 text-[clamp(30px,4.5vw,50px)] font-bold leading-[1.05] tracking-[-0.03em] text-white">
-              {article.title}
-            </h1>
-            {article.excerpt && (
-              <p className="mt-5 max-w-[70ch] text-[16.5px] leading-8 text-muted">{article.excerpt}</p>
-            )}
-            {article.updated && (
-              <div className="mt-7">
-                <span className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-bg-2 px-3.5 py-2 text-sm font-semibold text-muted">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="3" /><path d="M3 10h18M8 2v4M16 2v4" /></svg>
-                  Last updated {article.updated}
-                </span>
-              </div>
-            )}
+    <main className="wiki wiki-art">
+      <section className="page-hero">
+        <WikiPicture categoryId={category.id} width="1400" height="788" fetchPriority="high" />
+        <div className="container">
+          <nav className="crumbs" aria-label="Breadcrumb">
+            <a href="/">Home</a>
+            <span aria-hidden="true">/</span>
+            <a href="/wiki">Wiki</a>
+            <span aria-hidden="true">/</span>
+            <a href={categoryHref}>{category.name}</a>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page">{article.title}</span>
+          </nav>
+          <p className="label">{category.name}</p>
+          <h1>{article.title}</h1>
+          {article.excerpt && <p className="lead">{article.excerpt}</p>}
+          <div className="art-meta">
+            {article.updated && <span className="chip">Updated <b>{article.updated}</b></span>}
+            {hasBody && <span className="chip">Read <b>{Math.max(1, Math.round(words / 200))} min</b></span>}
           </div>
         </div>
       </section>
 
-      {/* Body + sidebar */}
-      <section className="mx-auto mt-8 max-w-[1080px] px-6">
-        <div className="grid gap-6 lg:grid-cols-[260px_1fr] lg:items-start">
-          <aside className="top-28 hidden lg:sticky lg:block">
-            <nav className="rounded-[18px] border border-white/10 bg-surface p-4">
-              <p className="flex items-center gap-2 px-1 text-xs font-bold uppercase tracking-[0.16em] text-muted-2">
-                <span className="text-sm">{category.icon || '\uD83D\uDCC4'}</span>
-                {category.name}
-              </p>
-              <ul className="mt-3 grid gap-0.5 p-0">
-                {siblingArticles.map((item) => {
-                  const isActive = item.slug === article.slug
-                  return (
-                    <li key={item.slug}>
-                      <a
-                        href={`/wiki/${item.slug}`}
-                        className={`block rounded-lg px-3 py-1.5 text-sm leading-5 transition ${
-                          isActive
-                            ? 'bg-brand/12 font-semibold text-white shadow-[inset_0_0_0_1px_rgba(255,90,48,0.28)]'
-                            : 'text-muted hover:bg-white/[0.05] hover:text-white'
-                        }`}
-                      >
-                        {item.title}
-                      </a>
-                    </li>
-                  )
-                })}
-              </ul>
-
-              {otherCategories.length > 0 && (
-                <>
-                  <p className="mt-6 px-1 text-xs font-bold uppercase tracking-[0.16em] text-muted-2">Other wiki</p>
-                  <ul className="mt-3 grid gap-0.5 p-0">
+      <div className="page">
+        <div className="container">
+          <div className="with-side">
+            <aside className="side">
+              <div className="toc panel">
+                <nav className="side-group" aria-labelledby="wiki-side-topic">
+                  <p className="label" id="wiki-side-topic"><a href={categoryHref}>{category.name}</a></p>
+                  {siblingArticles.map((item) => (
+                    <a href={articleHref(item.slug)} key={item.slug} aria-current={item.slug === article.slug ? 'page' : undefined}>
+                      {item.title}
+                    </a>
+                  ))}
+                </nav>
+                {contents.length > 0 && <OnThisPage items={contents} />}
+                {otherCategories.length > 0 && (
+                  <nav className="side-group side-other" aria-labelledby="wiki-side-other">
+                    <p className="label" id="wiki-side-other">Other topics</p>
                     {otherCategories.map((cat) => (
-                      <li key={cat.id}>
-                        <a
-                          href={`/wiki#cat-${cat.id}`}
-                          className="flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-sm text-muted transition hover:bg-white/[0.05] hover:text-white"
-                        >
-                          <span className="flex min-w-0 items-center gap-2">
-                            <span>{cat.icon || '\uD83D\uDCC4'}</span>
-                            <span className="truncate">{cat.name}</span>
-                          </span>
-                          <span className="text-xs text-muted-2">{cat.articles?.length ?? 0}</span>
-                        </a>
-                      </li>
+                      <a href={`/wiki#cat-${cat.id}`} key={cat.id}>{cat.name}</a>
                     ))}
-                  </ul>
-                </>
-              )}
-            </nav>
-          </aside>
-
-          <div className="grid gap-6">
-            <article className="rounded-[18px] border border-white/10 bg-surface p-6 sm:p-8">
-              {hasBody ? (
-                <MarkdownBody text={article.body} />
-              ) : (
-                <p className="text-muted">This article does not have any content yet.</p>
-              )}
-            </article>
-
-            <div className="rounded-[18px] border border-brand/25 bg-brand/[0.06] p-6 sm:p-7">
-              <h2 className="text-lg font-bold text-white">Need more help?</h2>
-              <p className="mt-2 max-w-[60ch] text-sm leading-7 text-muted">
-                Can't find what you're looking for? Ask the community or staff on Discord.
-              </p>
-              <div className="mt-5 flex flex-wrap gap-3">
-                <a
-                  className="inline-flex min-h-[46px] items-center rounded-xl bg-gradient-to-b from-brand-2 to-brand px-[22px] text-[15px] font-bold text-[#1a0d07] no-underline transition hover:brightness-105"
-                  href="https://discord.alwination.id"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Join our Discord
-                </a>
-                <a
-                  className="inline-flex min-h-[46px] items-center rounded-xl border border-white/15 bg-white/[0.04] px-[22px] text-[15px] font-semibold text-white no-underline transition hover:border-white/25 hover:bg-white/[0.08]"
-                  href="/wiki"
-                >
-                  Back to wiki
-                </a>
+                  </nav>
+                )}
+                <a className="back" href="/wiki"><span aria-hidden="true">←</span> All guides</a>
               </div>
+            </aside>
+
+            <div className="art">
+              <article className="prose" ref={proseRef}>
+                {hasBody ? <MarkdownBody text={body} /> : <p className="art-empty">This article does not have any content yet.</p>}
+              </article>
+
+              {(prev || next) && (
+                <nav className="pager" aria-label="More guides">
+                  {prev && (
+                    <a className="panel prev" href={articleHref(prev.item.slug)}>
+                      <span className="label">← Previous</span>
+                      <b>{prev.item.title}</b>
+                      <small>{prev.cat.name}</small>
+                    </a>
+                  )}
+                  {next && (
+                    <a className="panel next" href={articleHref(next.item.slug)}>
+                      <span className="label">Next →</span>
+                      <b>{next.item.title}</b>
+                      <small>{next.cat.name}</small>
+                    </a>
+                  )}
+                </nav>
+              )}
             </div>
           </div>
+
+          <WikiHelpBand
+            kicker="Was this helpful?"
+            title="Still have a question?"
+            lead="If something here is unclear or out of date, ask on the AlwiNation Discord. Staff support happens there."
+            image="/img/wiki-hero.webp"
+          />
         </div>
-      </section>
+      </div>
     </main>
   )
 }

@@ -14,6 +14,8 @@ dist-ssr
 .env
 .env.*.local
 data/admin-news.json
+data/site.json
+data/site-*.tmp
 
 # Editor directories and files
 .vscode/*

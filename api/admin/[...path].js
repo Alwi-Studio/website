@@ -5,6 +5,7 @@ import {
   deleteChangelog,
   deletePolicy,
   deleteStaff,
+  deleteSite,
   deleteWiki,
   getAdminUsername,
   isAuthenticated,
@@ -19,11 +20,15 @@ import {
   saveChangelogRealms,
   readPolicies,
   readStaff,
+  readSite,
+  readSiteBody,
   readWiki,
   saveAdminNews,
   saveChangelog,
   savePolicy,
   saveStaff,
+  saveSite,
+  SiteValidationError,
   saveWiki,
   validateChangelogEntry,
   validateNewsItem,
@@ -216,6 +221,25 @@ async function handleStaff(req, res) {
   }
 }
 
+async function handleSite(req, res) {
+  if (req.method !== 'POST' && req.method !== 'DELETE') {
+    methodNotAllowed(res, ['POST', 'DELETE'])
+    return
+  }
+
+  try {
+    if (req.method === 'DELETE') {
+      await deleteSite()
+      json(res, 200, { site: await readSite() })
+      return
+    }
+    const site = await saveSite(await readSiteBody(req))
+    json(res, 200, { site })
+  } catch (error) {
+    json(res, error instanceof SiteValidationError ? 400 : 500, { error: error.message })
+  }
+}
+
 async function handleWiki(req, res) {
   if (req.method !== 'POST' && req.method !== 'DELETE') {
     methodNotAllowed(res, ['POST', 'DELETE'])
@@ -257,6 +281,11 @@ export default async function handler(req, res) {
 
   if (!isAuthenticated(req)) {
     json(res, 401, { error: 'Authentication required.' })
+    return
+  }
+
+  if (resource === 'site' && !id) {
+    await handleSite(req, res)
     return
   }
 
