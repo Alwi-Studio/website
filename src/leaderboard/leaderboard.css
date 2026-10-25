@@ -10,13 +10,9 @@
 
 /* Toolbar: mode tabs, then search. */
 .lb-tools { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
-.lb-tools .seg a { scroll-margin-inline: 16px; }
+.lb-tools .seg a { scroll-margin-inline: 6px; } /* = the row padding, so a snapped tab lines up like the first */
 /* Room for the focus ring, which the scroll row would otherwise clip; the negative margin keeps the row aligned. */
 .lb-tools .seg.scroll { padding: 6px; margin: -6px; }
-/* A mouse cannot swipe the hidden-scrollbar row, so on those devices it wraps instead of hiding modes past the edge. */
-@media (hover: hover) and (pointer: fine) {
-  .lb-tools .seg.scroll { flex-wrap: wrap; overflow: visible; }
-}
 .lb-tools .field { max-width: 380px; }
 .lb-tabs-skel { display: flex; gap: 8px; overflow: hidden; }
 .lb-tabs-skel span { flex: none; width: 104px; height: 40px; }

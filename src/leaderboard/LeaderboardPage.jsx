@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Icon } from '../common/Icons.jsx'
 import { formatCount, useDiscordCounts } from '../common/liveData.js'
 import { revealRef } from '../common/reveal.js'
+import SwipeRow from '../common/SwipeRow.jsx'
 import { useSite } from '../common/siteContext.js'
 import { copyText } from '../common/toastBus.js'
 import { loadLeaderboard } from './leaderboardApi.js'
@@ -350,7 +351,7 @@ function LeaderboardPage() {
           {result.status !== 'error' && (
             <div className="lb-tools">
               <nav aria-label="Leaderboard modes">
-                <div className="seg scroll" ref={tabsRef}>
+                <SwipeRow ref={tabsRef}>
                   {data ? (
                     [{ id: 'overall', label: 'Overall', players: data.overall.length }, ...data.modes].map((mode) => (
                       <a
@@ -369,7 +370,7 @@ function LeaderboardPage() {
                       {Array.from({ length: 8 }, (_, index) => <span key={index} className="skeleton" />)}
                     </div>
                   )}
-                </div>
+                </SwipeRow>
               </nav>
               <label className="field">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>

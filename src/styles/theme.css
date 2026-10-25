@@ -667,7 +667,35 @@ section[id] { scroll-margin-top: 84px; }
 /* Long tab rows scroll sideways instead of wrapping into a wall. */
 .seg.scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
 .seg.scroll::-webkit-scrollbar { display: none; }
-.seg.scroll > * { flex: none; }
+.seg.scroll > * { flex: none; scroll-snap-align: start; }
+/* Touch rows snap to whole chips, so a swipe or an arrow never leaves a half chip at the left. */
+.seg.scroll { scroll-snap-type: x mandatory; }
+/* SwipeRow.jsx: when a touch row hides chips, a ‹ › pair sits after it (a mouse row wraps instead).
+   The row comes first so the changelog label still lines up with the chips' baseline. */
+.swipe { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+.swipe > .seg { flex: 1 1 auto; min-width: 0; }
+.swipe-nav { display: flex; gap: 6px; flex: none; }
+/* Chips fade out on the right while more follow. A mask, not an overlay, so the panel or page behind shows through
+   in either theme and nothing is painted over the chips. */
+.swipe[data-end] > .seg, .swipe[data-cut] > .seg {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--fade-l, 0px), #000 calc(100% - var(--fade-r, 0px)), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 var(--fade-l, 0px), #000 calc(100% - var(--fade-r, 0px)), transparent);
+}
+.swipe[data-cut] > .seg { --fade-l: 40px; }
+.swipe[data-end] > .seg { --fade-r: 40px; }
+.swipe-btn {
+  display: grid; place-items: center; width: 36px; height: 40px; padding: 0;
+  border: 2px solid var(--edge); border-radius: var(--radius); background: var(--stone); color: var(--stone-ink);
+  box-shadow: inset 0 -3px 0 var(--stone-lo), inset 0 2px 0 var(--bevel-hi);
+}
+.swipe-btn:hover:not(:disabled) { background: var(--stone-hover); }
+.swipe-btn:active:not(:disabled) { transform: translateY(2px); }
+.swipe-btn:disabled { opacity: 0.4; cursor: default; }
+.swipe-btn svg { width: 18px; height: 18px; }
+/* A mouse cannot swipe a row with a hidden scrollbar, so there it wraps instead of running past the edge. */
+@media (hover: hover) and (pointer: fine) {
+  .seg.scroll { flex-wrap: wrap; overflow-x: visible; }
+}
 
 /* Search field. */
 .field { position: relative; display: flex; align-items: center; }

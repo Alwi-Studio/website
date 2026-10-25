@@ -27,7 +27,8 @@
 
 /* Filters. */
 .cl-page .cl-filters { display: grid; gap: 12px; padding: 16px 18px; }
-.cl-page .cl-row { display: grid; grid-template-columns: 108px minmax(0, 1fr); align-items: center; gap: 14px; }
+/* baseline: once the chips wrap onto several lines, the label stays beside the first one. */
+.cl-page .cl-row { display: grid; grid-template-columns: 108px minmax(0, 1fr); align-items: baseline; gap: 14px; }
 .cl-page .cl-row .label { color: var(--dim); }
 .cl-page .seg .sw { width: 10px; height: 10px; border-radius: 2px; background: var(--c); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35); }
 .cl-page .cl-status { margin-top: 26px; color: var(--muted); font-size: 15px; }

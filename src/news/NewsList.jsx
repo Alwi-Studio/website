@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import Particles from '../common/Particles.jsx'
 import { revealRef } from '../common/reveal.js'
+import SwipeRow from '../common/SwipeRow.jsx'
 import CommunityBand from '../home/CommunityBand.jsx'
 import News from './News.jsx'
 import {
@@ -134,14 +135,14 @@ function NewsList({ newsItems, isLoading = false }) {
           ) : (
             <>
               <div className="news-tools">
-                <div className="seg scroll" role="group" aria-label="Filter posts by category">
+                <SwipeRow role="group" aria-label="Filter posts by category">
                   {categories.map((name) => (
                     <button key={name} type="button" aria-pressed={category === name} onClick={() => setCategory(name)}>
                       {name === 'all' ? 'All' : name}{' '}
                       <span className="count">{name === 'all' ? newsItems.length : newsItems.filter((item) => item.category === name).length}</span>
                     </button>
                   ))}
-                </div>
+                </SwipeRow>
                 <div className="field news-search">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M20 20l-4.6-4.6" /></svg>
                   <input

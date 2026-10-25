@@ -123,7 +123,9 @@
 @media (max-width: 640px) {
   /* nowrap: a wrapping column sizes its line to the filter row's full width and widens the page. */
   .news-tools { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
-  .news-tools .seg { margin-inline: -16px; padding-inline: 16px; }
+  .news-tools .swipe { margin-inline: -16px; }
+  .news-tools .swipe-nav { margin-right: 16px; }
+  .news-tools .seg { padding-inline: 16px; scroll-padding-inline: 16px; }
   .news-search { flex: none; }
   .feature .pic { aspect-ratio: 4 / 3; }
   .feature .feature-mark { left: 20px; right: 20px; bottom: 18px; }

@@ -5,6 +5,7 @@ import { changeTypeOrder, getChangeTypeLabel } from './changelogData.js'
 import { groupChanges, monthOf } from './changeGroups.js'
 import { Icon } from '../common/Icons.jsx'
 import { reducedMotion, revealRef } from '../common/reveal.js'
+import SwipeRow from '../common/SwipeRow.jsx'
 import { useSite } from '../common/siteContext.js'
 import { showToast } from '../common/toastBus.js'
 
@@ -131,18 +132,18 @@ function ChangelogList({ entries = [], isLoading = false }) {
               <div className="cl-filters panel">
                 <div className="cl-row">
                   <p className="label" id="cl-realm-label">Realm</p>
-                  <div className="seg scroll" role="group" aria-labelledby="cl-realm-label">
+                  <SwipeRow role="group" aria-labelledby="cl-realm-label">
                     {['All', ...realms].map((realm) => (
                       <button type="button" key={realm} aria-pressed={current.realm === realm} onClick={() => setFilters({ ...current, realm })}>
                         {realm === 'All' ? 'All realms' : realm}
                         <span className="count">{items.filter((item) => matches(item, { ...current, realm })).length}</span>
                       </button>
                     ))}
-                  </div>
+                  </SwipeRow>
                 </div>
                 <div className="cl-row">
                   <p className="label" id="cl-type-label">Change type</p>
-                  <div className="seg scroll" role="group" aria-labelledby="cl-type-label">
+                  <SwipeRow role="group" aria-labelledby="cl-type-label">
                     {['all', ...types].map((type) => (
                       <button type="button" key={type} aria-pressed={current.type === type} onClick={() => setFilters({ ...current, type })}>
                         {type !== 'all' && <span className="sw" style={{ '--c': `var(--t-${type})` }} aria-hidden="true" />}
@@ -150,7 +151,7 @@ function ChangelogList({ entries = [], isLoading = false }) {
                         <span className="count">{items.filter((item) => matches(item, { ...current, type })).length}</span>
                       </button>
                     ))}
-                  </div>
+                  </SwipeRow>
                 </div>
               </div>
               <p className="cl-status" aria-live="polite">
