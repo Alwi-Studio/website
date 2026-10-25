@@ -12,6 +12,8 @@
   --dim: #868692;
   /* Outline of panels, cards and buttons: black disappears on the near-black background. */
   --edge: #3a3a44;
+  /* Outline of the carousel controls: black in dark mode (white read as too loud), dark in light mode. */
+  --car-stroke: #000;
   --bevel-hi: rgba(255, 255, 255, 0.06);
   --bevel-lo: rgba(0, 0, 0, 0.45);
   --nav-solid: #0c0c0f;
@@ -69,6 +71,7 @@
   --tag-preview: #ebe4ff; --tag-preview-ink: #5532b8;
   --brand-ink: var(--brand-dark);
   --name-shadow: none;
+  --car-stroke: #16161b;
   color-scheme: light;
 }
 /* No script: follow the device setting with the same light tokens. */
@@ -82,6 +85,7 @@
     --tag-update: #d8eef7; --tag-update-ink: #0b6582; --tag-news: #ffe1d4; --tag-news-ink: #b0360c;
     --tag-community: #dcf3dc; --tag-community-ink: #1d7330; --name-shadow: none;
     --tag-preview: #ebe4ff; --tag-preview-ink: #5532b8; --brand-ink: var(--brand-dark);
+    --car-stroke: #16161b;
     color-scheme: light;
   }
 }
@@ -304,7 +308,7 @@ section[id] { scroll-margin-top: 84px; }
 .car-arrow {
   position: absolute; top: calc(50% - 56px); z-index: 2; display: grid; place-items: center;
   width: 54px; height: 54px; padding: 0; border-radius: var(--radius);
-  background: var(--brand); color: #160904; border: 2px solid #000;
+  background: var(--brand); color: #160904; border: 2px solid var(--car-stroke);
   box-shadow: inset 0 -4px 0 var(--brand-dark), inset 0 3px 0 rgba(255, 255, 255, 0.3), 0 10px 24px rgba(0, 0, 0, 0.35);
   transition: transform 120ms ease, filter 150ms ease;
 }
@@ -315,9 +319,9 @@ section[id] { scroll-margin-top: 84px; }
 .car-arrow.next { right: -27px; }
 .car-foot { margin-top: 30px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
 .car-dots { display: flex; gap: 8px; }
-.car-dots button { width: 12px; height: 12px; padding: 0; border: 0; border-radius: 2px; background: color-mix(in srgb, var(--ink) 32%, transparent); transition: width 300ms cubic-bezier(.2, .7, .2, 1), background-color 200ms ease; }
+.car-dots button { width: 12px; height: 12px; padding: 0; border: 2px solid var(--car-stroke); border-radius: 2px; background: color-mix(in srgb, var(--ink) 32%, transparent); transition: width 300ms cubic-bezier(.2, .7, .2, 1), background-color 200ms ease; }
 .car-dots button[aria-current="true"] { width: 36px; background: var(--brand); }
-.car-progress { width: 160px; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--ink) 18%, transparent); overflow: hidden; }
+.car-progress { width: 160px; height: 8px; border: 2px solid var(--car-stroke); border-radius: 2px; background: color-mix(in srgb, var(--ink) 18%, transparent); overflow: hidden; }
 .car-progress span { display: block; height: 100%; background: var(--brand); transform: scaleX(0); transform-origin: left; }
 .carousel.is-playing .car-progress span { animation: car-fill var(--car-delay, 6s) linear forwards; }
 .carousel.is-paused .car-progress span { animation-play-state: paused; }
