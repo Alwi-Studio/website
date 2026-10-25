@@ -16,7 +16,7 @@
 .wiki .toc .label { color: var(--muted); }
 
 /* ---------- Hero search ---------- */
-.wiki-search { margin-top: 30px; max-width: 780px; }
+.wiki-search { position: relative; margin-top: 30px; max-width: 780px; }
 .wiki-search .field svg { left: 20px; width: 22px; height: 22px; }
 .wiki-search .field input { min-height: 66px; padding: 0 64px 0 56px; border-width: 3px; font-size: 18px; font-weight: 500; }
 /* Our own clear button replaces the native one, which Firefox does not draw. */
@@ -42,8 +42,14 @@
 }
 .wiki .try button:hover { background: #2c2c33; color: #fff; }
 
-/* Live results: an in-flow panel under the field. */
-.wiki .results { margin-top: 12px; max-width: 780px; padding: 8px; color: var(--ink); }
+/* Live results float under the field. In the flow they stretched the picture band, which rescaled
+   its picture and, in light mode, left a tall dark block ending hard against the page. */
+.wiki .results {
+  position: absolute; left: 0; right: 0; z-index: 5; margin-top: 8px; padding: 8px; color: var(--ink);
+  max-height: min(62vh, 560px); overflow-y: auto; overscroll-behavior: contain; box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+}
+/* The dropdown hangs past the band's bottom edge and must sit above the page below it. */
+.wiki .page-hero:has(.wiki-search) { overflow: visible; z-index: 3; }
 .wiki .results .results-head { display: flex; justify-content: space-between; gap: 12px; padding: 8px 12px 10px; color: var(--muted); }
 .wiki .result { display: grid; gap: 4px; padding: 12px 14px; border-radius: 3px; border-left: 3px solid transparent; transition: background-color 120ms ease; }
 .wiki .result:hover, .wiki .result:focus-visible { background: var(--surface-2); border-left-color: var(--brand); }

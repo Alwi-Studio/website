@@ -176,6 +176,8 @@ function RealmIndex({ realms, articles }) {
 function WikiPage({ eyebrow, title, intro, updated, categories = [] }) {
   const { home, settings } = useSite()
   const [query, setQuery] = useState('')
+  // The results float over the page, so they close once focus leaves the search (or on Escape).
+  const [open, setOpen] = useState(false)
   const inputRef = useRef(null)
 
   const docs = useMemo(() => categories.flatMap((category) => (category.articles ?? []).map((article) => {
@@ -242,14 +244,22 @@ function WikiPage({ eyebrow, title, intro, updated, categories = [] }) {
             <span><b>{categories.length}</b> {categories.length === 1 ? 'topic' : 'topics'}</span>
             {updated && <span>Updated <b>{updated}</b></span>}
           </p>
-          <form className="wiki-search" role="search" autoComplete="off" onSubmit={onSubmit}>
+          <form
+            className="wiki-search"
+            role="search"
+            autoComplete="off"
+            onSubmit={onSubmit}
+            onFocus={() => setOpen(true)}
+            onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false) }}
+            onKeyDown={(event) => { if (event.key === 'Escape') setOpen(false) }}
+          >
             <div className="field">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.6-3.6" /></svg>
               <input
                 ref={inputRef}
                 type="search"
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => { setQuery(event.target.value); setOpen(true) }}
                 placeholder="Search guides, commands, realms…"
                 maxLength={80}
                 aria-label="Search the wiki"
@@ -264,6 +274,27 @@ function WikiPage({ eyebrow, title, intro, updated, categories = [] }) {
                 <kbd aria-hidden="true">/</kbd>
               )}
             </div>
+            {trimmed && open && (
+              <div className="results panel" onMouseDown={(event) => event.preventDefault()}>
+                <p className="results-head label">{resultsHead}</p>
+                {hits.length === 0 ? (
+                  <p className="none">
+                    Nothing in the wiki matches “{trimmed}”.{' '}
+                    <a href={settings.discordUrl} target="_blank" rel="noreferrer">Ask on Discord</a> and staff will help.
+                  </p>
+                ) : (
+                  hits.map((doc) => (
+                    <a className="result" href={articleHref(doc.article.slug)} key={doc.article.slug}>
+                      <span className="result-top">
+                        <b><Marked text={doc.article.title} pattern={pattern} /></b>
+                        <span className="pill">{doc.category.name}</span>
+                      </span>
+                      <span className="snip"><Marked text={snippet(doc, terms)} pattern={pattern} /></span>
+                    </a>
+                  ))
+                )}
+              </div>
+            )}
             {examples.length > 0 && (
               <div className="try" role="group" aria-label="Example searches">
                 <span className="label">Try</span>
@@ -274,27 +305,6 @@ function WikiPage({ eyebrow, title, intro, updated, categories = [] }) {
             )}
           </form>
           <p className="sr-only" id="wiki-results-status" role="status">{trimmed ? resultsHead : ''}</p>
-          {trimmed && (
-            <div className="results panel">
-              <p className="results-head label">{resultsHead}</p>
-              {hits.length === 0 ? (
-                <p className="none">
-                  Nothing in the wiki matches “{trimmed}”.{' '}
-                  <a href={settings.discordUrl} target="_blank" rel="noreferrer">Ask on Discord</a> and staff will help.
-                </p>
-              ) : (
-                hits.map((doc) => (
-                  <a className="result" href={articleHref(doc.article.slug)} key={doc.article.slug}>
-                    <span className="result-top">
-                      <b><Marked text={doc.article.title} pattern={pattern} /></b>
-                      <span className="pill">{doc.category.name}</span>
-                    </span>
-                    <span className="snip"><Marked text={snippet(doc, terms)} pattern={pattern} /></span>
-                  </a>
-                ))
-              )}
-            </div>
-          )}
         </div>
       </section>
 
