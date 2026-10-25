@@ -125,7 +125,7 @@ function StaffPage({ eyebrow, title, intro, updated, groups = [], isLoading = fa
                       <img className="bg" src="/img/staff-founder.webp" width="1400" height="875" alt="" loading="lazy" />
                       <div className="founder-copy">
                         <span className="rank-tag">[{group.rank.tag}]</span>
-                        <h3 className="founder-name">{founder.name}</h3>
+                        <h3 className="founder-name" style={{ '--chars': founder.name.length }}>{founder.name}</h3>
                         {founder.role && <p className="role">{founder.role}</p>}
                         {founder.note && <p className="note"><RichInline text={founder.note} /></p>}
                       </div>
