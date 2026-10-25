@@ -81,8 +81,9 @@ export function EffectField({ label = 'Particles', value, onChange, allowAuto = 
             {/* '' means the effect's own colour; the swatch then shows white until one is picked. */}
             <input className="adm-color" type="color" value={safeColor(value.color, '#ffffff').toLowerCase()} onChange={(event) => set({ color: event.target.value })} />
           </label>
+          {/* The button goes away on default, so focus moves to the colour it reset instead of dropping to the page. */}
           {value.color
-            ? <button className="btn btn-stone btn-sm" type="button" onClick={() => set({ color: '' })}>Use default colour</button>
+            ? <button className="btn btn-stone btn-sm" type="button" onClick={(event) => { event.currentTarget.previousElementSibling.querySelector('input').focus(); set({ color: '' }) }}>Use default colour</button>
             : <span className="adm-hint">Default: the effect's own colour. Pick one to change it.</span>}
         </div>
       )}
