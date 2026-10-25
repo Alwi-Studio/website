@@ -26,6 +26,7 @@ import { isWikiCustomized } from '../content/wikiStore.js'
 import './admin.css'
 import HomeEditor from './HomeEditor.jsx'
 import SettingsEditor from './SettingsEditor.jsx'
+import { EffectField } from './SiteForm.jsx'
 import WikiManager from './WikiManager.jsx'
 
 const defaultForm = {
@@ -37,6 +38,7 @@ const defaultForm = {
   author: 'AlwiNation Team',
   readingTime: '2 min read',
   imageUrl: '',
+  effect: null,
   bodyText: '',
   highlightsText: '',
 }
@@ -83,6 +85,10 @@ function newsToForm(item) {
     author: item.author,
     readingTime: item.readingTime,
     imageUrl: typeof item.img === 'string' && item.img.startsWith('http') ? item.img : '',
+    // null = Automatic; posts saved before the field existed have none. Rebuilt in EffectField's
+    // key order because Supabase jsonb reorders keys and the dirty check compares JSON text;
+    // a missing field reads as what visitors see for it.
+    effect: item.effect ? { kind: item.effect.kind ?? 'none', amount: item.effect.amount ?? 'normal', color: item.effect.color ?? '' } : null,
     bodyText: getBodyText(item.body),
     highlightsText: item.highlights.join('\n'),
   }
@@ -1600,6 +1606,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
       id: `admin-${slug}`,
       slug,
       img: form.imageUrl.trim(),
+      effect: form.effect,
       title: form.title.trim(),
       description: form.description.trim(),
       category: form.category.trim() || 'Announcement',
@@ -2248,6 +2255,8 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                     Use a direct image URL. PNG, JPG, and WebP images are converted to optimized WebP.
                   </span>
                 </label>
+
+                <EffectField allowAuto value={form.effect} onChange={(effect) => updateField('effect', effect)} />
 
                 <label className={labelClass}>
                   Body

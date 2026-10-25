@@ -218,8 +218,48 @@ section[id] { scroll-margin-top: 84px; }
     linear-gradient(180deg, rgba(10, 10, 12, 0.7) 0%, rgba(10, 10, 12, 0) 20%),
     linear-gradient(0deg, var(--bg) 0%, rgba(10, 10, 12, 0.92) 12%, rgba(10, 10, 12, 0.78) 30%, rgba(10, 10, 12, 0.2) 52%, rgba(10, 10, 12, 0) 64%);
 }
-.embers { position: absolute; inset: 0 0 45% 0; z-index: -1; pointer-events: none; overflow: hidden; }
-.embers i { position: absolute; bottom: -12px; width: 5px; height: 5px; background: #ffb35c; box-shadow: 0 0 8px rgba(255, 150, 60, 0.9); opacity: 0; }
+/* Particle layer (Particles.jsx) for the hero, the Season band and news pictures, all dark.
+   --c is the admin's colour, else each kind's own. Rising kinds start halfway down, above the fade. */
+.fx { position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+.fx i { position: absolute; opacity: 0; }
+.fx-embers, .fx-hearts { inset: 0 0 45% 0; }
+.fx-embers i { bottom: -12px; width: 5px; height: 5px; background: var(--c, #ffb35c); box-shadow: 0 0 8px var(--c, rgba(255, 150, 60, 0.9)); }
+.fx-embers i:nth-child(3n+1) { width: 4px; height: 4px; }
+.fx-snow i { top: -10px; width: 4px; height: 4px; background: var(--c, rgba(220, 240, 255, 0.85)); }
+.fx-snow i:nth-child(3n+1) { width: 6px; height: 6px; }
+.fx-rain i { top: -64px; width: 2px; height: 44px; background: linear-gradient(transparent, var(--c, rgba(180, 212, 255, 0.95))); }
+.fx-rain i:nth-child(3n+1) { height: 60px; }
+/* Pixel leaf and petal: 3x3 pixels with two opposite corners off, one light and one dark pixel. */
+.fx-leaves i, .fx-petals i {
+  top: -16px; width: 15px; height: 15px;
+  clip-path: polygon(0 33.33%, 33.33% 33.33%, 33.33% 0, 100% 0, 100% 66.67%, 66.67% 66.67%, 66.67% 100%, 0 100%);
+  background:
+    linear-gradient(color-mix(in srgb, var(--p) 55%, #fff) 0 0) 100% 0 / 33.34% 33.34% no-repeat,
+    linear-gradient(color-mix(in srgb, var(--p) 65%, #000) 0 0) 0 100% / 33.34% 33.34% no-repeat,
+    var(--p);
+}
+.fx-leaves i { --p: var(--c, #6db53b); }
+.fx-leaves i:nth-child(3n+1) { width: 12px; height: 12px; }
+.fx-petals i { --p: var(--c, #f6a6c9); width: 12px; height: 12px; }
+.fx-petals i:nth-child(3n+1) { width: 9px; height: 9px; }
+.fx-fireflies i { top: var(--y); width: 5px; height: 5px; background: var(--c, #f2ffa6); box-shadow: 0 0 5px 1px var(--c, #d9ff5c), 0 0 18px 6px color-mix(in srgb, var(--c, #c6f53f) 45%, transparent); }
+/* Minecraft's breeding heart: a 7x6 pixel heart with one highlight pixel. */
+.fx-hearts i {
+  bottom: -20px; width: 14px; height: 12px;
+  clip-path: polygon(14.29% 0, 42.86% 0, 42.86% 16.67%, 57.14% 16.67%, 57.14% 0, 85.71% 0, 85.71% 16.67%, 100% 16.67%, 100% 50%, 85.71% 50%, 85.71% 66.67%, 71.43% 66.67%, 71.43% 83.33%, 57.14% 83.33%, 57.14% 100%, 42.86% 100%, 42.86% 83.33%, 28.57% 83.33%, 28.57% 66.67%, 14.29% 66.67%, 14.29% 50%, 0 50%, 0 16.67%, 14.29% 16.67%);
+  background: linear-gradient(color-mix(in srgb, #fff 60%, var(--c, #ff3d55)) 0 0) 16.667% 20% / 14.286% 16.667% no-repeat, var(--c, #ff3d55);
+}
+.fx-hearts i:nth-child(4n+1) { width: 21px; height: 18px; }
+/* Both bands fade into the page colour, which is light in light theme: falling and drifting pieces
+   thin out over those fades instead of landing on the page. Rising kinds start above the bottom fade. */
+.hero .fx:not(.fx-embers, .fx-hearts) {
+  -webkit-mask-image: linear-gradient(0deg, transparent 4%, #000 16%);
+  mask-image: linear-gradient(0deg, transparent 4%, #000 16%);
+}
+.season .fx:not(.fx-embers, .fx-hearts) {
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 130px, #000 calc(100% - 130px), transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 130px, #000 calc(100% - 130px), transparent 100%);
+}
 .hero-in { display: flex; flex-direction: column; align-items: center; text-align: center; }
 .hero-logo img { width: clamp(300px, 46vw, 660px); height: auto; filter: drop-shadow(0 5px 0 rgba(0, 0, 0, 0.55)) drop-shadow(0 0 30px rgba(0, 0, 0, 0.5)); }
 .hero-sub { margin-top: 22px; max-width: 46ch; font-size: clamp(18px, 1.5vw, 20px); color: #e2e4ea; line-height: 1.5; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6); }
@@ -323,8 +363,6 @@ section[id] { scroll-margin-top: 84px; }
 .season h2 em { font-style: normal; color: #67e8f9; }
 .season-copy .lead { margin-top: 18px; max-width: 46ch; color: #d3daea; font-size: 18px; }
 .season-copy .btn { margin-top: 30px; }
-.snow { position: absolute; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
-.snow i { position: absolute; top: -10px; width: 4px; height: 4px; background: rgba(220, 240, 255, 0.85); opacity: 0; }
 
 /* Literal Minecraft item tooltip uses the game's own pixel face. */
 .mc-tooltip {
@@ -538,10 +576,24 @@ section[id] { scroll-margin-top: 84px; }
 @media (prefers-reduced-motion: no-preference) {
   .hero-bg img { animation: drift 30s ease-in-out infinite alternate; }
   @keyframes drift { from { transform: scale(1.02); } to { transform: scale(1.1) translate(-1%, -1%); } }
-  .embers i { animation: rise var(--d, 9s) linear var(--delay, 0s) infinite; }
+  .fx-embers i { animation: rise var(--d, 9s) linear var(--delay, 0s) infinite; }
   @keyframes rise { 0% { transform: translate(0, 0); opacity: 0; } 12% { opacity: 0.9; } 70% { opacity: 0.6; } 100% { transform: translate(var(--x, 30px), -55vh); opacity: 0; } }
-  .snow i { animation: fall var(--d, 10s) linear var(--delay, 0s) infinite; }
+  .fx-snow i { animation: fall var(--d, 10s) linear var(--delay, 0s) infinite; }
   @keyframes fall { 0% { transform: translate(0, 0); opacity: 0; } 10% { opacity: 0.85; } 100% { transform: translate(var(--x, -40px), 110vh); opacity: 0; } }
+  .fx-rain i { animation: pour var(--d) linear var(--delay) infinite; }
+  @keyframes pour { 0% { transform: translateY(0); opacity: 0; } 8% { opacity: 0.75; } 100% { transform: translateY(110vh); opacity: 0.4; } }
+  /* Leaves and petals fall (translate) and swing (transform) on two clocks; the two properties compose. */
+  .fx-leaves i { animation: drop var(--d) linear var(--delay) infinite, sway calc(var(--d) / 5) ease-in-out var(--delay) infinite alternate; }
+  @keyframes drop { 0% { translate: 0 0; opacity: 0; } 8%, 80% { opacity: 0.95; } 100% { translate: var(--x) 110vh; opacity: 0; } }
+  @keyframes sway { from { transform: translateX(-18px) rotate(-30deg); } to { transform: translateX(18px) rotate(30deg); } }
+  .fx-petals i { animation: blow var(--d) linear var(--delay) infinite, flutter calc(var(--d) / 6) ease-in-out var(--delay) infinite alternate; }
+  @keyframes blow { 0% { translate: 0 0; opacity: 0; } 8%, 80% { opacity: 0.95; } 100% { translate: calc(var(--x) + 200px) 110vh; opacity: 0; } }
+  @keyframes flutter { from { transform: translateX(-10px) rotate(0deg) scaleX(1); } to { transform: translateX(12px) rotate(220deg) scaleX(0.3); } }
+  .fx-fireflies i { animation: wander var(--d) ease-in-out var(--delay) infinite alternate, blink calc(var(--d) * 0.6) ease-in-out var(--delay) infinite alternate; }
+  @keyframes wander { 0% { translate: 0 0; } 50% { translate: var(--x) -30px; } 100% { translate: calc(var(--x) * -0.6) 22px; } }
+  @keyframes blink { 0%, 35% { opacity: 0; } 100% { opacity: 0.95; } }
+  .fx-hearts i { animation: float var(--d) linear var(--delay) infinite; }
+  @keyframes float { 0% { transform: translate(0, 0) scale(0.4); opacity: 0; } 12% { transform: translate(0, -4vh) scale(1); opacity: 1; } 70% { opacity: 0.85; } 100% { transform: translate(calc(var(--x) * 0.5), -40vh); opacity: 0; } }
   .js [data-reveal] { opacity: 0; transform: translateY(26px); transition: opacity 700ms ease, transform 700ms cubic-bezier(.2, .7, .2, 1); }
   .js [data-reveal].is-in { opacity: 1; transform: none; }
   .js .board.first[data-reveal].is-in { transform: translateY(-28px); }
@@ -663,5 +715,5 @@ section[id] { scroll-margin-top: 84px; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   [data-reveal] { opacity: 1; transform: none; }
-  .embers, .snow { display: none; }
+  .fx { display: none; }
 }

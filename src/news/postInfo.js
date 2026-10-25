@@ -17,9 +17,21 @@ export function postImage(item, width, index = 0) {
   return getOptimizedImageUrl(item.img, width) || item.img
 }
 
-// Season posts get the cold grade and snow, like the home page's Season band.
+// Season posts get the cold grade, like the home page's Season band.
 export const isSeasonPost = (item) => /\bseason\b/i.test(item.title ?? '')
 export const seasonNumber = (item) => (item.title ?? '').match(/\bseason\s+(\d{1,3})\b/i)?.[1] ?? ''
+
+// The post's own particles, or null for none. Posts without a choice (null, and every older
+// post) are Automatic: snow on Season posts.
+// Stored effects are not re-validated on read: copy only the three fields, because callers
+// spread this into <Particles> and a stray key such as scale would reach its props.
+export function postEffect(item) {
+  if (item.effect && typeof item.effect === 'object') {
+    const { kind, amount, color } = item.effect
+    return kind === 'none' ? null : { kind, amount, color }
+  }
+  return isSeasonPost(item) ? { kind: 'snow', amount: 'normal', color: '' } : null
+}
 
 // Inline markup (**bold**, [text](url), `code` ...) reduced to its visible text, for labels.
 export function plainText(text) {

@@ -19,7 +19,7 @@ export const defaultSite = {
       subtitle: 'The official Minecraft server of Alwisusilo. Ten realms on one IP, from Arena PvP to Tycoon, on PC, phone or console.',
       primaryLabel: 'Play now',
       secondaryLabel: 'Join Discord',
-      effect: 'embers', // 'snow' | 'embers' | 'none'
+      effect: { kind: 'embers', amount: 'normal', color: '' }, // see particleKinds in api/_site.js
     },
     sections: [
       // Rendered in this order. `enabled` hides a section without deleting its content.
@@ -28,7 +28,7 @@ export const defaultSite = {
         autoplaySeconds: 6 },
       { id: 'feature', enabled: true, kicker: 'Tycoon · New season', title: 'Season 5 is', titleAccent: 'live',
         lead: 'The cold has reached your island. Season 5 reworks the core of Tycoon: a new generator line, pets with evolution lines, a Knowledge system and an event calendar you can plan around.',
-        image: '/img/street-wide.webp', effect: 'snow', // 'snow' | 'embers' | 'none'
+        image: '/img/street-wide.webp', effect: { kind: 'snow', amount: 'normal', color: '' },
         buttonLabel: 'Read the patch notes', buttonHref: '/news/season-5',
         tooltip: { title: 'Tycoon · Season Five', subtitle: '12 changes · highlights', footer: '+6 more in the patch notes',
           lines: [

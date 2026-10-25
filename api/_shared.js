@@ -1,5 +1,5 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
-import { normalizeSite, validateSite } from './_site.js'
+import { normalizeEffect, normalizeSite, SiteValidationError, validateEffect, validateSite } from './_site.js'
 export { normalizeSite, validateSite, readSiteBody, SiteValidationError } from './_site.js'
 
 const adminUsername = process.env.ADMIN_USERNAME ?? 'admin'
@@ -170,18 +170,24 @@ async function supabaseRequest(path, options = {}) {
   const parsedData = data ? JSON.parse(data) : null
 
   if (!response.ok) {
+    const sqlFile = tableName === 'site_pages' ? 'database/supabase-site.sql'
+      : tableName === 'changelog_entries' ? 'database/supabase-changelog.sql' : 'database/supabase-news.sql'
+
     if (
       parsedData?.code === 'PGRST205' ||
       parsedData?.message?.includes(`Could not find the table 'public.${tableName}'`)
     ) {
-      const sqlFile = tableName === 'site_pages' ? 'database/supabase-site.sql'
-        : tableName === 'changelog_entries' ? 'database/supabase-changelog.sql' : 'database/supabase-news.sql'
-
       const error = new Error(
         `Supabase is configured, but public.${tableName} does not exist yet. Run ${sqlFile} in the Supabase SQL editor, then retry.`,
       )
       error.code = 'PGRST205'
       throw error
+    }
+
+    // PGRST204: the write names a column the table lacks, e.g. news_posts.effect on a database
+    // created before that column. The message names the column; the save is not retried without it.
+    if (parsedData?.code === 'PGRST204') {
+      throw new Error(`Supabase is configured, but public.${tableName} is missing a column (${parsedData.message}). Run ${sqlFile} in the Supabase SQL editor, then retry.`)
     }
 
     throw new Error(parsedData?.message ?? 'Supabase request failed.')
@@ -205,6 +211,9 @@ function toDatabaseRow(item) {
     featured: item.featured,
     body: item.body,
     highlights: item.highlights,
+    // Always sent, null included: the upsert only updates columns in the payload, so leaving it
+    // out would keep an old effect when the admin switches back to Automatic.
+    effect: item.effect,
     source: 'admin',
     deleted: Boolean(item.deleted),
     updated_at: new Date().toISOString(),
@@ -226,6 +235,9 @@ function fromDatabaseRow(row) {
     featured: Boolean(row.featured),
     body: Array.isArray(row.body) ? row.body : [],
     highlights: Array.isArray(row.highlights) ? row.highlights : [],
+    // Absent before the effect migration (null). Rebuilt so Supabase returns the same
+    // { kind, amount, color } as the local JSON store: jsonb does not keep key order.
+    effect: normalizeNewsEffect(row.effect),
     source: 'admin',
     deleted: Boolean(row.deleted),
   }
@@ -762,6 +774,19 @@ function normalizeBodyBlock(block) {
   return text ? { type: 'paragraph', text } : null
 }
 
+// A post's effect is null for Automatic (snow on Season posts, see postEffect in src/news/postInfo.js).
+const newsEffectFallback = { kind: 'snow', amount: 'normal', color: '' }
+
+function normalizeNewsEffect(effect) {
+  if (effect === undefined || effect === null) return null
+  try {
+    return normalizeEffect(effect, newsEffectFallback)
+  } catch {
+    // Kept as sent: validateNewsItem runs normalizeEffect again and returns the same error.
+    return effect
+  }
+}
+
 export function normalizeNewsItem(item) {
   return {
     id: item.id?.trim(),
@@ -779,6 +804,7 @@ export function normalizeNewsItem(item) {
     highlights: Array.isArray(item.highlights)
       ? item.highlights.map((highlight) => String(highlight).trim()).filter(Boolean).slice(0, maxHighlights)
       : [],
+    effect: normalizeNewsEffect(item.effect),
     source: 'admin',
   }
 }
@@ -798,6 +824,15 @@ export function validateNewsItem(item) {
 
   if (item.highlights.some((highlight) => highlight.length > maxHighlightLength)) {
     return `Highlights must be ${maxHighlightLength} characters or less.`
+  }
+
+  if (item.effect !== null) {
+    try {
+      validateEffect(normalizeEffect(item.effect, newsEffectFallback), 'News')
+    } catch (error) {
+      if (!(error instanceof SiteValidationError)) throw error
+      return error.message
+    }
   }
 
   return ''

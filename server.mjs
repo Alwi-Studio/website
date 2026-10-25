@@ -5,7 +5,7 @@ import { createServer } from 'node:http'
 import { extname, resolve } from 'node:path'
 import { optimizedRemoteImage } from './image-optimizer.mjs'
 import leaderboardHandler from './api/leaderboard.js'
-import { normalizeSite, validateSite, readSiteBody, SiteValidationError } from './api/_site.js'
+import { normalizeEffect, normalizeSite, validateEffect, validateSite, readSiteBody, SiteValidationError } from './api/_site.js'
 
 const rootDir = process.cwd()
 const distDir = resolve(rootDir, 'dist')
@@ -125,6 +125,9 @@ function toDatabaseRow(item) {
     featured: item.featured,
     body: item.body,
     highlights: item.highlights,
+    // Always sent, null included: the upsert only updates columns in the payload, so leaving it
+    // out would keep an old effect when the admin switches back to Automatic.
+    effect: item.effect,
     source: 'admin',
     deleted: Boolean(item.deleted),
     updated_at: new Date().toISOString(),
@@ -146,6 +149,9 @@ function fromDatabaseRow(row) {
     featured: Boolean(row.featured),
     body: Array.isArray(row.body) ? row.body : [],
     highlights: Array.isArray(row.highlights) ? row.highlights : [],
+    // Absent before the effect migration (null). Rebuilt so Supabase returns the same
+    // { kind, amount, color } as the local JSON store: jsonb does not keep key order.
+    effect: normalizeNewsEffect(row.effect),
     source: 'admin',
     deleted: Boolean(row.deleted),
   }
@@ -167,17 +173,23 @@ async function supabaseRequest(path, options = {}) {
   const parsedData = data ? JSON.parse(data) : null
 
   if (!response.ok) {
+    const sqlFile = tableName === 'site_pages' ? 'database/supabase-site.sql'
+      : tableName.startsWith('changelog_') ? 'database/supabase-changelog.sql' : 'database/supabase-news.sql'
     if (
       parsedData?.code === 'PGRST205' ||
       parsedData?.message?.includes(`Could not find the table 'public.${tableName}'`)
     ) {
-      const sqlFile = tableName === 'site_pages' ? 'database/supabase-site.sql'
-        : tableName.startsWith('changelog_') ? 'database/supabase-changelog.sql' : 'database/supabase-news.sql'
       const error = new Error(
         `Supabase is configured, but public.${tableName} does not exist yet. Run ${sqlFile} in the Supabase SQL editor, then retry.`,
       )
       error.code = 'PGRST205'
       throw error
+    }
+
+    // PGRST204: the write names a column the table lacks, e.g. news_posts.effect on a database
+    // created before that column. The message names the column; the save is not retried without it.
+    if (parsedData?.code === 'PGRST204') {
+      throw new Error(`Supabase is configured, but public.${tableName} is missing a column (${parsedData.message}). Run ${sqlFile} in the Supabase SQL editor, then retry.`)
     }
 
     throw new Error(parsedData?.message ?? 'Supabase request failed.')
@@ -486,6 +498,19 @@ function recordFailedLogin(ip) {
   failedLogins.set(ip, { count: current.count + 1, resetAt: current.resetAt })
 }
 
+// A post's effect is null for Automatic (snow on Season posts, see postEffect in src/news/postInfo.js).
+const newsEffectFallback = { kind: 'snow', amount: 'normal', color: '' }
+
+function normalizeNewsEffect(effect) {
+  if (effect === undefined || effect === null) return null
+  try {
+    return normalizeEffect(effect, newsEffectFallback)
+  } catch {
+    // Kept as sent: validateNewsItem runs normalizeEffect again and returns the same error.
+    return effect
+  }
+}
+
 function normalizeNewsItem(item) {
   return {
     id: item.id?.trim(),
@@ -506,6 +531,7 @@ function normalizeNewsItem(item) {
           .filter(Boolean)
           .slice(0, maxHighlights)
       : [],
+    effect: normalizeNewsEffect(item.effect),
     source: 'admin',
   }
 }
@@ -692,6 +718,15 @@ function validateNewsItem(item) {
 
   if (item.highlights.some((highlight) => highlight.length > maxHighlightLength)) {
     return `Highlights must be ${maxHighlightLength} characters or less.`
+  }
+
+  if (item.effect !== null) {
+    try {
+      validateEffect(normalizeEffect(item.effect, newsEffectFallback), 'News')
+    } catch (error) {
+      if (!(error instanceof SiteValidationError)) throw error
+      return error.message
+    }
   }
 
   return ''
@@ -1208,8 +1243,13 @@ async function handleApi(req, res, url) {
       return
     }
 
-    await saveAdminNews(item)
-    json(res, 200, { items: await readAdminNews() })
+    try {
+      await saveAdminNews(item)
+      json(res, 200, { items: await readAdminNews() })
+    } catch (error) {
+      // Admin-only route: the message is how "run database/supabase-news.sql" reaches the owner.
+      json(res, 500, { error: error.message })
+    }
     return
   }
 

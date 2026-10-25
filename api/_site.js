@@ -14,7 +14,6 @@ function object(value, field) {
   return value
 }
 
-const particleEffects = ['snow', 'embers', 'none']
 
 function text(value, fallback = '', max = Infinity) {
   const input = value === undefined ? fallback : value
@@ -42,6 +41,23 @@ function bool(value, fallback = true) {
 
 function number(value, fallback) {
   return value === undefined ? fallback : (typeof value === 'number' || typeof value === 'string') && String(value).trim() ? Number(value) : NaN
+}
+
+// Particles over the hero, the Season band and news posts (news posts also store this shape).
+// color is "" for the kind's own colour. Documents saved before stored the kind alone as a string.
+export const particleKinds = ['embers', 'snow', 'rain', 'leaves', 'petals', 'fireflies', 'hearts']
+export const particleAmounts = ['few', 'normal', 'lots']
+
+export function normalizeEffect(input, fallback) {
+  if (typeof input === 'string') return { kind: text(input, fallback.kind, 20), amount: 'normal', color: '' }
+  const value = input === undefined ? fallback : object(input, 'Particle effect')
+  return { kind: text(value.kind, fallback.kind, 20), amount: text(value.amount, fallback.amount, 10), color: text(value.color, fallback.color, 20) }
+}
+
+export function validateEffect(effect, field) {
+  if (effect.kind !== 'none' && !particleKinds.includes(effect.kind)) throw new SiteValidationError(`${field} particles must be none or one of: ${particleKinds.join(', ')}.`)
+  if (!particleAmounts.includes(effect.amount)) throw new SiteValidationError(`${field} particle amount must be few, normal or lots.`)
+  if (effect.color && !/^#[0-9a-f]{6}$/i.test(effect.color)) throw new SiteValidationError(`${field} particle colour must be empty or a six-digit hex colour.`)
 }
 
 function list(value, fallback, field, min, max) {
@@ -80,7 +96,7 @@ function normalizeSection(input) {
     case 'feature': {
       section.titleAccent = text(input.titleAccent, seed.titleAccent, 120)
       section.image = text(input.image, seed.image)
-      section.effect = text(input.effect, seed.effect)
+      section.effect = normalizeEffect(input.effect, seed.effect)
       section.buttonLabel = text(input.buttonLabel, seed.buttonLabel, 40)
       section.buttonHref = text(input.buttonHref, seed.buttonHref)
       const tooltip = input.tooltip === undefined ? seed.tooltip : object(input.tooltip, 'feature.tooltip')
@@ -157,7 +173,7 @@ export function normalizeSite(input = {}) {
         subtitle: text(hero.subtitle, defaultSite.home.hero.subtitle, 400),
         primaryLabel: text(hero.primaryLabel, defaultSite.home.hero.primaryLabel, 40),
         secondaryLabel: text(hero.secondaryLabel, defaultSite.home.hero.secondaryLabel, 40),
-        effect: text(hero.effect, defaultSite.home.hero.effect),
+        effect: normalizeEffect(hero.effect, defaultSite.home.hero.effect),
       },
       sections,
       // Never merge arrays with the seed: removed realms must stay removed.
@@ -192,7 +208,7 @@ export function validateSite(site) {
   integer(settings.bedrockPort, 1, 65535, 'bedrockPort')
   for (const key of ['discordUrl', 'storeUrl', 'statusUrl', 'youtubeUrl', 'tiktokUrl']) url(settings[key], key)
   url(site.home.hero.image, 'Hero image')
-  if (!particleEffects.includes(site.home.hero.effect)) throw new SiteValidationError('Hero effect must be snow, embers or none.')
+  validateEffect(site.home.hero.effect, 'Hero')
   const ids = new Set()
   list(site.home.realms, [], 'Realms', 1, 30)
   for (const realm of site.home.realms) {
@@ -210,7 +226,7 @@ export function validateSite(site) {
         if (section.autoplaySeconds !== 0) integer(section.autoplaySeconds, 3, 20, 'autoplaySeconds')
         break
       case 'feature':
-        if (!particleEffects.includes(section.effect)) throw new SiteValidationError('Feature effect must be snow, embers or none.')
+        validateEffect(section.effect, 'Season band')
         url(section.image, 'Feature image')
         url(section.buttonHref, 'Feature buttonHref')
         list(section.tooltip.lines, [], 'Tooltip lines', 0, 12)

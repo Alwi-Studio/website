@@ -3,7 +3,7 @@ import { isSafeSiteUrl } from '../common/safeUrls.js'
 import { fillSitePlaceholders } from '../content/site.js'
 import RealmCard from '../home/RealmCard.jsx'
 import { loadLeaderboard } from '../leaderboard/leaderboardApi.js'
-import { ImageField, ReorderList, RowsEditor, SaveBar, TextField } from './SiteForm.jsx'
+import { EffectField, ImageField, ReorderList, RowsEditor, SaveBar, TextField } from './SiteForm.jsx'
 import { moveItem, safeColor, useSiteDraft } from './siteDraft.js'
 
 const sectionNames = {
@@ -101,20 +101,6 @@ function RealmForm({ realm, realms, index, update, onDuplicate, onDelete }) {
   )
 }
 
-// Particles over the hero and the Season band; hidden for visitors who ask for reduced motion.
-function EffectField({ value, onChange }) {
-  return (
-    <label className="adm-label">
-      Particles
-      <select className="adm-input" value={value} onChange={(event) => onChange(event.target.value)}>
-        <option value="snow">Snow</option>
-        <option value="embers">Embers</option>
-        <option value="none">None</option>
-      </select>
-    </label>
-  )
-}
-
 function SectionFields({ section, update, settings, modes }) {
   const placeholders = (
     <>Placeholders: <code>{'{serverAddress}'}</code> = {settings.serverAddress}, <code>{'{bedrockPort}'}</code> = {settings.bedrockPort}, <code>{'{javaVersion}'}</code> = {settings.javaVersion}.</>
@@ -146,8 +132,8 @@ function SectionFields({ section, update, settings, modes }) {
       {section.id === 'feature' && (
         <>
           <ImageField label="Background image" value={section.image} onChange={(image) => update({ image })} />
+          <EffectField value={section.effect} onChange={(effect) => update({ effect })} />
           <div className="adm-grid2">
-            <EffectField value={section.effect} onChange={(effect) => update({ effect })} />
             <TextField label="Button label" value={section.buttonLabel} maxLength={40} onChange={(buttonLabel) => update({ buttonLabel })} />
             <TextField
               label="Button link"

@@ -12,6 +12,7 @@ create table if not exists public.news_posts (
   featured boolean not null default false,
   body jsonb not null default '[]'::jsonb,
   highlights jsonb not null default '[]'::jsonb,
+  effect jsonb,
   source text not null default 'admin',
   deleted boolean not null default false,
   created_at timestamptz not null default now(),
@@ -20,6 +21,15 @@ create table if not exists public.news_posts (
   constraint news_posts_body_size check (octet_length(body::text) <= 65536),
   constraint news_posts_highlights_size check (octet_length(highlights::text) <= 4096)
 );
+
+-- For projects created before per-post particles were added. null = Automatic (snow on Season posts);
+-- otherwise { kind, amount, color }, about 60 bytes.
+alter table public.news_posts add column if not exists effect jsonb;
+alter table public.news_posts drop constraint if exists news_posts_effect_shape;
+alter table public.news_posts add constraint news_posts_effect_shape
+  check (effect is null or (jsonb_typeof(effect) = 'object' and octet_length(effect::text) <= 256));
+-- PostgREST rejects writes to the new column until its schema cache reloads.
+notify pgrst, 'reload schema';
 
 create index if not exists news_posts_updated_at_idx on public.news_posts (updated_at desc);
 

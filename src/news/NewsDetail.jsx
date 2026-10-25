@@ -8,7 +8,7 @@ import { useSite } from '../common/siteContext.js'
 import { copyText, showToast } from '../common/toastBus.js'
 import CommunityBand from '../home/CommunityBand.jsx'
 import News from './News.jsx'
-import { isSeasonPost, newsDiscordBand, plainText, postHighlights, postImage, seasonNumber, tagClass } from './postInfo.js'
+import { isSeasonPost, newsDiscordBand, plainText, postEffect, postHighlights, postImage, seasonNumber, tagClass } from './postInfo.js'
 import './news.css'
 
 const comparable = (text) => plainText(text).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
@@ -98,6 +98,7 @@ function NewsDetail({ item, newsItems = [] }) {
   const { settings } = useSite()
   const [heroFailed, setHeroFailed] = useState(false)
   const cold = isSeasonPost(item)
+  const effect = postEffect(item)
   const season = seasonNumber(item)
   const { items: highlights, changes } = postHighlights(item)
   const related = newsItems.filter((newsItem) => newsItem.slug !== item.slug).slice(0, 3)
@@ -134,7 +135,7 @@ function NewsDetail({ item, newsItems = [] }) {
             fetchPriority="high"
             onError={() => setHeroFailed(true)}
           />
-          {cold && <Particles kind="snow" />}
+          {effect && <Particles {...effect} />}
           <div className="container art-hero-in">
             <div>
               <nav className="crumbs" aria-label="Breadcrumb">

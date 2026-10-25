@@ -8,6 +8,7 @@ import {
   isSeasonPost,
   newsDiscordBand,
   plainText,
+  postEffect,
   postHighlights,
   postImage,
   seasonNumber,
@@ -27,6 +28,7 @@ function searchText(item) {
 function FeaturedPost({ item }) {
   const [failed, setFailed] = useState(false)
   const cold = isSeasonPost(item)
+  const effect = postEffect(item)
   const season = seasonNumber(item)
   const { items: highlights, changes } = postHighlights(item)
 
@@ -34,7 +36,7 @@ function FeaturedPost({ item }) {
     <article className={`post panel feature${cold ? ' is-cold' : ''}`} data-reveal ref={revealRef}>
       <div className="pic">
         <img src={failed ? fallbackImage(0) : postImage(item, 1400)} width="1400" height="1114" alt="" decoding="async" onError={() => setFailed(true)} />
-        {cold && <Particles kind="snow" count={24} />}
+        {effect && <Particles {...effect} scale={0.7} />}
         <span className="feature-badge label">Featured</span>
         {season && <p className="feature-mark" aria-hidden="true"><span className="label">New season</span><b>Season <em>{season}</em></b></p>}
       </div>

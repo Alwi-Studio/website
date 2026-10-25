@@ -8,7 +8,7 @@ function FeatureBand({ section }) {
   return (
     <section className="season" id="season">
       {section.image && <img className="season-bg" src={section.image} width="2000" height="1127" alt="" loading="lazy" />}
-      {section.effect !== 'none' && <Particles kind={section.effect === 'embers' ? 'embers' : 'snow'} />}
+      {section.effect.kind !== 'none' && <Particles {...section.effect} />}
       <div className="container season-in">
         <div className="season-copy" data-reveal ref={revealRef}>
           {section.kicker && <p className="label">{section.kicker}</p>}

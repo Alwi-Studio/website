@@ -34,7 +34,7 @@
 /* Desaturate, then tint blue with a colour blend: keeps light and shade, no hue flips (hue-rotate turned leaves pink). */
 .feature.is-cold .pic img { filter: saturate(0.55) brightness(0.82) contrast(1.05); }
 .feature.is-cold .pic::before { content: ""; position: absolute; inset: 0; z-index: -1; background: #3f86e0; mix-blend-mode: color; opacity: 0.42; }
-.feature .snow { z-index: 0; }
+.feature .fx { z-index: 0; }
 .feature-badge { position: absolute; top: 18px; left: 18px; padding: 6px 10px; border-radius: 3px; background: rgba(0, 0, 0, 0.78); box-shadow: inset 0 0 0 1px rgba(255, 90, 48, 0.6); color: #ff8a66; }
 .feature .feature-mark { position: absolute; margin: 0; left: 28px; right: 28px; bottom: 26px; color: #fff; }
 .feature-mark .label { color: #8fd8ff; }
@@ -71,8 +71,8 @@
 /* Blue colour blend over the picture, under the fade (same z as the img, painted after it). */
 .art-hero.is-cold::after { content: ""; position: absolute; inset: 0; z-index: -2; background: #3f86e0; mix-blend-mode: color; opacity: 0.42; pointer-events: none; }
 .art-hero.is-cold::before { background: linear-gradient(180deg, rgba(8, 12, 22, 0.72) 0%, rgba(8, 12, 22, 0.5) 30%, rgba(8, 12, 22, 0.86) calc(100% - 110px), var(--bg) 100%); }
-/* Flakes thin out over the fade instead of vanishing at the band's bottom edge. */
-.art-hero .snow { -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 110px), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 110px), transparent); }
+/* Particles thin out over the fade instead of vanishing at the band's bottom edge. */
+.art-hero .fx { -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 110px), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 110px), transparent); }
 .art-hero-in { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 56px; align-items: end; }
 .art-hero .mc-tooltip { width: 440px; }
 .art-kicker { margin-top: 22px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }

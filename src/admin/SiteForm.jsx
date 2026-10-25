@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { particleAmounts, particleKinds } from '../../api/_site.js'
 import { isSafeSiteUrl } from '../common/safeUrls.js'
 import { moveItem, safeColor } from './siteDraft.js'
 
@@ -36,6 +37,57 @@ export function ImageField({ label, value, onChange, hint }) {
         {safe && failed !== value ? <img src={value} alt="" onError={() => setFailed(value)} /> : <span>{safe ? 'Image did not load' : 'No preview'}</span>}
       </div>
     </div>
+  )
+}
+
+const kindNames = { embers: 'Embers', snow: 'Snow', rain: 'Rain', leaves: 'Falling leaves', petals: 'Cherry petals', fireflies: 'Fireflies', hearts: 'Hearts' }
+const amountNames = { few: 'Few', normal: 'Normal', lots: 'Lots' }
+
+// Particles over the hero, the Season band or a news post. With allowAuto, null
+// means Automatic (snow on Season posts). Objects are built kind, amount, color,
+// the order newsToForm loads them in, so the news form's JSON dirty check stays stable.
+export function EffectField({ label = 'Particles', value, onChange, allowAuto = false }) {
+  const on = value && value.kind !== 'none'
+  const set = (patch) => onChange({ ...value, ...patch })
+  return (
+    <fieldset className="adm-fieldset">
+      <legend>{label}</legend>
+      <div className="adm-grid2">
+        <label className="adm-label">
+          Type
+          <select
+            className="adm-input"
+            value={value?.kind ?? 'auto'}
+            onChange={({ target: { value: kind } }) => onChange(kind === 'auto' ? null : { kind, amount: value?.amount ?? 'normal', color: value?.color ?? '' })}
+          >
+            {allowAuto && <option value="auto">Automatic (snow on Season posts)</option>}
+            <option value="none">None</option>
+            {particleKinds.map((kind) => <option key={kind} value={kind}>{kindNames[kind]}</option>)}
+          </select>
+        </label>
+        {on && (
+          <label className="adm-label">
+            Amount
+            <select className="adm-input" value={value.amount} onChange={(event) => set({ amount: event.target.value })}>
+              {particleAmounts.map((amount) => <option key={amount} value={amount}>{amountNames[amount]}</option>)}
+            </select>
+          </label>
+        )}
+      </div>
+      {on && (
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="adm-label">
+            Colour
+            {/* '' means the effect's own colour; the swatch then shows white until one is picked. */}
+            <input className="adm-color" type="color" value={safeColor(value.color, '#ffffff').toLowerCase()} onChange={(event) => set({ color: event.target.value })} />
+          </label>
+          {value.color
+            ? <button className="btn btn-stone btn-sm" type="button" onClick={() => set({ color: '' })}>Use default colour</button>
+            : <span className="adm-hint">Default: the effect's own colour. Pick one to change it.</span>}
+        </div>
+      )}
+      <p className="adm-hint">Hidden for visitors who turn on reduced motion.</p>
+    </fieldset>
   )
 }
 
