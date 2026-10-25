@@ -1,5 +1,6 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import { normalizeEffect, normalizeSite, SiteValidationError, validateEffect, validateSite } from './_site.js'
+import { maxStaffTagLength, staffStages } from '../src/content/staffLook.js'
 export { normalizeSite, validateSite, readSiteBody, SiteValidationError } from './_site.js'
 
 const adminUsername = process.env.ADMIN_USERNAME ?? 'admin'
@@ -499,7 +500,25 @@ function normalizeStaffGroup(group) {
   return {
     name,
     members,
+    ...staffLookText(group, 'color', 'colour', name),
+    ...staffLookText(group, 'tag', 'tag', name),
+    ...staffLookText(group, 'stage', 'picture', name),
   }
+}
+
+// A group's optional look, checked in validateStaff. Absent or blank means Auto: the page reads
+// it from the group name. Capped a little past every limit, so over-long input is rejected
+// rather than cut to fit. Postgres jsonb cannot hold \0 or a lone surrogate.
+function staffLookText(group, key, label, name) {
+  const value = group[key]
+  if (value === undefined) {
+    return {}
+  }
+  if (typeof value !== 'string' || value.includes('\0') || !value.isWellFormed()) {
+    throw new Error(`Staff group "${name}": ${label} must be plain text.`)
+  }
+  const text = value.trim().slice(0, 40)
+  return text ? { [key]: text } : {}
 }
 
 export function normalizeStaff(staff) {
@@ -524,6 +543,18 @@ export function validateStaff(staff) {
   const memberCount = staff.groups.reduce((sum, group) => sum + group.members.length, 0)
   if (memberCount > maxStaffMembers) {
     throw new Error(`Staff page can include up to ${maxStaffMembers} members.`)
+  }
+
+  for (const group of staff.groups) {
+    if (group.color !== undefined && !/^#[0-9a-f]{6}$/i.test(group.color)) {
+      throw new Error(`Staff group "${group.name}": colour must be a six-digit hex colour such as #ff5555, or blank for Auto.`)
+    }
+    if (group.tag !== undefined && group.tag.length > maxStaffTagLength) {
+      throw new Error(`Staff group "${group.name}": tag can be up to ${maxStaffTagLength} characters.`)
+    }
+    if (group.stage !== undefined && !staffStages.includes(group.stage)) {
+      throw new Error(`Staff group "${group.name}": picture must be blank for Auto or one of: ${staffStages.join(', ')}.`)
+    }
   }
 
   if (Buffer.byteLength(JSON.stringify(staff), 'utf8') > 65536) {

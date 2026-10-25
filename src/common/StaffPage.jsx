@@ -1,26 +1,10 @@
 import { useEffect } from 'react'
+import { customLook, rankOf } from '../content/staffLook.js'
 import { Icon } from './Icons.jsx'
 import { RichInline } from './RichText.jsx'
 import { revealRef } from './reveal.js'
 import { useSite } from './siteContext.js'
 import './pages.css'
-
-// Stored groups have only a name, so the rank (chat tag, colour, stage picture) is read from it.
-// Colours are Minecraft's chat colours: §c owner, §d admin, §b moderator, §a builder, §7 anyone else.
-const RANKS = [
-  { test: /own|founder/i, rank: 'r-owner', tag: 'OWNER', stage: '/img/staff-founder.webp' },
-  { test: /admin/i, rank: 'r-admin', tag: 'ADMIN', stage: '/img/street-center.webp' },
-  { test: /mod/i, rank: 'r-mod', tag: 'MOD', stage: '/img/street-lamps.webp' },
-  { test: /build/i, rank: 'r-builder', tag: 'BUILDER', stage: '/img/street-path.webp' },
-]
-
-function rankOf(name) {
-  return RANKS.find((rank) => rank.test.test(name)) ?? {
-    rank: 'r-staff',
-    tag: String(name).toUpperCase().slice(0, 16),
-    stage: '/img/street-wide.webp',
-  }
-}
 
 function slug(value) {
   return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
@@ -46,7 +30,7 @@ function Member({ member, rank }) {
   return (
     <article className="member panel">
       <div className="stage">
-        <img className="bg" src={rank.stage} alt="" loading="lazy" />
+        <img className="bg" src={`/img/${rank.stage}.webp`} alt="" loading="lazy" />
         <div className="figure">
           <Skin name={member.name} size={200} />
           <span className="plinth" aria-hidden="true" />
@@ -70,10 +54,11 @@ function StaffPage({ eyebrow, title, intro, updated, groups = [], isLoading = fa
     let id = slug(group.name) || `rank-${index + 1}`
     if (used.has(id)) id = `${id}-${index + 1}`
     used.add(id)
-    return { ...group, id, rank: rankOf(group.name), members: group.members ?? [] }
+    // A group's own colour, tag and picture win over the ones its name gives it.
+    return { ...group, id, rank: { ...rankOf(group.name), ...customLook(group) }, members: group.members ?? [] }
   })
   // The first owner-rank member gets the large founder card.
-  const founderGroup = ranked.find((group) => group.rank.rank === 'r-owner')
+  const founderGroup = ranked.find((group) => group.rank.owner)
 
   // The groups render after the staff list loads, so the browser's own jump to #rank missed them.
   useEffect(() => {
@@ -103,7 +88,7 @@ function StaffPage({ eyebrow, title, intro, updated, groups = [], isLoading = fa
               {ranked.length > 0 && (
                 <nav className="rank-legend" aria-label="Jump to a rank">
                   {ranked.map((group) => (
-                    <a key={group.id} className={`rank-tag ${group.rank.rank}`} href={`#${group.id}`}>[{group.rank.tag}]</a>
+                    <a key={group.id} className="rank-tag" style={{ '--rank': group.rank.color }} href={`#${group.id}`}>[{group.rank.tag}]</a>
                   ))}
                 </nav>
               )}
@@ -129,7 +114,7 @@ function StaffPage({ eyebrow, title, intro, updated, groups = [], isLoading = fa
               const founder = group === founderGroup ? group.members[0] : null
               const others = founder ? group.members.slice(1) : group.members
               return (
-                <section className={`group ${group.rank.rank}`} id={group.id} aria-labelledby={`${group.id}-title`} key={group.id}>
+                <section className="group" style={{ '--rank': group.rank.color }} id={group.id} aria-labelledby={`${group.id}-title`} key={group.id}>
                   <header className="group-head" data-reveal ref={revealRef}>
                     <span className="rank-tag">[{group.rank.tag}]</span>
                     <h2 className="head" id={`${group.id}-title`}>{group.name}</h2>

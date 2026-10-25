@@ -21,6 +21,7 @@ import { useSite } from '../common/siteContext.js'
 import ThemeToggle from '../common/ThemeToggle.jsx'
 import { isPolicyCustomized, resetAdminPolicy, saveAdminPolicy } from '../content/policyStore.js'
 import { loadSite } from '../content/siteStore.js'
+import { customLook, maxStaffTagLength, rankOf, staffStages } from '../content/staffLook.js'
 import { isStaffCustomized, resetAdminStaff, saveAdminStaff } from '../content/staffStore.js'
 import { isWikiCustomized } from '../content/wikiStore.js'
 import './admin.css'
@@ -118,7 +119,7 @@ function changelogToForm(entry) {
 
 const emptyPolicyForm = { eyebrow: '', title: '', updated: '', intro: '', sectionsText: '' }
 
-const emptyStaffForm = { eyebrow: '', title: '', updated: '', intro: '', groupsText: '' }
+const emptyStaffForm = { eyebrow: '', title: '', updated: '', intro: '', groupsText: '', looks: {} }
 const maxSlugLength = 80
 
 const policyMeta = {
@@ -127,6 +128,13 @@ const policyMeta = {
 }
 
 const staffMeta = { label: 'Staff', heading: 'Staff', path: '/staff', fallbackEyebrow: 'Meet the Team' }
+
+const stageNames = {
+  'street-center': 'Street, centre', 'street-lamps': 'Street lamps', 'street-path': 'Street path',
+  'street-wide': 'Street, wide', 'street-left': 'Street, left', 'street-right': 'Street, right',
+  'hub-center': 'Hub sign', 'hub-lanterns': 'Hub lanterns', 'hub-left': 'Hub, left', 'hub-right': 'Hub, right',
+  'hub-wide': 'Hub, wide', 'staff-founder': 'Founder art',
+}
 
 const sharedArticleExamples = [
   {
@@ -710,7 +718,20 @@ function staffToForm(staff) {
     updated: staff.updated ?? '',
     intro: staff.intro ?? '',
     groupsText: groupsToText(staff.groups),
+    looks: Object.fromEntries(
+      (staff.groups ?? []).map((group) => [group.name, customLook(group)]).filter(([, look]) => Object.keys(look).length > 0),
+    ),
   }
+}
+
+// Each group's colour, tag and picture are kept by group name, outside the groups text, so they
+// survive edits to it; a renamed group goes back to Auto.
+function lookOf(looks, name) {
+  return Object.hasOwn(looks, name) ? looks[name] : {}
+}
+
+function withLooks(groups, looks) {
+  return groups.map((group) => ({ ...group, ...customLook(lookOf(looks, group.name)) }))
 }
 
 // Central form helpers; the look lives in admin.css (textarea.adm-input is
@@ -1181,6 +1202,9 @@ function StaffLivePreview({ staff }) {
           {staff.groups.map((group) => (
             <section key={group.name}>
               <div className="flex items-center gap-3">
+                <span className="rounded-sm bg-[#0e0e11] px-2 py-0.5 font-mono text-xs font-bold" style={{ color: customLook(group).color ?? rankOf(group.name).color }}>
+                  [{customLook(group).tag ?? rankOf(group.name).tag}]
+                </span>
                 <h4 className="font-bold tracking-tight text-ink">{group.name}</h4>
                 <span className="rounded-md bg-bg-2 px-2.5 py-0.5 text-xs font-semibold text-muted">
                   {group.members.length}
@@ -1474,10 +1498,11 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
       title: staffForm.title.trim(),
       intro: staffForm.intro.trim(),
       updated: staffForm.updated.trim() || formatDisplayDate(''),
-      groups: parseGroups(staffForm.groupsText),
+      groups: withLooks(parseGroups(staffForm.groupsText), staffForm.looks),
     }),
     [staffForm],
   )
+  const staffGroupNames = [...new Set(staffPreview.groups.map((group) => group.name))]
 
   useEffect(() => {
     let isCurrent = true
@@ -1918,7 +1943,7 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
   async function handleStaffSubmit(event) {
     event.preventDefault()
 
-    const groups = parseGroups(staffForm.groupsText)
+    const groups = withLooks(parseGroups(staffForm.groupsText), staffForm.looks)
 
     if (!staffForm.title.trim() || groups.length === 0) {
       setStaffMessage('Title and at least one staff member are required.')
@@ -1948,6 +1973,17 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
     } finally {
       setIsSavingStaff(false)
     }
+  }
+
+  // An empty value means Auto and is dropped, so a group set back to Auto matches what was loaded.
+  function setStaffLook(name, patch) {
+    setStaffForm((current) => {
+      const look = { ...lookOf(current.looks, name), ...patch }
+      const kept = Object.fromEntries(['color', 'tag', 'stage'].filter((key) => look[key]).map((key) => [key, look[key]]))
+      const looks = { ...current.looks, [name]: kept }
+      if (Object.keys(kept).length === 0) delete looks[name]
+      return { ...current, looks }
+    })
   }
 
   async function handleStaffReset() {
@@ -2807,6 +2843,48 @@ function AdminPanel({ newsItems, onNewsChange, policies, onPoliciesChange, staff
                     onChange={(event) => setStaffForm((current) => ({ ...current, groupsText: event.target.value }))}
                   />
                 </label>
+
+                {staffGroupNames.length > 0 && (
+                  <fieldset className="adm-fieldset">
+                    <legend>Group look</legend>
+                    <p className="adm-hint">
+                      Auto takes the colour, [TAG] and card picture from the group name. Settings follow the name, so a group renamed above goes back to Auto. Bright colours read best: tags sit on a black chip.
+                    </p>
+                    {staffGroupNames.map((name) => {
+                      const auto = rankOf(name)
+                      const look = lookOf(staffForm.looks, name)
+                      return (
+                        <fieldset className="adm-fieldset" key={name}>
+                          <legend>{name}</legend>
+                          <div className="adm-grid2">
+                            <div className="flex flex-wrap items-end gap-3">
+                              <label className={labelClass}>
+                                Colour
+                                {/* A colour input cannot be empty: on Auto it shows the name's colour. */}
+                                <input className="adm-color" type="color" value={(look.color || auto.color).toLowerCase()} onChange={(event) => setStaffLook(name, { color: event.target.value })} />
+                              </label>
+                              {/* The button goes away on Auto, so focus moves to the colour it reset instead of dropping to the page. */}
+                              {look.color
+                                ? <button className={secondaryButtonClass} type="button" onClick={(event) => { event.currentTarget.previousElementSibling.querySelector('input').focus(); setStaffLook(name, { color: '' }) }}>Use Auto colour</button>
+                                : <span className="adm-hint">Auto</span>}
+                            </div>
+                            <label className={labelClass}>
+                              Tag
+                              <input className={inputClass} maxLength={maxStaffTagLength} placeholder={auto.tag} value={look.tag ?? ''} onChange={(event) => setStaffLook(name, { tag: event.target.value })} />
+                            </label>
+                            <label className={labelClass}>
+                              Card picture
+                              <select className={inputClass} value={look.stage ?? ''} onChange={(event) => setStaffLook(name, { stage: event.target.value })}>
+                                <option value="">Auto ({stageNames[auto.stage]})</option>
+                                {staffStages.map((key) => <option key={key} value={key}>{stageNames[key] ?? key}</option>)}
+                              </select>
+                            </label>
+                          </div>
+                        </fieldset>
+                      )
+                    })}
+                  </fieldset>
+                )}
 
                 {staffMessage && <p className="adm-msg" role="status">{staffMessage}</p>}
 

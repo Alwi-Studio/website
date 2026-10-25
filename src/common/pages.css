@@ -20,16 +20,12 @@
 .acc-body { min-width: 0; margin: 0 18px; padding: 14px 0 18px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: 15.5px; line-height: 1.65; overflow-wrap: anywhere; }
 
 /* ---------- Staff ---------- */
-/* Rank colours are Minecraft's own chat colours. Chat tags keep the game colour on a black chip in
-   both themes; plain text tinted by rank is darkened on light pages so it stays readable. */
+/* --rank is set inline on each group and legend tag (src/content/staffLook.js: Minecraft's chat
+   colours, or the group's own colour). Chat tags keep that colour on a black chip in both themes;
+   plain text tinted by rank is darkened on light pages so it stays readable. */
 :root { --rank-tint: 100%; }
 :root[data-theme="light"] { --rank-tint: 50%; }
 @media (prefers-color-scheme: light) { :root:not([data-theme]) { --rank-tint: 50%; } }
-.staff-page .r-owner { --rank: #ff5555; }
-.staff-page .r-admin { --rank: #ff55ff; }
-.staff-page .r-mod { --rank: #55ffff; }
-.staff-page .r-builder { --rank: #55ff55; }
-.staff-page .r-staff { --rank: #aaaaaa; }
 
 /* A rank prefix as it appears in chat: [MOD] on the chat's black backing, with the game's hard shadow. */
 .staff-page .rank-tag {
