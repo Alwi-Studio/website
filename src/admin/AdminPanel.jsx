@@ -15,7 +15,9 @@ import { changeTypeOrder, getChangeTypeLabel } from '../changelog/changelogData.
 import CollapsibleItems from '../common/CollapsibleItems.jsx'
 import { formatCount, useServerStatus } from '../common/liveData.js'
 import MarkdownBody from '../common/MarkdownBody.jsx'
+import { RuleText } from '../common/PolicyPage.jsx'
 import { RichInline, parseMarkdownBlocks } from '../common/RichText.jsx'
+import { hasRuleText } from '../common/ruleText.js'
 import { isSafeImageUrl } from '../common/safeUrls.js'
 import { useSite } from '../common/siteContext.js'
 import ThemeToggle from '../common/ThemeToggle.jsx'
@@ -1105,7 +1107,9 @@ function PolicyLivePreview({ policy, activeKey }) {
                   {section.description && (
                     /^\s*:::(?:accordion|collapse)(?:\s|$)/m.test(section.description)
                       ? <MarkdownBody text={section.description} className="mt-2" />
-                      : <p className="mt-2 whitespace-pre-line text-sm leading-7 text-muted"><RichInline text={section.description} /></p>
+                      : hasRuleText(section.description)
+                        ? <RuleText text={section.description} heading="h5" />
+                        : <p className="mt-2 whitespace-pre-line text-sm leading-7 text-muted"><RichInline text={section.description} /></p>
                   )}
                   {section.items?.length > 0 && (
                     <ul className="mt-3 grid gap-2 p-0">
@@ -1136,7 +1140,9 @@ function PolicyLivePreview({ policy, activeKey }) {
                           {subsection.description && (
                             /^\s*:::(?:accordion|collapse)(?:\s|$)/m.test(subsection.description)
                               ? <MarkdownBody text={subsection.description} className="mt-2" />
-                              : <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted"><RichInline text={subsection.description} /></p>
+                              : hasRuleText(subsection.description)
+                                ? <RuleText text={subsection.description} heading="h6" />
+                                : <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted"><RichInline text={subsection.description} /></p>
                           )}
                           {subsection.items?.length > 0 && (
                             <ul className="mt-3 grid gap-2 p-0">

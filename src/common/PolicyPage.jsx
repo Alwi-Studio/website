@@ -3,6 +3,7 @@ import { Icon } from './Icons.jsx'
 import MarkdownBody from './MarkdownBody.jsx'
 import { RichInline } from './RichText.jsx'
 import { revealRef } from './reveal.js'
+import { hasRuleText, parseRuleText } from './ruleText.js'
 import { useSite } from './siteContext.js'
 import './pages.css'
 
@@ -11,22 +12,70 @@ const DOCS = [
   { key: 'terms', href: '/terms', label: 'Terms of service', crumb: 'Terms' },
 ]
 
-function PolicyDescription({ text }) {
+// Authored rules ("**1.1.1 Title**", body, "**Sanksi:** A → B") as one block each. Shared with the admin preview.
+// heading: the level under the section (h3) or subsection (h4) holding the text; four-level rules go one deeper.
+export function RuleText({ text, heading = 'h4' }) {
+  const subHeading = `h${Math.min(6, Number(heading.slice(1)) + 1)}`
+  return (
+    <div className="rule-text">
+      {parseRuleText(text).map((block, index) => {
+        if (block.type === 'text') return <p className="pol-desc" key={index}><RichInline text={block.text} /></p>
+        const isSub = block.number.split('.').length > 3
+        const Heading = isSub ? subHeading : heading
+        return (
+          <section className={`rule-entry${isSub ? ' is-sub' : ''}`} key={index}>
+            <Heading className="rule-entry-title">
+              <span className="rule-entry-num">{block.number}</span>
+              <span><RichInline text={block.title} /></span>
+              {block.tag && <span className="pill">{block.tag}</span>}
+            </Heading>
+            {block.body.map((line, lineIndex) => <p key={lineIndex}><RichInline text={line} /></p>)}
+            {block.notes.map((note, noteIndex) => (
+              <div className="rule-penalty" key={noteIndex}>
+                <p className="label">{note.label}</p>
+                <ol>{note.steps.map((step, stepIndex) => <li key={stepIndex}><span><RichInline text={step} /></span></li>)}</ol>
+              </div>
+            ))}
+          </section>
+        )
+      })}
+    </div>
+  )
+}
+
+function PolicyDescription({ text, heading }) {
   if (/^\s*:::(?:accordion|collapse)(?:\s|$)/m.test(text)) {
     return <MarkdownBody text={text} />
+  }
+
+  if (hasRuleText(text)) {
+    return <RuleText text={text} heading={heading} />
   }
 
   return <p className="pol-desc"><RichInline text={text} /></p>
 }
 
 // Items are numbered "<section>.<n>". "---" is a divider; an item written "3. text" keeps its own number.
+// "**Term:** text" is a definition, not a rule, so it gets no number.
 function RuleItems({ items, prefix }) {
+  // A divider only separates items; the editor leaves one dangling where a document's "---" closes a section.
+  const first = items.findIndex((item) => item !== '---')
+  const last = items.findLastIndex((item) => item !== '---')
+  if (first < 0) return null
   let count = 0
   return (
     <ol className="rule-items">
-      {items.map((value, index) => {
+      {items.slice(first, last + 1).map((value, index) => {
         const item = String(value ?? '')
         if (item === '---') return <li className="rule-break" role="presentation" key={index} />
+        if (/^\*\*[^*]+?:\*\*\s/.test(item)) {
+          return (
+            <li className="rule-def" key={index}>
+              <span className="rn" aria-hidden="true" />
+              <span><RichInline text={item} /></span>
+            </li>
+          )
+        }
         const own = /^(\d+)\.\s+/.exec(item)
         count = own ? Number(own[1]) : count + 1
         return (
@@ -59,6 +108,8 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
       sections.map((section, index) => ({
         ...section,
         _id: slugifySection(section.title, index),
+        // The page numbers each section, so an authored "2. Title" would read "02 2. Title". The id keeps the full title.
+        _title: String(section.title ?? '').replace(/^(\d+)\.\s+/, (match, number) => (Number(number) === index + 1 ? '' : match)),
         subsections: Array.isArray(section.subsections)
           ? section.subsections.map((subsection, subsectionIndex) => ({
               ...subsection,
@@ -149,7 +200,7 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
                     {withIds.map((section, index) => (
                       <li key={section._id}>
                         <a href={`#${section._id}`} aria-current={tocCurrent(section._id)}>
-                          <span className="n">{pad(index + 1)}</span>{section.title}
+                          <span className="n">{pad(index + 1)}</span>{section._title}
                         </a>
                         {section.subsections.length > 0 && (
                           <ol className="toc-sub">
@@ -181,15 +232,15 @@ function PolicyPage({ eyebrow, title, intro, updated, sections = [], activeKey =
                     <article className="panel rule-sec" id={section._id} aria-labelledby={`h-${section._id}`} key={section._id}>
                       <header className="rule-head">
                         <span className="rule-num" aria-hidden="true">{pad(index + 1)}</span>
-                        <h2 id={`h-${section._id}`}><RichInline text={section.title} /></h2>
+                        <h2 id={`h-${section._id}`}><RichInline text={section._title} /></h2>
                       </header>
                       <div className="prose">
-                        {section.description && <PolicyDescription text={section.description} />}
+                        {section.description && <PolicyDescription text={section.description} heading="h3" />}
                         {Array.isArray(section.items) && section.items.length > 0 && <RuleItems items={section.items} prefix={index + 1} />}
                         {section.subsections.map((subsection, subsectionIndex) => (
                           <section className="rule-sub" id={subsection._id} aria-labelledby={`h-${subsection._id}`} key={subsection._id}>
                             <h3 id={`h-${subsection._id}`}><RichInline text={subsection.title} /></h3>
-                            {subsection.description && <PolicyDescription text={subsection.description} />}
+                            {subsection.description && <PolicyDescription text={subsection.description} heading="h4" />}
                             {Array.isArray(subsection.items) && subsection.items.length > 0 && (
                               <RuleItems items={subsection.items} prefix={`${index + 1}.${subsectionIndex + 1}`} />
                             )}

@@ -210,7 +210,32 @@
 .policy-page .rule-sub { margin-top: 10px; padding-top: 18px; border-top: 2px solid var(--line); scroll-margin-top: 100px; }
 .policy-page .prose .rule-sub h3 { margin-top: 0; font-size: 19px; }
 .policy-page .rule-sub .rule-items li { grid-template-columns: 54px minmax(0, 1fr); }
+.policy-page .rule-items .rule-def .rn { width: 6px; height: 6px; margin-top: 12px; background: var(--brand); }
 .policy-page .pol-skel { height: 220px; border: 2px solid var(--edge); }
+
+/* Authored rules (RuleText): number, title, body, then the penalty ladder. Rooted at .rule-text, not
+   .policy-page, because the admin preview renders the same block. */
+.rule-text .rule-entry { padding: 18px 0; }
+.rule-text .rule-entry + .rule-entry, .rule-text .pol-desc + .rule-entry { border-top: 1px solid var(--line); }
+.rule-text .pol-desc + .pol-desc { margin-top: 0.6em; }
+/* Four-level numbers (2.1.2.1) belong to the rule above them. */
+.rule-text .rule-entry.is-sub { margin-left: 22px; padding-left: 18px; border-left: 2px solid var(--line); }
+.rule-text .rule-entry-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin: 0; font-size: 18px; font-weight: 800; line-height: 1.35; letter-spacing: -0.01em; color: var(--ink); }
+.rule-text .rule-entry-num {
+  flex: none; padding: 1px 7px; border-radius: var(--radius); font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: 0;
+  color: var(--brand-ink); background: color-mix(in srgb, var(--brand) 12%, transparent); border: 1px solid color-mix(in srgb, var(--brand) 38%, transparent);
+}
+.rule-text .rule-entry-title .pill { --c: var(--dim); font-weight: 600; }
+.rule-text .rule-entry p:not(.label) { margin-top: 8px; color: var(--ink-2); }
+.rule-text .rule-penalty { display: grid; gap: 8px; margin-top: 14px; }
+.rule-text .rule-penalty .label { margin: 0; font-weight: 700; color: var(--brand-ink); }
+.rule-text .rule-penalty ol { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; margin: 0; padding: 0; list-style: none; }
+.rule-text .rule-penalty li { display: flex; align-items: center; gap: 8px; min-width: 0; margin: 0; }
+.rule-text .rule-penalty li + li::before { content: "→"; flex: none; color: var(--dim); }
+.rule-text .rule-penalty li > span {
+  min-width: 0; padding: 4px 10px; border-radius: var(--radius); font-size: 14.5px; line-height: 1.45; color: var(--ink);
+  background: var(--surface-2); border: 1px solid var(--line);
+}
 
 /* Report band: the home page's Discord card, at full container width below the two columns. */
 .policy-page .report { margin-top: 64px; }
@@ -229,6 +254,7 @@
   .policy-page .rule-num { width: 46px; height: 46px; font-size: 17px; }
   .policy-page .rule-items li { grid-template-columns: 36px minmax(0, 1fr); gap: 10px; }
   .policy-page .rule-sub .rule-items li { grid-template-columns: 46px minmax(0, 1fr); }
+  .rule-text .rule-entry.is-sub { margin-left: 8px; padding-left: 14px; }
   .policy-page .report { margin-top: 48px; }
   .policy-page .report-actions .btn { flex: 1 1 100%; }
 }
